@@ -1,6 +1,6 @@
 "use server";
 
-import { sql } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { validateClientInput, isValidUUID, isValidSegmento, sanitizeString, truncate } from "@/lib/security/validate";
 
 // ============================================
@@ -8,48 +8,48 @@ import { validateClientInput, isValidUUID, isValidSegmento, sanitizeString, trun
 // ============================================
 
 export async function getClients(segmento?: string, search?: string) {
+  const supabase = createAdminClient();
+
   // Validate segmento
   const safeSeg = segmento && segmento !== "tutti" && isValidSegmento(segmento) ? segmento : null;
   // Sanitize search — limit length, strip dangerous chars
   const safeSearch = search ? truncate(sanitizeString(search), 100) : null;
 
-  if (safeSeg && safeSearch) {
-    return await sql`
-      SELECT * FROM clients
-      WHERE segmento = ${safeSeg}
-      AND (nome ILIKE ${"%" + safeSearch + "%"} OR cognome ILIKE ${"%" + safeSearch + "%"} OR telefono ILIKE ${"%" + safeSearch + "%"} OR email ILIKE ${"%" + safeSearch + "%"})
-      ORDER BY updated_at DESC
-      LIMIT 200
-    `;
-  } else if (safeSeg) {
-    return await sql`
-      SELECT * FROM clients WHERE segmento = ${safeSeg} ORDER BY updated_at DESC LIMIT 200
-    `;
-  } else if (safeSearch) {
-    return await sql`
-      SELECT * FROM clients
-      WHERE nome ILIKE ${"%" + safeSearch + "%"} OR cognome ILIKE ${"%" + safeSearch + "%"} OR telefono ILIKE ${"%" + safeSearch + "%"} OR email ILIKE ${"%" + safeSearch + "%"}
-      ORDER BY updated_at DESC
-      LIMIT 200
-    `;
+  let query = supabase.from("clients").select("*").order("updated_at", { ascending: false }).limit(200);
+
+  if (safeSeg) {
+    query = query.eq("segmento", safeSeg);
   }
-  return await sql`SELECT * FROM clients ORDER BY updated_at DESC LIMIT 200`;
+  if (safeSearch) {
+    query = query.or(
+      `nome.ilike.%${safeSearch}%,cognome.ilike.%${safeSearch}%,telefono.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`
+    );
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getClient(id: string) {
   if (!isValidUUID(id)) return null;
-  const rows = await sql`SELECT * FROM clients WHERE id = ${id}`;
-  return rows[0] || null;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from("clients").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 export async function getClientInteractions(clientId: string) {
   if (!isValidUUID(clientId)) return [];
-  return await sql`
-    SELECT * FROM client_interactions
-    WHERE client_id = ${clientId}
-    ORDER BY created_at DESC
-    LIMIT 100
-  `;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("client_interactions")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data || [];
 }
 
 // ============================================
@@ -74,23 +74,25 @@ export async function createClient(data: {
     throw new Error(`Dati non validi: ${errors.join(", ")}`);
   }
 
-  const rows = await sql`
-    INSERT INTO clients (nome, cognome, telefono, email, data_nascita, indirizzo, segmento, fonte, note, tags)
-    VALUES (
-      ${sanitized.nome as string},
-      ${sanitized.cognome as string},
-      ${(sanitized.telefono as string) || null},
-      ${(sanitized.email as string) || null},
-      ${(sanitized.dataNascita as string) || null},
-      ${(sanitized.indirizzo as string) || null},
-      ${(sanitized.segmento as string) || "nuova"},
-      ${(sanitized.fonte as string) || null},
-      ${(sanitized.note as string) || null},
-      ${JSON.stringify(sanitized.tags || [])}
-    )
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("clients")
+    .insert({
+      nome: sanitized.nome as string,
+      cognome: sanitized.cognome as string,
+      telefono: (sanitized.telefono as string) || null,
+      email: (sanitized.email as string) || null,
+      data_nascita: (sanitized.dataNascita as string) || null,
+      indirizzo: (sanitized.indirizzo as string) || null,
+      segmento: (sanitized.segmento as string) || "nuova",
+      fonte: (sanitized.fonte as string) || null,
+      note: (sanitized.note as string) || null,
+      tags: sanitized.tags || [],
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return row;
 }
 
 export async function updateClient(id: string, data: {
@@ -112,28 +114,35 @@ export async function updateClient(id: string, data: {
     throw new Error(`Dati non validi: ${errors.filter(e => !e.includes("obbligatorio")).join(", ")}`);
   }
 
-  const rows = await sql`
-    UPDATE clients SET
-      nome = COALESCE(${(sanitized.nome as string) !== "temp" ? (sanitized.nome as string) : null}, nome),
-      cognome = COALESCE(${(sanitized.cognome as string) !== "temp" ? (sanitized.cognome as string) : null}, cognome),
-      telefono = COALESCE(${(sanitized.telefono as string) ?? null}, telefono),
-      email = COALESCE(${(sanitized.email as string) ?? null}, email),
-      data_nascita = COALESCE(${(sanitized.dataNascita as string) ?? null}, data_nascita),
-      indirizzo = COALESCE(${(sanitized.indirizzo as string) ?? null}, indirizzo),
-      segmento = COALESCE(${(sanitized.segmento as string) ?? null}, segmento),
-      fonte = COALESCE(${(sanitized.fonte as string) ?? null}, fonte),
-      note = COALESCE(${(sanitized.note as string) ?? null}, note),
-      tags = COALESCE(${sanitized.tags ? JSON.stringify(sanitized.tags) : null}::jsonb, tags),
-      updated_at = NOW()
-    WHERE id = ${id}
-    RETURNING *
-  `;
-  return rows[0];
+  const updates: Record<string, unknown> = {};
+  if (sanitized.nome && sanitized.nome !== "temp") updates.nome = sanitized.nome;
+  if (sanitized.cognome && sanitized.cognome !== "temp") updates.cognome = sanitized.cognome;
+  if (sanitized.telefono !== undefined) updates.telefono = (sanitized.telefono as string) || null;
+  if (sanitized.email !== undefined) updates.email = (sanitized.email as string) || null;
+  if (sanitized.dataNascita !== undefined) updates.data_nascita = (sanitized.dataNascita as string) || null;
+  if (sanitized.indirizzo !== undefined) updates.indirizzo = (sanitized.indirizzo as string) || null;
+  if (sanitized.segmento !== undefined) updates.segmento = (sanitized.segmento as string) || null;
+  if (sanitized.fonte !== undefined) updates.fonte = (sanitized.fonte as string) || null;
+  if (sanitized.note !== undefined) updates.note = (sanitized.note as string) || null;
+  if (sanitized.tags !== undefined) updates.tags = sanitized.tags || [];
+  updates.updated_at = new Date().toISOString();
+
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("clients")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return row;
 }
 
 export async function deleteClient(id: string) {
   if (!isValidUUID(id)) throw new Error("ID non valido");
-  await sql`DELETE FROM clients WHERE id = ${id}`;
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("clients").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // ============================================
@@ -141,24 +150,33 @@ export async function deleteClient(id: string) {
 // ============================================
 
 export async function getDashboardStats() {
-  const totalClients = await sql`SELECT COUNT(*) as count FROM clients`;
-  const newThisMonth = await sql`
-    SELECT COUNT(*) as count FROM clients
-    WHERE created_at >= date_trunc('month', CURRENT_DATE)
-  `;
-  const revenue = await sql`
-    SELECT COALESCE(SUM(importo), 0) as total FROM transactions
-    WHERE tipo = 'entrata' AND data >= date_trunc('month', CURRENT_DATE)
-  `;
-  const appointmentsToday = await sql`
-    SELECT COUNT(*) as count FROM appointments
-    WHERE data = CURRENT_DATE AND stato != 'cancellato'
-  `;
+  const supabase = createAdminClient();
+
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const today = new Date().toISOString().split("T")[0];
+
+  const [
+    { count: totaleClienti },
+    { count: nuoviMese },
+    { data: entrateRows },
+    { count: appuntamentiOggi },
+  ] = await Promise.all([
+    supabase.from("clients").select("*", { count: "exact", head: true }),
+    supabase.from("clients").select("*", { count: "exact", head: true }).gte("created_at", startOfMonth),
+    supabase.from("transactions").select("importo").eq("tipo", "entrata").gte("data", today.slice(0, 7) + "-01"),
+    supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("data", today)
+      .neq("stato", "cancellato"),
+  ]);
+
+  const entrateMese = (entrateRows || []).reduce((sum, r) => sum + Number(r.importo || 0), 0);
 
   return {
-    totaleClienti: Number(totalClients[0].count),
-    nuoviMese: Number(newThisMonth[0].count),
-    entrateMese: Number(revenue[0].total),
-    appuntamentiOggi: Number(appointmentsToday[0].count),
+    totaleClienti: totaleClienti ?? 0,
+    nuoviMese: nuoviMese ?? 0,
+    entrateMese,
+    appuntamentiOggi: appuntamentiOggi ?? 0,
   };
 }

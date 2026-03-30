@@ -1,6 +1,6 @@
 "use server";
 
-import { sql } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
 
 const VALID_CATEGORIE = ["viso", "corpo", "massaggi", "laser", "spa"] as const;
@@ -14,20 +14,23 @@ function isValidCategoria(cat: string): boolean {
 // ============================================
 
 export async function getServices(categoria?: string) {
+  const supabase = createAdminClient();
   const safeCat = categoria && isValidCategoria(categoria) ? categoria : null;
 
+  let query = supabase
+    .from("services")
+    .select("*")
+    .eq("attivo", true)
+    .order("categoria", { ascending: true })
+    .order("nome", { ascending: true });
+
   if (safeCat) {
-    return await sql`
-      SELECT * FROM services
-      WHERE attivo = true AND categoria = ${safeCat}
-      ORDER BY categoria, nome
-    `;
+    query = query.eq("categoria", safeCat);
   }
-  return await sql`
-    SELECT * FROM services
-    WHERE attivo = true
-    ORDER BY categoria, nome
-  `;
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
 // ============================================
@@ -51,12 +54,15 @@ export async function createService(data: {
   const nome = truncate(sanitizeString(data.nome), 200);
   const descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
 
-  const rows = await sql`
-    INSERT INTO services (nome, categoria, descrizione, durata, prezzo, attivo)
-    VALUES (${nome}, ${data.categoria}, ${descrizione}, ${data.durata}, ${data.prezzo}, true)
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("services")
+    .insert({ nome, categoria: data.categoria, descrizione, durata: data.durata, prezzo: data.prezzo, attivo: true })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }
 
 export async function updateService(id: string, data: {
@@ -71,26 +77,35 @@ export async function updateService(id: string, data: {
   if (data.durata !== undefined && (!Number.isInteger(data.durata) || data.durata <= 0)) throw new Error("Durata non valida");
   if (data.prezzo !== undefined && (typeof data.prezzo !== "number" || data.prezzo <= 0)) throw new Error("Prezzo non valido");
 
-  const nome = data.nome ? truncate(sanitizeString(data.nome), 200) : null;
-  const descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
+  const updates: Record<string, unknown> = {};
+  if (data.nome) updates.nome = truncate(sanitizeString(data.nome), 200);
+  if (data.categoria) updates.categoria = data.categoria;
+  if (data.descrizione !== undefined) updates.descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
+  if (data.durata !== undefined) updates.durata = data.durata;
+  if (data.prezzo !== undefined) updates.prezzo = data.prezzo;
 
-  const rows = await sql`
-    UPDATE services SET
-      nome = COALESCE(${nome}, nome),
-      categoria = COALESCE(${data.categoria || null}, categoria),
-      descrizione = COALESCE(${descrizione}, descrizione),
-      durata = COALESCE(${data.durata ?? null}, durata),
-      prezzo = COALESCE(${data.prezzo ?? null}, prezzo)
-    WHERE id = ${id}
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("services")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }
 
 export async function deleteService(id: string) {
   if (!isValidUUID(id)) throw new Error("ID non valido");
-  const rows = await sql`
-    UPDATE services SET attivo = false WHERE id = ${id} RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("services")
+    .update({ attivo: false })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { sql } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, isValidDate, sanitizeString, truncate } from "@/lib/security/validate";
 
 const VALID_STATI = ["bozza", "programmato", "pubblicato"] as const;
@@ -28,16 +28,21 @@ export async function getSocialPosts(month?: string) {
     safeMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }
 
-  const startDate = `${safeMonth}-01`;
+  const monthStart = `${safeMonth}-01`;
   const [year, mon] = safeMonth.split("-").map(Number);
-  const endDate = new Date(year, mon, 0).toISOString().slice(0, 10);
+  const nextMonthDate = new Date(year, mon, 1); // mon is 1-indexed, Date month is 0-indexed so mon = next month
+  const nextMonthStart = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
 
-  return await sql`
-    SELECT * FROM social_posts
-    WHERE data_pubblicazione >= ${startDate}
-      AND data_pubblicazione <= ${endDate}
-    ORDER BY data_pubblicazione ASC
-  `;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("social_posts")
+    .select("*")
+    .gte("data_pubblicazione", monthStart)
+    .lt("data_pubblicazione", nextMonthStart)
+    .order("data_pubblicazione", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 // ============================================
@@ -51,7 +56,7 @@ export async function createSocialPost(data: {
   script?: string;
   caption?: string;
   hashtags?: string[];
-  dataPubblicazione: string;
+  dataPubblicazione: string | Date;
   stato?: string;
   keyword?: string;
 }) {
@@ -60,44 +65,57 @@ export async function createSocialPost(data: {
   if (!data.titolo || typeof data.titolo !== "string" || data.titolo.trim().length === 0) {
     throw new Error("Titolo obbligatorio");
   }
-  if (!isValidDate(data.dataPubblicazione)) throw new Error("Data pubblicazione non valida");
-  const stato = data.stato && isValidStato(data.stato) ? data.stato : "bozza";
 
+  const dataPubblicazione = data.dataPubblicazione instanceof Date
+    ? data.dataPubblicazione.toISOString()
+    : data.dataPubblicazione;
+
+  if (!isValidDate(typeof dataPubblicazione === "string" ? dataPubblicazione.split("T")[0] : dataPubblicazione)) {
+    throw new Error("Data pubblicazione non valida");
+  }
+
+  const stato = data.stato && isValidStato(data.stato) ? data.stato : "bozza";
   const titolo = truncate(sanitizeString(data.titolo), 300);
   const script = data.script ? truncate(sanitizeString(data.script), 10000) : null;
   const caption = data.caption ? truncate(sanitizeString(data.caption), 2200) : null;
   const keyword = data.keyword ? truncate(sanitizeString(data.keyword), 200) : null;
   const hashtags = data.hashtags
-    ? JSON.stringify(data.hashtags.filter((h) => typeof h === "string").map((h) => truncate(sanitizeString(h), 100)).slice(0, 30))
-    : JSON.stringify([]);
+    ? data.hashtags.filter((h) => typeof h === "string").map((h) => truncate(sanitizeString(h), 100)).slice(0, 30)
+    : [];
 
-  const rows = await sql`
-    INSERT INTO social_posts (piattaforma, tipo_contenuto, titolo, script, caption, hashtags, data_pubblicazione, stato, keyword)
-    VALUES (
-      ${data.piattaforma},
-      ${data.tipoContenuto},
-      ${titolo},
-      ${script},
-      ${caption},
-      ${hashtags}::jsonb,
-      ${data.dataPubblicazione},
-      ${stato},
-      ${keyword}
-    )
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("social_posts")
+    .insert({
+      piattaforma: data.piattaforma,
+      tipo_contenuto: data.tipoContenuto,
+      titolo,
+      script,
+      caption,
+      hashtags,
+      data_pubblicazione: dataPubblicazione,
+      stato,
+      keyword,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }
 
 export async function updatePostStatus(id: string, stato: string) {
   if (!isValidUUID(id)) throw new Error("ID non valido");
   if (!isValidStato(stato)) throw new Error("Stato non valido");
 
-  const rows = await sql`
-    UPDATE social_posts
-    SET stato = ${stato}, updated_at = NOW()
-    WHERE id = ${id}
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("social_posts")
+    .update({ stato, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }

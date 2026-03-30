@@ -92,13 +92,13 @@ export default async function GestionalePage() {
             <Target className="h-5 w-5 text-rose" />
           </div>
           <p className="mt-2 text-2xl font-bold text-brown">
-            {summary.progressoPercentuale}%
+            {summary.percentuale}%
           </p>
           <div className="mt-3">
             <div className="h-2 w-full overflow-hidden rounded-full bg-cream-dark">
               <div
                 className="h-full rounded-full bg-rose transition-all"
-                style={{ width: `${summary.progressoPercentuale}%` }}
+                style={{ width: `${summary.percentuale}%` }}
               />
             </div>
             <p className="mt-1 text-xs text-muted-foreground">

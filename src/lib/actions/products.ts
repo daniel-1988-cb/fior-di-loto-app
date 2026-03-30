@@ -1,6 +1,6 @@
 "use server";
 
-import { sql } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
 
 // ============================================
@@ -8,15 +8,19 @@ import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
 // ============================================
 
 export async function getProducts() {
-  const rows = await sql`
-    SELECT
-      *,
-      (giacenza <= soglia_alert) AS low_stock
-    FROM products
-    WHERE attivo = true
-    ORDER BY categoria, nome
-  `;
-  return rows;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("attivo", true)
+    .order("categoria", { ascending: true })
+    .order("nome", { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map((product) => ({
+    ...product,
+    low_stock: product.giacenza <= (product.soglia_alert ?? 5),
+  }));
 }
 
 // ============================================
@@ -45,12 +49,15 @@ export async function createProduct(data: {
   const descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
   const sogliaAlert = data.sogliaAlert ?? 5;
 
-  const rows = await sql`
-    INSERT INTO products (nome, categoria, descrizione, prezzo, giacenza, soglia_alert, attivo)
-    VALUES (${nome}, ${categoria}, ${descrizione}, ${data.prezzo}, ${data.giacenza}, ${sogliaAlert}, true)
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("products")
+    .insert({ nome, categoria, descrizione, prezzo: data.prezzo, giacenza: data.giacenza, soglia_alert: sogliaAlert, attivo: true })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }
 
 export async function updateProduct(id: string, data: {
@@ -65,33 +72,49 @@ export async function updateProduct(id: string, data: {
   if (data.prezzo !== undefined && (typeof data.prezzo !== "number" || data.prezzo < 0)) throw new Error("Prezzo non valido");
   if (data.giacenza !== undefined && (!Number.isInteger(data.giacenza) || data.giacenza < 0)) throw new Error("Giacenza non valida");
 
-  const nome = data.nome ? truncate(sanitizeString(data.nome), 200) : null;
-  const categoria = data.categoria ? truncate(sanitizeString(data.categoria), 100) : null;
-  const descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
+  const updates: Record<string, unknown> = {};
+  if (data.nome) updates.nome = truncate(sanitizeString(data.nome), 200);
+  if (data.categoria) updates.categoria = truncate(sanitizeString(data.categoria), 100);
+  if (data.descrizione !== undefined) updates.descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
+  if (data.prezzo !== undefined) updates.prezzo = data.prezzo;
+  if (data.giacenza !== undefined) updates.giacenza = data.giacenza;
+  if (data.sogliaAlert !== undefined) updates.soglia_alert = data.sogliaAlert;
 
-  const rows = await sql`
-    UPDATE products SET
-      nome = COALESCE(${nome}, nome),
-      categoria = COALESCE(${categoria}, categoria),
-      descrizione = COALESCE(${descrizione}, descrizione),
-      prezzo = COALESCE(${data.prezzo ?? null}, prezzo),
-      giacenza = COALESCE(${data.giacenza ?? null}, giacenza),
-      soglia_alert = COALESCE(${data.sogliaAlert ?? null}, soglia_alert)
-    WHERE id = ${id}
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("products")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }
 
 export async function updateGiacenza(id: string, delta: number) {
   if (!isValidUUID(id)) throw new Error("ID non valido");
   if (!Number.isInteger(delta)) throw new Error("Delta non valido");
 
-  const rows = await sql`
-    UPDATE products
-    SET giacenza = GREATEST(0, giacenza + ${delta})
-    WHERE id = ${id}
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+
+  // Fetch current giacenza
+  const { data: current, error: fetchError } = await supabase
+    .from("products")
+    .select("giacenza")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const newGiacenza = Math.max(0, (current.giacenza ?? 0) + delta);
+
+  const { data: row, error } = await supabase
+    .from("products")
+    .update({ giacenza: newGiacenza })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }

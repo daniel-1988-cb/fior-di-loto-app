@@ -1,6 +1,6 @@
 "use server";
 
-import { sql } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeString, truncate } from "@/lib/security/validate";
 
 const VALID_CANALI = ["whatsapp", "email"] as const;
@@ -18,20 +18,28 @@ function isValidCategoria(cat: string): boolean {
 // ============================================
 
 export async function getTemplates() {
-  return await sql`
-    SELECT * FROM message_templates
-    WHERE attivo = true
-    ORDER BY categoria, nome
-  `;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("message_templates")
+    .select("*")
+    .eq("attivo", true)
+    .eq("canale", "whatsapp")
+    .order("categoria", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getClients() {
-  return await sql`
-    SELECT id, nome, cognome, telefono, segmento
-    FROM clients
-    ORDER BY nome, cognome
-    LIMIT 500
-  `;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, nome, cognome, telefono, segmento")
+    .order("cognome", { ascending: true })
+    .limit(500);
+
+  if (error) throw error;
+  return data || [];
 }
 
 // ============================================
@@ -56,10 +64,13 @@ export async function createTemplate(data: {
   const nome = truncate(sanitizeString(data.nome), 200);
   const contenuto = truncate(sanitizeString(data.contenuto), 5000);
 
-  const rows = await sql`
-    INSERT INTO message_templates (nome, canale, contenuto, categoria, attivo)
-    VALUES (${nome}, ${data.canale}, ${contenuto}, ${data.categoria}, true)
-    RETURNING *
-  `;
-  return rows[0];
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("message_templates")
+    .insert({ nome, canale: data.canale, contenuto, categoria: data.categoria, attivo: true })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
 }
