@@ -19,9 +19,24 @@ export async function getAppointments(data?: string) {
 
   const { data: rows, error } = await supabase
     .from("appointments")
-    .select("*, clients(nome, cognome, telefono), services(nome, durata, categoria)")
+    .select("*, clients(nome, cognome, telefono), services(nome, durata, prezzo, categoria)")
     .eq("data", safeDate)
     .order("ora_inizio", { ascending: true });
+
+  if (error) throw error;
+  return rows || [];
+}
+
+export async function getAppointmentsByRange(dateFrom: string, dateTo: string) {
+  if (!isValidDate(dateFrom) || !isValidDate(dateTo)) return [];
+  const supabase = createAdminClient();
+
+  const { data: rows, error } = await supabase
+    .from("appointments")
+    .select("data, stato")
+    .gte("data", dateFrom)
+    .lte("data", dateTo)
+    .order("data", { ascending: true });
 
   if (error) throw error;
   return rows || [];
@@ -100,6 +115,39 @@ export async function updateAppointmentStatus(id: string, stato: string) {
     .select()
     .single();
 
+  if (error) throw error;
+  return row;
+}
+
+export async function deleteAppointment(id: string) {
+  if (!isValidUUID(id)) throw new Error("ID non valido");
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("appointments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateAppointment(id: string, data: {
+  data?: string;
+  oraInizio?: string;
+  oraFine?: string;
+  stato?: string;
+  note?: string;
+}) {
+  if (!isValidUUID(id)) throw new Error("ID non valido");
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (data.data && isValidDate(data.data)) updates.data = data.data;
+  if (data.oraInizio && /^\d{2}:\d{2}/.test(data.oraInizio)) updates.ora_inizio = data.oraInizio;
+  if (data.oraFine && /^\d{2}:\d{2}/.test(data.oraFine)) updates.ora_fine = data.oraFine;
+  if (data.stato && isValidStato(data.stato)) updates.stato = data.stato;
+  if (data.note !== undefined) updates.note = data.note ? truncate(sanitizeString(data.note), 2000) : null;
+
+  const supabase = createAdminClient();
+  const { data: row, error } = await supabase
+    .from("appointments")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw error;
   return row;
 }

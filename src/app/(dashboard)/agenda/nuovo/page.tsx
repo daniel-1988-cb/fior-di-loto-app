@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createAppointment } from "@/lib/actions/appointments";
@@ -11,16 +11,22 @@ import { getServices } from "@/lib/actions/services";
 type ClientOption = { id: string; nome: string; cognome: string; telefono: string | null };
 type ServiceOption = { id: string; nome: string; categoria: string; durata: number; prezzo: number };
 
-export default function NuovoAppuntamentoPage() {
+function NuovoAppuntamentoForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
+
+  // Read pre-fill values from URL
+  const paramData = searchParams.get("data");
+  const paramOra = searchParams.get("ora");
+
   const [formData, setFormData] = useState({
     clientId: "",
     serviceId: "",
-    data: new Date().toISOString().slice(0, 10),
-    oraInizio: "09:00",
+    data: paramData || new Date().toISOString().slice(0, 10),
+    oraInizio: paramOra || "09:00",
     oraFine: "",
     note: "",
   });
@@ -195,5 +201,13 @@ export default function NuovoAppuntamentoPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NuovoAppuntamentoPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Caricamento...</div>}>
+      <NuovoAppuntamentoForm />
+    </Suspense>
   );
 }

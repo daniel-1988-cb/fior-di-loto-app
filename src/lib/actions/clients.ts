@@ -146,6 +146,58 @@ export async function deleteClient(id: string) {
 }
 
 // ============================================
+// CLIENT INTERACTIONS WRITE
+// ============================================
+
+export async function addClientInteraction(clientId: string, data: {
+  tipo: string; // visita, messaggio, nota, trattamento, acquisto
+  descrizione: string;
+  importo?: number;
+}) {
+  if (!isValidUUID(clientId)) throw new Error("ID cliente non valido");
+  const VALID_TIPI = ["visita", "messaggio", "nota", "trattamento", "acquisto"];
+  if (!VALID_TIPI.includes(data.tipo)) throw new Error("Tipo non valido");
+  if (!data.descrizione?.trim()) throw new Error("Descrizione obbligatoria");
+
+  const supabase = createAdminClient();
+  const descrizione = truncate(sanitizeString(data.descrizione), 2000);
+
+  const { data: row, error } = await supabase
+    .from("client_interactions")
+    .insert({
+      client_id: clientId,
+      tipo: data.tipo,
+      descrizione,
+      importo: data.importo || null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Update ultima_visita and totale_visite if it's a visit/treatment
+  if (data.tipo === "visita" || data.tipo === "trattamento") {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("totale_visite, totale_speso")
+      .eq("id", clientId)
+      .single();
+    if (client) {
+      await supabase.from("clients").update({
+        ultima_visita: new Date().toISOString(),
+        totale_visite: (Number(client.totale_visite) || 0) + 1,
+        totale_speso: data.importo
+          ? (Number(client.totale_speso) || 0) + data.importo
+          : client.totale_speso,
+        updated_at: new Date().toISOString(),
+      }).eq("id", clientId);
+    }
+  }
+
+  return row;
+}
+
+// ============================================
 // DASHBOARD (read-only, no user input)
 // ============================================
 

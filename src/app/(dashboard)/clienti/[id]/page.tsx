@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getClient, getClientInteractions } from "@/lib/actions/clients";
 import { formatPhone, formatDate, formatCurrency } from "@/lib/utils";
+import { AddInteractionForm } from "@/components/clienti/add-interaction-form";
 
 function getTipoColor(tipo: string) {
   switch (tipo) {
@@ -257,6 +258,7 @@ export default async function ClienteDetailPage({
                 ))}
               </div>
             )}
+            <AddInteractionForm clientId={id} />
           </div>
         </div>
       </div>
