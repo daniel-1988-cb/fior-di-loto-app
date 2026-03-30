@@ -1,0 +1,201 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  varchar,
+  timestamp,
+  integer,
+  decimal,
+  boolean,
+  date,
+  time,
+  jsonb,
+} from "drizzle-orm/pg-core";
+
+// ============================================
+// UTENTI & AUTH
+// ============================================
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  authId: uuid("auth_id").unique(), // Supabase Auth user ID
+  nome: varchar("nome", { length: 100 }).notNull(),
+  cognome: varchar("cognome", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  ruolo: varchar("ruolo", { length: 20 }).notNull().default("operatrice"), // admin, operatrice, receptionist
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ============================================
+// CRM - CLIENTI
+// ============================================
+
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 100 }).notNull(),
+  cognome: varchar("cognome", { length: 100 }).notNull(),
+  telefono: varchar("telefono", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  dataNascita: date("data_nascita"),
+  indirizzo: text("indirizzo"),
+  segmento: varchar("segmento", { length: 30 }).notNull().default("nuova"), // lotina, nuova, lead, inattiva, vip
+  tags: jsonb("tags").$type<string[]>().default([]),
+  note: text("note"),
+  fonte: varchar("fonte", { length: 50 }), // instagram, whatsapp, passaparola, meta_ads, walk_in
+  totaleSpeso: decimal("totale_speso", { precision: 10, scale: 2 }).default("0"),
+  totaleVisite: integer("totale_visite").default(0),
+  ultimaVisita: timestamp("ultima_visita"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ============================================
+// INTERAZIONI CLIENTE (log unificato)
+// ============================================
+
+export const clientInteractions = pgTable("client_interactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  tipo: varchar("tipo", { length: 30 }).notNull(), // visita, messaggio, nota, trattamento, acquisto, chiamata
+  descrizione: text("descrizione"),
+  operatriceId: uuid("operatrice_id").references(() => users.id),
+  importo: decimal("importo", { precision: 10, scale: 2 }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// SERVIZI & TRATTAMENTI
+// ============================================
+
+export const services = pgTable("services", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 200 }).notNull(),
+  categoria: varchar("categoria", { length: 30 }).notNull(), // viso, corpo, massaggi, laser, spa
+  descrizione: text("descrizione"),
+  durata: integer("durata").notNull(), // minuti
+  prezzo: decimal("prezzo", { precision: 10, scale: 2 }).notNull(),
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// PRODOTTI (Linea Rinascita)
+// ============================================
+
+export const products = pgTable("products", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 200 }).notNull(),
+  categoria: varchar("categoria", { length: 50 }),
+  descrizione: text("descrizione"),
+  prezzo: decimal("prezzo", { precision: 10, scale: 2 }).notNull(),
+  giacenza: integer("giacenza").notNull().default(0),
+  sogliaAlert: integer("soglia_alert").default(5), // avviso scorte basse
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// APPUNTAMENTI
+// ============================================
+
+export const appointments = pgTable("appointments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  serviceId: uuid("service_id")
+    .notNull()
+    .references(() => services.id),
+  operatriceId: uuid("operatrice_id").references(() => users.id),
+  data: date("data").notNull(),
+  oraInizio: time("ora_inizio").notNull(),
+  oraFine: time("ora_fine").notNull(),
+  stato: varchar("stato", { length: 20 }).notNull().default("confermato"), // confermato, completato, cancellato, no_show
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ============================================
+// PERCORSI TRATTAMENTO
+// ============================================
+
+export const treatmentPrograms = pgTable("treatment_programs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 200 }).notNull(),
+  descrizione: text("descrizione"),
+  categoria: varchar("categoria", { length: 30 }),
+  sedute: integer("sedute").notNull(),
+  prezzo: decimal("prezzo", { precision: 10, scale: 2 }).notNull(),
+  servizi: jsonb("servizi").$type<string[]>().default([]), // IDs dei servizi inclusi
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// TRANSAZIONI (Entrate/Uscite)
+// ============================================
+
+export const transactions = pgTable("transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").references(() => clients.id),
+  tipo: varchar("tipo", { length: 20 }).notNull(), // entrata, uscita
+  categoria: varchar("categoria", { length: 50 }), // servizio, prodotto, abbonamento, spesa_fissa, fornitore
+  descrizione: text("descrizione"),
+  importo: decimal("importo", { precision: 10, scale: 2 }).notNull(),
+  metodoPagamento: varchar("metodo_pagamento", { length: 30 }), // contanti, carta, bonifico, satispay
+  data: date("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ============================================
+// MESSAGGI (WhatsApp, Email)
+// ============================================
+
+export const messageTemplates = pgTable("message_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 100 }).notNull(),
+  canale: varchar("canale", { length: 20 }).notNull(), // whatsapp, email
+  contenuto: text("contenuto").notNull(), // con variabili tipo {{nome}}, {{servizio}}
+  categoria: varchar("categoria", { length: 50 }), // conferma, promemoria, offerta, follow_up, auguri
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sentMessages = pgTable("sent_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  templateId: uuid("template_id").references(() => messageTemplates.id),
+  canale: varchar("canale", { length: 20 }).notNull(),
+  contenuto: text("contenuto").notNull(),
+  stato: varchar("stato", { length: 20 }).notNull().default("inviato"), // inviato, consegnato, letto, errore
+  inviatoAt: timestamp("inviato_at").defaultNow().notNull(),
+  inviatoDa: uuid("inviato_da").references(() => users.id),
+});
+
+// ============================================
+// SOCIAL MEDIA
+// ============================================
+
+export const socialPosts = pgTable("social_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  piattaforma: varchar("piattaforma", { length: 20 }).notNull(), // instagram, facebook
+  tipoContenuto: varchar("tipo_contenuto", { length: 30 }).notNull(), // reel_hook, educational, prima_dopo, connessione, prodotto
+  titolo: varchar("titolo", { length: 200 }).notNull(),
+  script: text("script"), // script del video/reel
+  caption: text("caption"),
+  hashtags: jsonb("hashtags").$type<string[]>().default([]),
+  mediaUrl: text("media_url"),
+  dataPubblicazione: timestamp("data_pubblicazione"),
+  stato: varchar("stato", { length: 20 }).notNull().default("bozza"), // bozza, programmato, pubblicato
+  keyword: varchar("keyword", { length: 50 }), // keyword per lead gen (es. RINASCITA, DETOX)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

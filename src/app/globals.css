@@ -1,26 +1,78 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Brand Colors - Fior di Loto */
+  --color-rose: #C97A7A;
+  --color-rose-light: #E8B4B4;
+  --color-rose-dark: #A85858;
+  --color-cream: #FDF6F0;
+  --color-cream-dark: #F5E6D8;
+  --color-gold: #C8A96E;
+  --color-gold-light: #DCC99A;
+  --color-gold-dark: #A88B4A;
+  --color-brown: #3D2B1F;
+  --color-brown-light: #5C4333;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Semantic Colors */
+  --color-background: var(--color-cream);
+  --color-foreground: var(--color-brown);
+  --color-card: #FFFFFF;
+  --color-card-foreground: var(--color-brown);
+  --color-primary: var(--color-rose);
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: var(--color-gold);
+  --color-secondary-foreground: #FFFFFF;
+  --color-muted: #F5F0EB;
+  --color-muted-foreground: #8B7D6B;
+  --color-border: #E8DDD3;
+  --color-input: #E8DDD3;
+  --color-ring: var(--color-rose);
+  --color-accent: var(--color-cream-dark);
+  --color-accent-foreground: var(--color-brown);
+
+  /* Status Colors */
+  --color-success: #4CAF50;
+  --color-warning: #FF9800;
+  --color-danger: #E53935;
+  --color-info: #2196F3;
+
+  /* Sidebar */
+  --color-sidebar: var(--color-brown);
+  --color-sidebar-foreground: var(--color-cream);
+  --color-sidebar-hover: var(--color-brown-light);
+  --color-sidebar-active: var(--color-rose);
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-playfair);
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
 }
