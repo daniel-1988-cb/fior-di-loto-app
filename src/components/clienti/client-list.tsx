@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -67,45 +67,49 @@ export function ClientList({
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [filtroSegmento, setFiltroSegmento] = useState(initialSegmento);
 
-  function applyFilters(segmento: string, search: string) {
-    const params = new URLSearchParams();
-    if (segmento && segmento !== "tutti") params.set("segmento", segmento);
-    if (search) params.set("q", search);
-    router.push(`/clienti?${params.toString()}`);
-  }
+  // Filtro client-side — nessun round-trip al server per ogni keystroke
+  const filteredClients = useMemo(() => {
+    let result = initialClients;
 
-  function handleSegmentoChange(seg: string) {
-    setFiltroSegmento(seg);
-    applyFilters(seg, searchQuery);
-  }
+    if (filtroSegmento && filtroSegmento !== "tutti") {
+      result = result.filter((c) => c.segmento === filtroSegmento);
+    }
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    applyFilters(filtroSegmento, searchQuery);
-  }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (c) =>
+          c.nome.toLowerCase().includes(q) ||
+          c.cognome.toLowerCase().includes(q) ||
+          (c.telefono && c.telefono.toLowerCase().includes(q)) ||
+          (c.email && c.email.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [initialClients, filtroSegmento, searchQuery]);
 
   return (
     <>
       {/* Search & Filters */}
       <div className="mb-6 space-y-4">
-        <form onSubmit={handleSearch} className="relative">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onBlur={() => applyFilters(filtroSegmento, searchQuery)}
             placeholder={LABELS.clienti.cerca}
             className="w-full rounded-lg border border-input bg-card pl-10 pr-4 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
           />
-        </form>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <Filter className="h-4 w-4 self-center text-muted-foreground" />
           {segmenti.map((seg) => (
             <button
               key={seg.value}
-              onClick={() => handleSegmentoChange(seg.value)}
+              onClick={() => setFiltroSegmento(seg.value)}
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 filtroSegmento === seg.value
@@ -125,7 +129,7 @@ export function ClientList({
           const count = initialClients.filter(c => c.segmento === seg.value).length;
           if (count === 0) return null;
           return (
-            <button key={seg.value} onClick={() => handleSegmentoChange(seg.value)}
+            <button key={seg.value} onClick={() => setFiltroSegmento(seg.value)}
               className={`shrink-0 rounded-full px-3 py-1 font-medium ${seg.color}`}>
               {seg.label}: {count}
             </button>
@@ -133,16 +137,23 @@ export function ClientList({
         })}
       </div>
 
+      {/* Results count */}
+      {(searchQuery.trim() || filtroSegmento !== "tutti") && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          {filteredClients.length} risultat{filteredClients.length === 1 ? "o" : "i"}
+        </p>
+      )}
+
       {/* Client List */}
       <div className="space-y-3">
-        {initialClients.length === 0 ? (
+        {filteredClients.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-12 text-center">
             <p className="text-muted-foreground">
               {LABELS.messaggi.nessunoTrovato}
             </p>
           </div>
         ) : (
-          initialClients.map((client) => (
+          filteredClients.map((client) => (
             <div
               key={client.id}
               onClick={() => router.push(`/clienti/${client.id}`)}

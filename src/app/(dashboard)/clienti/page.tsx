@@ -12,9 +12,13 @@ export default async function ClientiPage({
   searchParams: Promise<{ segmento?: string; q?: string }>;
 }) {
   const params = await searchParams;
-  const segmento = params.segmento || "tutti";
-  const search = params.q || "";
-  const clienti = await getClients(segmento, search);
+  // Passa il segmento iniziale per il filtro visivo, ma carica tutti i clienti
+  // così il filtro e la ricerca avvengono lato client senza round-trip
+  const initialSegmento = params.segmento || "tutti";
+  const initialSearch = params.q || "";
+
+  // Carica sempre tutti i clienti — il filtro è client-side
+  const clienti = await getClients();
 
   return (
     <div>
@@ -37,7 +41,11 @@ export default async function ClientiPage({
         </Link>
       </div>
 
-      <ClientList initialClients={clienti as unknown as Parameters<typeof ClientList>[0]["initialClients"]} initialSegmento={segmento} initialSearch={search} />
+      <ClientList
+        initialClients={clienti as unknown as Parameters<typeof ClientList>[0]["initialClients"]}
+        initialSegmento={initialSegmento}
+        initialSearch={initialSearch}
+      />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { ExportSection } from "@/components/impostazioni/export-section";
+
 export default function ImpostazioniPage() {
   return (
     <div>
@@ -9,7 +11,9 @@ export default function ImpostazioniPage() {
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">Configurazione del gestionale</p>
       </div>
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+
+      {/* Informazioni Centro */}
+      <div className="mb-6 rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="mb-4 font-semibold text-brown">Informazioni Centro</h2>
         <div className="space-y-3 text-sm text-muted-foreground">
           <div>
@@ -23,6 +27,9 @@ export default function ImpostazioniPage() {
           </div>
         </div>
       </div>
+
+      {/* Export / Backup */}
+      <ExportSection />
     </div>
   );
 }
