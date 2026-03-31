@@ -119,3 +119,30 @@ export async function updatePostStatus(id: string, stato: string) {
   if (error) throw error;
   return row;
 }
+
+export async function getAllSocialPosts() {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("social_posts")
+    .select("*")
+    .order("data_pubblicazione", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateSocialPostStatus(id: string, stato: string) {
+  return updatePostStatus(id, stato);
+}
+
+export async function deleteSocialPost(id: string) {
+  if (!isValidUUID(id)) throw new Error("ID non valido");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("social_posts")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+}
