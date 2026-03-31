@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro, Users, Calendar } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro, RefreshCw, Settings2, CalendarDays, ChevronDown } from "lucide-react";
 import { getAppointments, getAppointmentsByRange, updateAppointmentStatus } from "@/lib/actions/appointments";
-import { getStaff, Staff } from "@/lib/actions/staff";
+import { getStaff, getStaffFerie, Staff } from "@/lib/actions/staff";
 
-const HOUR_HEIGHT = 64; // px per hour
+const HOUR_HEIGHT = 72;
 const START_HOUR = 8;
-const END_HOUR = 20;
+const END_HOUR = 21;
 
 type Appointment = {
   id: string;
@@ -24,198 +24,128 @@ type Appointment = {
   staff: { id: string; nome: string; colore: string } | null;
 };
 
-type WeekDayInfo = {
-  date: string; // YYYY-MM-DD
-  label: string; // "Lun"
-  dayNum: number;
-  count: number;
-};
+type FerieRecord = { staff_id: string; data_inizio: string; data_fine: string; tipo: string };
 
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+function toDateStr(d: Date) { return d.toISOString().slice(0, 10); }
+function addDays(dateStr: string, n: number) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
 }
-
-function getWeekDays(selectedDate: string): { monday: string; sunday: string; days: { date: string; label: string; dayNum: number }[] } {
+function formatNavDate(dateStr: string) {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("it-IT", {
+    weekday: "short", day: "numeric", month: "short",
+  });
+}
+function getWeekDays(selectedDate: string) {
   const d = new Date(selectedDate + "T00:00:00");
-  const dow = d.getDay(); // 0=Sun, 1=Mon...
+  const dow = d.getDay();
   const diffToMonday = dow === 0 ? -6 : 1 - dow;
   const monday = new Date(d);
   monday.setDate(d.getDate() + diffToMonday);
-
   const shortDays = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
   const days = [];
   for (let i = 0; i < 7; i++) {
     const day = new Date(monday);
     day.setDate(monday.getDate() + i);
-    days.push({
-      date: toDateStr(day),
-      label: shortDays[day.getDay()],
-      dayNum: day.getDate(),
-    });
+    days.push({ date: toDateStr(day), label: shortDays[day.getDay()], dayNum: day.getDate() });
   }
-  return { monday: toDateStr(monday), sunday: toDateStr(days[6] ? new Date(monday.getTime() + 6 * 86400000) : monday), days };
+  const sunday = toDateStr(new Date(monday.getTime() + 6 * 86400000));
+  return { monday: toDateStr(monday), sunday, days };
 }
 
-function formatNavDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  return new Intl.DateTimeFormat("it-IT", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  }).format(d).replace(/\b\w/g, (l) => l.toUpperCase());
+// Lighter version of a hex color for card backgrounds
+function hexToRgba(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
-}
-
-function getStatusClasses(stato: string) {
-  switch (stato) {
-    case "confermato":
-      return {
-        card: "bg-blue-50 border-l-blue-500 text-blue-900",
-        border: "border-l-4",
-        time: "text-blue-600",
-        name: "text-blue-900 font-bold",
-        service: "text-blue-700",
-      };
-    case "completato":
-      return {
-        card: "bg-green-50 border-l-green-500 text-green-900",
-        border: "border-l-4",
-        time: "text-green-600",
-        name: "text-green-900 font-bold",
-        service: "text-green-700",
-      };
-    case "cancellato":
-      return {
-        card: "bg-gray-100 border-l-gray-400 text-gray-500",
-        border: "border-l-4",
-        time: "text-gray-400 line-through",
-        name: "text-gray-500 font-bold line-through",
-        service: "text-gray-400 line-through",
-      };
-    case "no_show":
-      return {
-        card: "bg-orange-50 border-l-orange-400 text-orange-900",
-        border: "border-l-4",
-        time: "text-orange-500",
-        name: "text-orange-900 font-bold",
-        service: "text-orange-700",
-      };
-    default:
-      return {
-        card: "bg-gray-50 border-l-gray-300 text-gray-700",
-        border: "border-l-4",
-        time: "text-gray-500",
-        name: "text-gray-700 font-bold",
-        service: "text-gray-500",
-      };
-  }
-}
-
-function getStatoLabel(stato: string) {
-  switch (stato) {
-    case "confermato": return "Confermato";
-    case "completato": return "Completato";
-    case "cancellato": return "Cancellato";
-    case "no_show": return "No Show";
-    default: return stato;
-  }
+function getCategoriaAbbr(categoria: string) {
+  const map: Record<string, string> = {
+    viso: "FACE", corpo: "BODY", massaggi: "MASS", laser: "LASER",
+    spa: "SPA", capelli: "HC", unghie: "NAIL", sopracciglia: "BROW",
+  };
+  return map[categoria?.toLowerCase()] || categoria?.toUpperCase().slice(0, 4) || "";
 }
 
 function AppointmentCard({
-  apt,
-  topPx,
-  heightPx,
-  onStatusChange,
-  showStaffDot = false,
+  apt, topPx, heightPx, staffColor, onStatusChange,
 }: {
-  apt: Appointment;
-  topPx: number;
-  heightPx: number;
+  apt: Appointment; topPx: number; heightPx: number; staffColor: string;
   onStatusChange: (id: string, stato: string) => void;
-  showStaffDot?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const classes = getStatusClasses(apt.stato);
   const startTime = apt.ora_inizio.slice(0, 5);
   const endTime = apt.ora_fine ? apt.ora_fine.slice(0, 5) : null;
   const clientName = apt.clients ? `${apt.clients.nome} ${apt.clients.cognome}` : "Cliente";
   const serviceName = apt.services?.nome ?? "";
-  const showCheckout = apt.stato === "confermato" || apt.stato === "completato";
+  const categoria = apt.services?.categoria ?? "";
+  const abbr = getCategoriaAbbr(categoria);
+  const isCancelled = apt.stato === "cancellato";
+  const isCompleted = apt.stato === "completato";
+  const isNoShow = apt.stato === "no_show";
+
+  const bgColor = isCancelled || isNoShow
+    ? "rgba(156,163,175,0.15)"
+    : isCompleted
+    ? hexToRgba(staffColor, 0.25)
+    : hexToRgba(staffColor, 0.18);
+
+  const borderColor = isCancelled || isNoShow ? "#9ca3af" : staffColor;
+  const textColor = isCancelled || isNoShow ? "#9ca3af" : "#1a1a2e";
 
   return (
     <div
-      className={`absolute left-1 right-1 rounded-lg border ${classes.border} ${classes.card} shadow-sm cursor-pointer transition-shadow hover:shadow-md overflow-hidden`}
-      style={{ top: topPx, height: heightPx, zIndex: hovered ? 20 : 10 }}
+      className="absolute left-1 right-1 cursor-pointer overflow-hidden rounded-lg transition-all"
+      style={{
+        top: topPx, height: heightPx, zIndex: hovered ? 30 : 10,
+        backgroundColor: bgColor,
+        borderLeft: `3px solid ${borderColor}`,
+        boxShadow: hovered ? "0 4px 12px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.06)",
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="px-2 py-1 h-full flex flex-col justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            {showStaffDot && apt.staff && (
-              <div
-                className="h-2 w-2 rounded-full shrink-0"
-                style={{ backgroundColor: apt.staff.colore }}
-              />
-            )}
-            <p className={`text-[10px] leading-tight ${classes.time}`}>
-              {startTime}{endTime ? ` – ${endTime}` : ""}
+      {!hovered ? (
+        <div className="px-2 py-1.5 h-full flex flex-col gap-0.5 overflow-hidden">
+          <p className="text-[10px] font-medium leading-none" style={{ color: borderColor }}>
+            {startTime}{endTime ? ` - ${endTime}` : ""}
+            {isCompleted && <span className="ml-1">✓</span>}
+          </p>
+          <p className="text-xs font-bold leading-tight truncate" style={{ color: textColor }}>
+            {clientName}
+          </p>
+          {heightPx > 48 && serviceName && (
+            <p className="text-[10px] leading-tight truncate" style={{ color: isCancelled ? "#9ca3af" : "#6b7280" }}>
+              {abbr ? `${abbr} | ` : ""}{serviceName}
             </p>
-          </div>
-          <p className={`text-xs leading-tight truncate ${classes.name}`}>{clientName}</p>
-          {heightPx > 44 && (
-            <p className={`text-[10px] leading-tight truncate ${classes.service}`}>{serviceName}</p>
+          )}
+          {apt.note && heightPx > 68 && (
+            <p className="text-[10px] italic leading-tight truncate text-muted-foreground">{apt.note}</p>
           )}
         </div>
-        {heightPx > 56 && (
-          <p className="text-[9px] text-gray-400 capitalize">{getStatoLabel(apt.stato)}</p>
-        )}
-      </div>
-
-      {/* Hover overlay with action buttons */}
-      {hovered && apt.stato !== "cancellato" && (
-        <div className="absolute inset-0 bg-white/90 rounded-lg flex flex-col items-center justify-center gap-1 p-1">
-          <p className={`text-[10px] font-semibold truncate max-w-full px-1 ${classes.name}`}>{clientName}</p>
-          <div className="flex gap-1 flex-wrap justify-center">
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg p-2"
+          style={{ backgroundColor: hexToRgba(staffColor, 0.95) }}>
+          <p className="text-[11px] font-bold text-white truncate max-w-full px-1">{clientName}</p>
+          <p className="text-[10px] text-white/80 truncate max-w-full px-1">{serviceName}</p>
+          <div className="flex flex-wrap gap-1 justify-center mt-1">
             {apt.stato !== "completato" && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "completato"); }}
-                className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-green-500 text-white hover:bg-green-600"
-              >
-                <CheckCircle2 className="h-3 w-3" />
-                Completa
+              <button onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "completato"); }}
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white hover:bg-white/40">
+                <CheckCircle2 className="h-3 w-3" />Completa
               </button>
             )}
-            {showCheckout && (
-              <Link
-                href={`/agenda/checkout/${apt.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gold text-white hover:opacity-90"
-              >
-                <Euro className="h-3 w-3" />
-                Checkout
-              </Link>
-            )}
+            <Link href={`/agenda/checkout/${apt.id}`} onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white hover:bg-white/40">
+              <Euro className="h-3 w-3" />Checkout
+            </Link>
             {apt.stato !== "cancellato" && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "cancellato"); }}
-                className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-red-500 text-white hover:bg-red-600"
-              >
-                <XCircle className="h-3 w-3" />
-                Cancella
-              </button>
-            )}
-            {apt.stato !== "no_show" && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "no_show"); }}
-                className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-orange-400 text-white hover:bg-orange-500"
-              >
-                No Show
+              <button onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "cancellato"); }}
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white hover:bg-white/40">
+                <XCircle className="h-3 w-3" />Cancella
               </button>
             )}
           </div>
@@ -230,41 +160,34 @@ function AgendaContent() {
   const searchParams = useSearchParams();
   const paramData = searchParams.get("data");
   const initialDate = paramData && /^\d{4}-\d{2}-\d{2}$/.test(paramData) ? paramData : today;
+
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [weekCounts, setWeekCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<"singola" | "operatrici">("singola");
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [ferieList, setFerieList] = useState<FerieRecord[]>([]);
+  const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Current time indicator — updates every minute
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(interval);
+    const t = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(t);
   }, []);
 
-  // Load staff list
   useEffect(() => {
-    getStaff(true)
-      .then((list) => setStaffList(list))
-      .catch((err) => console.error("Error loading staff:", err));
+    getStaff(true).then(setStaffList).catch(console.error);
   }, []);
 
-  // Fetch appointments for selected date
   const fetchAppointments = useCallback(async (date: string) => {
     setLoading(true);
     try {
       const rows = await getAppointments(date);
       setAppointments(rows as unknown as Appointment[]);
-    } catch (err) {
-      console.error("Error fetching appointments:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   }, []);
 
-  // Fetch week counts
   const fetchWeekCounts = useCallback(async (date: string) => {
     const { monday, sunday } = getWeekDays(date);
     try {
@@ -272,417 +195,274 @@ function AgendaContent() {
       const counts: Record<string, number> = {};
       for (const row of rows as { data: string; stato: string }[]) {
         if (row.stato !== "cancellato") {
-          const key = String(row.data).slice(0, 10);
-          counts[key] = (counts[key] || 0) + 1;
+          counts[String(row.data).slice(0, 10)] = (counts[String(row.data).slice(0, 10)] || 0) + 1;
         }
       }
       setWeekCounts(counts);
-    } catch (err) {
-      console.error("Error fetching week counts:", err);
-    }
+    } catch (err) { console.error(err); }
   }, []);
 
-  useEffect(() => {
-    fetchAppointments(selectedDate);
-  }, [selectedDate, fetchAppointments]);
+  const fetchFerie = useCallback(async () => {
+    try {
+      const rows = await getStaffFerie();
+      setFerieList(rows as unknown as FerieRecord[]);
+    } catch { /* table might not exist yet */ }
+  }, []);
 
-  useEffect(() => {
-    fetchWeekCounts(selectedDate);
-  }, [selectedDate, fetchWeekCounts]);
+  useEffect(() => { fetchAppointments(selectedDate); }, [selectedDate, fetchAppointments, refreshKey]);
+  useEffect(() => { fetchWeekCounts(selectedDate); }, [selectedDate, fetchWeekCounts]);
+  useEffect(() => { fetchFerie(); }, [fetchFerie]);
 
   async function handleStatusChange(id: string, stato: string) {
     try {
       await updateAppointmentStatus(id, stato);
       fetchAppointments(selectedDate);
-      fetchWeekCounts(selectedDate);
-    } catch (err) {
-      console.error("Error updating status:", err);
-      alert("Errore aggiornamento stato");
-    }
+    } catch { alert("Errore aggiornamento stato"); }
   }
-
-  // Stats
-  const totalAppointments = appointments.filter((a) => a.stato !== "cancellato").length;
-  const estimatedRevenue = appointments
-    .filter((a) => a.stato !== "cancellato")
-    .reduce((sum, a) => sum + Number(a.services?.prezzo || 0), 0);
 
   // Time grid
   const hours: number[] = [];
-  for (let h = START_HOUR; h <= END_HOUR; h++) {
-    hours.push(h);
-  }
+  for (let h = START_HOUR; h <= END_HOUR; h++) hours.push(h);
   const gridHeightPx = (END_HOUR - START_HOUR) * HOUR_HEIGHT;
+
+  // Current time line
+  const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const currentTimePx = ((currentMins - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+  const showTimeLine = selectedDate === today && currentMins >= START_HOUR * 60 && currentMins <= END_HOUR * 60;
 
   // Weekly strip
   const { days: weekDays } = getWeekDays(selectedDate);
+  const totalAppointments = appointments.filter(a => a.stato !== "cancellato").length;
 
-  // Build appointment cards positions
-  const aptCards = appointments.map((apt) => {
-    const startParts = apt.ora_inizio.slice(0, 5).split(":").map(Number);
-    const startMinutes = startParts[0] * 60 + startParts[1];
-    const duration = apt.services?.durata || 60;
-    const topPx = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-    const heightPx = Math.max((duration / 60) * HOUR_HEIGHT, 40);
-    return { apt, topPx, heightPx };
-  });
+  // Check ferie for a staff on selected date
+  function isOnFerie(staffId: string) {
+    return ferieList.some(f =>
+      f.staff_id === staffId &&
+      selectedDate >= f.data_inizio &&
+      selectedDate <= f.data_fine
+    );
+  }
+
+  // Build appointment positions per staff
+  function getAptCards(forStaffId: string | null) {
+    const filtered = forStaffId === null
+      ? appointments.filter(a => !a.staff_id)
+      : appointments.filter(a => a.staff_id === forStaffId);
+    return filtered.map(apt => {
+      const [h, m] = apt.ora_inizio.slice(0, 5).split(":").map(Number);
+      const startMins = h * 60 + m;
+      const duration = apt.services?.durata || 60;
+      const topPx = ((startMins - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+      const heightPx = Math.max((duration / 60) * HOUR_HEIGHT, 44);
+      return { apt, topPx, heightPx };
+    });
+  }
+
+  // Unassigned appointments
+  const unassignedCards = getAptCards(null);
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-[family-name:var(--font-playfair)] text-3xl font-bold text-brown">
-            Agenda
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* View mode toggle */}
-          <div className="flex rounded-lg border border-border bg-card overflow-hidden">
-            <button
-              onClick={() => setViewMode("singola")}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
-                viewMode === "singola"
-                  ? "bg-rose text-white"
-                  : "text-muted-foreground hover:bg-cream-dark hover:text-brown"
-              }`}
-            >
-              <Calendar className="h-3.5 w-3.5" />
-              Vista Singola
-            </button>
-            <button
-              onClick={() => setViewMode("operatrici")}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
-                viewMode === "operatrici"
-                  ? "bg-rose text-white"
-                  : "text-muted-foreground hover:bg-cream-dark hover:text-brown"
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" />
-              Vista Operatrici
-            </button>
-          </div>
-          <Link
-            href={`/agenda/nuovo?data=${selectedDate}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark"
-          >
-            <Plus className="h-4 w-4" />
-            Nuovo Appuntamento
-          </Link>
-        </div>
-      </div>
+    <div className="-mx-4 -mt-6 sm:-mx-6 flex flex-col" style={{ height: "calc(100vh - 0px)" }}>
 
-      {/* Date navigation bar */}
-      <div className="mb-4 flex items-center gap-2">
-        <button
-          onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-brown hover:bg-cream-dark"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <div className="min-w-[140px] rounded-lg border border-border bg-card px-4 py-2 text-center text-sm font-semibold text-brown">
-          {formatNavDate(selectedDate)}
-        </div>
+      {/* ── TOP TOOLBAR ── */}
+      <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2.5 shadow-sm flex-wrap">
+        {/* Left controls */}
         <button
           onClick={() => setSelectedDate(today)}
-          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-            selectedDate === today
-              ? "border-rose bg-rose text-white"
-              : "border-border bg-card text-brown hover:bg-cream-dark"
+          className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+            selectedDate === today ? "border-brown bg-brown text-white" : "border-border bg-white text-brown hover:bg-cream-dark"
           }`}
         >
           Oggi
         </button>
-        <button
-          onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-brown hover:bg-cream-dark"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
 
-      {/* Weekly mini strip */}
-      <div className="mb-4 flex gap-1 rounded-xl border border-border bg-card p-3 shadow-sm overflow-x-auto">
-        {weekDays.map((day) => {
-          const isSelected = day.date === selectedDate;
-          const isToday = day.date === today;
-          const count = weekCounts[day.date] || 0;
-          return (
-            <button
-              key={day.date}
-              onClick={() => setSelectedDate(day.date)}
-              className={`flex min-w-[48px] flex-1 flex-col items-center rounded-lg px-2 py-1.5 text-xs transition-colors ${
-                isSelected
-                  ? "bg-rose text-white"
-                  : isToday
-                  ? "bg-rose/10 text-rose"
-                  : "text-muted-foreground hover:bg-cream-dark hover:text-brown"
-              }`}
-            >
-              <span className="font-medium">{day.label}</span>
-              <span className={`text-sm font-bold ${isSelected ? "text-white" : "text-brown"}`}>
-                {day.dayNum}
-              </span>
-              {count > 0 ? (
-                <span
-                  className={`mt-0.5 rounded-full px-1.5 text-[10px] font-semibold ${
-                    isSelected ? "bg-white/20 text-white" : "bg-rose/10 text-rose"
-                  }`}
-                >
-                  {count}
-                </span>
-              ) : (
-                <span className="mt-0.5 h-4" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Stats row */}
-      <div className="mb-4 flex items-center gap-4 text-sm text-muted-foreground">
-        {loading ? (
-          <span>Caricamento...</span>
-        ) : (
-          <>
-            <span>
-              <strong className="text-brown">{totalAppointments}</strong>{" "}
-              appuntament{totalAppointments === 1 ? "o" : "i"} oggi
-            </span>
-            {estimatedRevenue > 0 && (
-              <>
-                <span className="text-border">|</span>
-                <span>
-                  <strong className="text-brown">€{estimatedRevenue.toFixed(0)}</strong> stimati
-                </span>
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Vista Singola */}
-      {viewMode === "singola" && (
-        <div
-          className="rounded-xl border border-border bg-card shadow-sm overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 280px)" }}
-        >
-          <div className="flex">
-            {/* Hour labels */}
-            <div className="shrink-0 w-14 border-r border-border bg-cream/30">
-              {hours.map((h) => (
-                <div
-                  key={h}
-                  className="flex items-start justify-end pr-2 text-[11px] text-muted-foreground"
-                  style={{ height: HOUR_HEIGHT }}
-                >
-                  <span className="-mt-2">{h < 10 ? `0${h}:00` : `${h}:00`}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Appointment area */}
-            <div className="flex-1 relative" style={{ height: gridHeightPx }}>
-              {/* Hour lines */}
-              {hours.map((h) => (
-                <div
-                  key={h}
-                  className="absolute left-0 right-0 border-t border-border/40"
-                  style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
-                />
-              ))}
-              {/* Half-hour lines */}
-              {hours.slice(0, -1).map((h) => (
-                <div
-                  key={`h-${h}`}
-                  className="absolute left-0 right-0 border-t border-border/20 border-dashed"
-                  style={{ top: (h - START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
-                />
-              ))}
-
-              {/* Clickable empty slots */}
-              {hours.slice(0, -1).map((h) => (
-                <Link
-                  key={`slot-${h}`}
-                  href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00`}
-                  className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
-                  style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }}
-                />
-              ))}
-
-              {/* Current time indicator */}
-              {(() => {
-                const mins = currentTime.getHours() * 60 + currentTime.getMinutes();
-                const topPx = ((mins - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-                if (selectedDate !== today || mins < START_HOUR * 60 || mins > END_HOUR * 60) return null;
-                return (
-                  <div className="pointer-events-none absolute left-0 right-0 z-30 flex items-center" style={{ top: topPx }}>
-                    <div className="h-3 w-3 shrink-0 rounded-full bg-red-500 shadow-sm" style={{ marginLeft: -6 }} />
-                    <div className="h-[2px] flex-1 bg-red-500 opacity-80" />
-                    <span className="shrink-0 rounded-sm bg-red-500 px-1 py-px text-[9px] font-bold text-white">
-                      {currentTime.getHours().toString().padStart(2, "0")}:{currentTime.getMinutes().toString().padStart(2, "0")}
-                    </span>
-                  </div>
-                );
-              })()}
-
-              {/* Appointment cards */}
-              {aptCards.map(({ apt, topPx, heightPx }) => (
-                <AppointmentCard
-                  key={apt.id}
-                  apt={apt}
-                  topPx={topPx}
-                  heightPx={heightPx}
-                  onStatusChange={handleStatusChange}
-                  showStaffDot={true}
-                />
-              ))}
-
-              {/* Empty state */}
-              {!loading && appointments.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Nessun appuntamento</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Clicca su una fascia oraria per aggiungere</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="flex items-center rounded-lg border border-border bg-white overflow-hidden">
+          <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+            className="px-2.5 py-1.5 text-brown hover:bg-cream-dark transition-colors">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="px-3 py-1.5 text-sm font-semibold text-brown whitespace-nowrap">
+            {formatNavDate(selectedDate)}
+          </span>
+          <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+            className="px-2.5 py-1.5 text-brown hover:bg-cream-dark transition-colors">
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
-      )}
 
-      {/* Vista Multi-Operatrice */}
-      {viewMode === "operatrici" && (
-        <div
-          className="rounded-xl border border-border bg-card shadow-sm overflow-auto"
-          style={{ maxHeight: "calc(100vh - 280px)" }}
-        >
-          <div className="flex">
-            {/* Colonna ore - fissa */}
-            <div className="shrink-0 w-14 border-r border-border bg-cream/30 sticky left-0 z-20">
-              {/* Spazio per header operatrici */}
-              <div style={{ height: 40 }} className="border-b border-border" />
-              {hours.map((h) => (
-                <div
-                  key={h}
-                  className="flex items-start justify-end pr-2 text-[11px] text-muted-foreground"
-                  style={{ height: HOUR_HEIGHT }}
-                >
-                  <span className="-mt-2">{h < 10 ? `0${h}:00` : `${h}:00`}</span>
-                </div>
-              ))}
-            </div>
+        {/* Week mini strip */}
+        <div className="hidden md:flex items-center gap-0.5 rounded-lg border border-border bg-white p-1">
+          {weekDays.map((day) => {
+            const isSelected = day.date === selectedDate;
+            const isToday = day.date === today;
+            const count = weekCounts[day.date] || 0;
+            return (
+              <button key={day.date} onClick={() => setSelectedDate(day.date)}
+                className={`relative flex flex-col items-center rounded-md px-2.5 py-1 text-xs transition-colors ${
+                  isSelected ? "bg-brown text-white" : isToday ? "bg-rose/10 text-rose" : "text-muted-foreground hover:bg-cream-dark"
+                }`}>
+                <span className="text-[10px]">{day.label}</span>
+                <span className="font-bold">{day.dayNum}</span>
+                {count > 0 && (
+                  <span className={`absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ${isSelected ? "bg-rose" : "bg-rose"}`} />
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-            {/* Colonne operatrici */}
-            {staffList.map((staff) => (
-              <div
-                key={staff.id}
-                className="flex-1 min-w-[140px] border-l border-border relative"
-                style={{ height: gridHeightPx + 40 }}
-              >
-                {/* Header operatrice */}
-                <div
-                  className="sticky top-0 z-30 flex items-center justify-center gap-1.5 py-2 border-b border-border"
-                  style={{ backgroundColor: staff.colore + "40", height: 40 }}
-                >
-                  <div
-                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: staff.colore }}
-                  />
-                  <span className="text-xs font-semibold text-brown truncate">{staff.nome}</span>
-                </div>
+        {/* Stats */}
+        <span className="hidden lg:block text-xs text-muted-foreground">
+          {loading ? "..." : <><strong className="text-brown">{totalAppointments}</strong> appuntamenti</>}
+        </span>
 
-                {/* Grid area */}
-                <div className="relative" style={{ height: gridHeightPx }}>
-                  {/* Hour lines */}
-                  {hours.map((h) => (
-                    <div
-                      key={h}
-                      className="absolute left-0 right-0 border-t border-border/30"
-                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
-                    />
-                  ))}
+        {/* Right controls */}
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => setRefreshKey(k => k + 1)}
+            className={`rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark transition-colors ${loading ? "animate-spin" : ""}`}>
+            <RefreshCw className="h-4 w-4" />
+          </button>
+          <Link href="/impostazioni"
+            className="rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark">
+            <Settings2 className="h-4 w-4" />
+          </Link>
+          <Link href="/agenda/nuovo"
+            className="rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark">
+            <CalendarDays className="h-4 w-4" />
+          </Link>
+          <Link
+            href={`/agenda/nuovo?data=${selectedDate}`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brown px-3 py-1.5 text-sm font-semibold text-white hover:bg-brown/90"
+          >
+            <Plus className="h-4 w-4" />
+            Aggiungi
+            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+          </Link>
+        </div>
+      </div>
 
-                  {/* Slot vuoti cliccabili */}
-                  {hours.slice(0, -1).map((h) => (
-                    <Link
-                      key={`slot-${h}`}
-                      href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00&staffId=${staff.id}`}
-                      className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
-                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }}
-                    />
-                  ))}
+      {/* ── CALENDAR GRID ── */}
+      <div className="flex-1 overflow-auto">
+        <div className="flex min-w-max">
 
-                  {/* Appointment cards per questa operatrice */}
-                  {aptCards
-                    .filter(({ apt }) => apt.staff_id === staff.id)
-                    .map(({ apt, topPx, heightPx }) => (
-                      <AppointmentCard
-                        key={apt.id}
-                        apt={apt}
-                        topPx={topPx}
-                        heightPx={heightPx}
-                        onStatusChange={handleStatusChange}
-                        showStaffDot={false}
-                      />
-                    ))}
-                </div>
+          {/* Hour labels column */}
+          <div className="sticky left-0 z-20 w-14 shrink-0 bg-white border-r border-border">
+            {/* Spacer for staff header */}
+            <div className="h-[72px] border-b border-border bg-white" />
+            {hours.map(h => (
+              <div key={h} className="flex items-start justify-end pr-2"
+                style={{ height: HOUR_HEIGHT }}>
+                <span className="text-[11px] text-muted-foreground -mt-2">
+                  {h < 10 ? `0${h}` : h}:00
+                </span>
               </div>
             ))}
-
-            {/* Colonna appuntamenti senza operatrice */}
-            {aptCards.some(({ apt }) => !apt.staff_id) && (
-              <div
-                className="flex-1 min-w-[140px] border-l border-border relative"
-                style={{ height: gridHeightPx + 40 }}
-              >
-                <div
-                  className="sticky top-0 z-30 flex items-center justify-center gap-1.5 py-2 border-b border-border bg-card"
-                  style={{ height: 40 }}
-                >
-                  <span className="text-xs font-semibold text-muted-foreground">Non assegnato</span>
-                </div>
-                <div className="relative" style={{ height: gridHeightPx }}>
-                  {hours.map((h) => (
-                    <div
-                      key={h}
-                      className="absolute left-0 right-0 border-t border-border/30"
-                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
-                    />
-                  ))}
-                  {aptCards
-                    .filter(({ apt }) => !apt.staff_id)
-                    .map(({ apt, topPx, heightPx }) => (
-                      <AppointmentCard
-                        key={apt.id}
-                        apt={apt}
-                        topPx={topPx}
-                        heightPx={heightPx}
-                        onStatusChange={handleStatusChange}
-                        showStaffDot={false}
-                      />
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Empty state quando non ci sono operatrici */}
-            {staffList.length === 0 && !loading && (
-              <div className="flex-1 flex items-center justify-center py-20 text-sm text-muted-foreground">
-                Nessuna operatrice trovata. Aggiungi il personale in Impostazioni.
-              </div>
-            )}
           </div>
+
+          {/* Staff columns */}
+          {staffList.map(staff => {
+            const aptCards = getAptCards(staff.id);
+            const onFerie = isOnFerie(staff.id);
+
+            return (
+              <div key={staff.id} className="flex-1 min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
+
+                {/* Staff header */}
+                <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-white px-2 py-2"
+                  style={{ height: 72 }}>
+                  <div className="relative">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ backgroundColor: staff.colore }}>
+                      {staff.nome[0]}
+                    </div>
+                    <div className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 2px white, 0 0 0 3.5px ${staff.colore}` }} />
+                  </div>
+                  <span className="text-[11px] font-semibold text-brown">{staff.nome}</span>
+                </div>
+
+                {/* Time area */}
+                <div className="relative" style={{ height: gridHeightPx }}>
+
+                  {/* Hour lines */}
+                  {hours.map(h => (
+                    <div key={h} className="absolute left-0 right-0 border-t border-border/30"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT }} />
+                  ))}
+                  {hours.slice(0, -1).map(h => (
+                    <div key={`h-${h}`} className="absolute left-0 right-0 border-t border-border/15 border-dashed"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }} />
+                  ))}
+
+                  {/* Ferie block */}
+                  {onFerie && (
+                    <div className="absolute inset-x-1 top-0 bottom-0 z-10 flex items-center justify-center rounded-lg bg-gray-200/80 border border-gray-300">
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-gray-500">Ferie</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Current time line */}
+                  {showTimeLine && (
+                    <div className="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
+                      style={{ top: currentTimePx }}>
+                      <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" style={{ marginLeft: -5 }} />
+                      <div className="h-[2px] flex-1 bg-red-500/70" />
+                    </div>
+                  )}
+
+                  {/* Clickable empty slots */}
+                  {!onFerie && hours.slice(0, -1).map(h => (
+                    <Link key={`slot-${h}`}
+                      href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00&staffId=${staff.id}`}
+                      className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }} />
+                  ))}
+
+                  {/* Appointment cards */}
+                  {!onFerie && aptCards.map(({ apt, topPx, heightPx }) => (
+                    <AppointmentCard key={apt.id} apt={apt} topPx={topPx} heightPx={heightPx}
+                      staffColor={staff.colore} onStatusChange={handleStatusChange} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Unassigned column (only if there are unassigned appointments) */}
+          {unassignedCards.length > 0 && (
+            <div className="flex-1 min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
+              <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-white px-2 py-2"
+                style={{ height: 72 }}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-500">?</div>
+                <span className="text-[11px] font-semibold text-muted-foreground">Non assegnato</span>
+              </div>
+              <div className="relative" style={{ height: gridHeightPx }}>
+                {hours.map(h => (
+                  <div key={h} className="absolute left-0 right-0 border-t border-border/30"
+                    style={{ top: (h - START_HOUR) * HOUR_HEIGHT }} />
+                ))}
+                {unassignedCards.map(({ apt, topPx, heightPx }) => (
+                  <AppointmentCard key={apt.id} apt={apt} topPx={topPx} heightPx={heightPx}
+                    staffColor="#9ca3af" onStatusChange={handleStatusChange} />
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 export default function AgendaPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Caricamento agenda...</div>}>
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-rose/30 border-t-rose" />
+      </div>
+    }>
       <AgendaContent />
     </Suspense>
   );
