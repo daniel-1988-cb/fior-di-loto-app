@@ -51,11 +51,13 @@ export default function AssistentePage() {
         { role: "assistant", content: risposta, timestamp: new Date() },
       ]);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Errore";
-      if (msg.includes("ANTHROPIC_API_KEY") || msg.includes("API key")) {
-        setError("Chiave API Anthropic non configurata. Contatta l'amministratore.");
-      } else if (msg.includes("ai_query_logs") || msg.includes("ai_documents")) {
-        setError("Database non configurato. Esegui la migrazione SQL in Supabase.");
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("ANTHROPIC_API_KEY") || msg.includes("API key") || msg.includes("non configurata")) {
+        setError("⚠️ Chiave API Anthropic non configurata. Aggiungila in .env.local (ANTHROPIC_API_KEY) e nelle variabili Vercel.");
+      } else if (msg.includes("ai_query_logs") || msg.includes("ai_documents") || msg.includes("does not exist")) {
+        setError("⚠️ Tabelle DB mancanti. Esegui la migrazione SQL in Supabase (supabase/migrations/003_ai_assistant.sql).");
+      } else if (msg.includes("Server Component") || msg.includes("digest")) {
+        setError("⚠️ Chiave API Anthropic non configurata. Aggiungila in .env.local e nelle variabili Vercel.");
       } else {
         setError(msg);
       }

@@ -89,16 +89,22 @@ export async function deleteDocument(id: string) {
 export async function askAssistant(domanda: string) {
   if (!domanda?.trim()) throw new Error("Domanda obbligatoria");
 
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY non configurata. Aggiungila in .env.local e nelle variabili Vercel.");
+  }
+
   const user = await getCurrentUser();
   const cleanQuestion = truncate(sanitizeString(domanda), 1000);
 
   const supabase = createAdminClient();
 
-  // Load all documents as context
-  const { data: docs } = await supabase
+  // Load all documents as context (graceful if table doesn't exist yet)
+  const docsResult = await supabase
     .from("ai_documents")
     .select("nome, categoria, contenuto")
     .order("categoria");
+  const docs = docsResult.data;
 
   const hasDocs = docs && docs.length > 0;
 
@@ -125,7 +131,7 @@ ISTRUZIONI:
 - Non inventare protocolli o dosaggi — la sicurezza è prioritaria
 - Usa un tono professionale ma accessibile`;
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const anthropic = new Anthropic({ apiKey });
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -137,13 +143,13 @@ ISTRUZIONI:
   const risposta =
     response.content[0].type === "text" ? response.content[0].text.trim() : "";
 
-  // Log the query
+  // Log the query (graceful if table doesn't exist yet)
   await supabase.from("ai_query_logs").insert({
     user_id: user?.id || null,
     user_email: user?.email || "anonimo",
     domanda: cleanQuestion,
     risposta,
-  });
+  }).then(() => {}, () => {});
 
   return { risposta, hasDocs };
 }
