@@ -7,6 +7,7 @@ import Link from "next/link";
 import { createAppointment } from "@/lib/actions/appointments";
 import { getClients } from "@/lib/actions/messages";
 import { getServices } from "@/lib/actions/services";
+import { getStaff, Staff } from "@/lib/actions/staff";
 
 type ClientOption = { id: string; nome: string; cognome: string; telefono: string | null };
 type ServiceOption = { id: string; nome: string; categoria: string; durata: number; prezzo: number };
@@ -17,14 +18,17 @@ function NuovoAppuntamentoForm() {
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
 
   // Read pre-fill values from URL
   const paramData = searchParams.get("data");
   const paramOra = searchParams.get("ora");
+  const paramStaffId = searchParams.get("staffId");
 
   const [formData, setFormData] = useState({
     clientId: "",
     serviceId: "",
+    staffId: paramStaffId || "",
     data: paramData || new Date().toISOString().slice(0, 10),
     oraInizio: paramOra || "09:00",
     oraFine: "",
@@ -33,12 +37,14 @@ function NuovoAppuntamentoForm() {
 
   useEffect(() => {
     async function loadData() {
-      const [clientList, serviceList] = await Promise.all([
+      const [clientList, serviceList, staffData] = await Promise.all([
         getClients(),
         getServices(),
+        getStaff(true),
       ]);
       setClients(clientList as unknown as ClientOption[]);
       setServices(serviceList as unknown as ServiceOption[]);
+      setStaffList(staffData);
     }
     loadData();
   }, []);
@@ -83,6 +89,7 @@ function NuovoAppuntamentoForm() {
         oraInizio: formData.oraInizio,
         oraFine: formData.oraFine || undefined,
         note: formData.note || undefined,
+        staffId: formData.staffId || undefined,
       });
       router.push(`/agenda?data=${formData.data}`);
     } catch (err) {
@@ -102,6 +109,8 @@ function NuovoAppuntamentoForm() {
     if (!servicesByCategoria[s.categoria]) servicesByCategoria[s.categoria] = [];
     servicesByCategoria[s.categoria].push(s);
   }
+
+  const selectedStaff = staffList.find((s) => s.id === formData.staffId);
 
   return (
     <div>
@@ -146,6 +155,27 @@ function NuovoAppuntamentoForm() {
                       </option>
                     ))}
                   </optgroup>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Operatrice */}
+          <div className="mt-4">
+            <label className="mb-1 block text-sm font-medium text-brown">Operatrice</label>
+            <div className="flex items-center gap-2">
+              {selectedStaff && (
+                <div
+                  className="h-5 w-5 rounded-full shrink-0"
+                  style={{ backgroundColor: selectedStaff.colore }}
+                />
+              )}
+              <select name="staffId" value={formData.staffId} onChange={handleChange} className={inputClass}>
+                <option value="">— Nessuna operatrice —</option>
+                {staffList.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome} {s.cognome ? s.cognome : ""} ({s.ruolo})
+                  </option>
                 ))}
               </select>
             </div>

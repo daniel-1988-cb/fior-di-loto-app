@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro, Users, Calendar } from "lucide-react";
 import { getAppointments, getAppointmentsByRange, updateAppointmentStatus } from "@/lib/actions/appointments";
+import { getStaff, Staff } from "@/lib/actions/staff";
 
 const HOUR_HEIGHT = 64; // px per hour
 const START_HOUR = 8;
@@ -17,8 +18,10 @@ type Appointment = {
   ora_fine: string | null;
   stato: string;
   note: string | null;
+  staff_id: string | null;
   clients: { nome: string; cognome: string; telefono: string | null } | null;
   services: { nome: string; durata: number; prezzo: number; categoria: string } | null;
+  staff: { id: string; nome: string; colore: string } | null;
 };
 
 type WeekDayInfo = {
@@ -128,11 +131,13 @@ function AppointmentCard({
   topPx,
   heightPx,
   onStatusChange,
+  showStaffDot = false,
 }: {
   apt: Appointment;
   topPx: number;
   heightPx: number;
   onStatusChange: (id: string, stato: string) => void;
+  showStaffDot?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const classes = getStatusClasses(apt.stato);
@@ -151,9 +156,17 @@ function AppointmentCard({
     >
       <div className="px-2 py-1 h-full flex flex-col justify-between">
         <div className="min-w-0">
-          <p className={`text-[10px] leading-tight ${classes.time}`}>
-            {startTime}{endTime ? ` – ${endTime}` : ""}
-          </p>
+          <div className="flex items-center gap-1">
+            {showStaffDot && apt.staff && (
+              <div
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: apt.staff.colore }}
+              />
+            )}
+            <p className={`text-[10px] leading-tight ${classes.time}`}>
+              {startTime}{endTime ? ` – ${endTime}` : ""}
+            </p>
+          </div>
           <p className={`text-xs leading-tight truncate ${classes.name}`}>{clientName}</p>
           {heightPx > 44 && (
             <p className={`text-[10px] leading-tight truncate ${classes.service}`}>{serviceName}</p>
@@ -221,6 +234,15 @@ function AgendaContent() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [weekCounts, setWeekCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<"singola" | "operatrici">("singola");
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+
+  // Load staff list
+  useEffect(() => {
+    getStaff(true)
+      .then((list) => setStaffList(list))
+      .catch((err) => console.error("Error loading staff:", err));
+  }, []);
 
   // Fetch appointments for selected date
   const fetchAppointments = useCallback(async (date: string) => {
@@ -279,7 +301,7 @@ function AgendaContent() {
     .reduce((sum, a) => sum + Number(a.services?.prezzo || 0), 0);
 
   // Time grid
-  const hours = [];
+  const hours: number[] = [];
   for (let h = START_HOUR; h <= END_HOUR; h++) {
     hours.push(h);
   }
@@ -307,13 +329,40 @@ function AgendaContent() {
             Agenda
           </h1>
         </div>
-        <Link
-          href={`/agenda/nuovo?data=${selectedDate}`}
-          className="inline-flex items-center gap-2 rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark"
-        >
-          <Plus className="h-4 w-4" />
-          Nuovo Appuntamento
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          <div className="flex rounded-lg border border-border bg-card overflow-hidden">
+            <button
+              onClick={() => setViewMode("singola")}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                viewMode === "singola"
+                  ? "bg-rose text-white"
+                  : "text-muted-foreground hover:bg-cream-dark hover:text-brown"
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Vista Singola
+            </button>
+            <button
+              onClick={() => setViewMode("operatrici")}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                viewMode === "operatrici"
+                  ? "bg-rose text-white"
+                  : "text-muted-foreground hover:bg-cream-dark hover:text-brown"
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              Vista Operatrici
+            </button>
+          </div>
+          <Link
+            href={`/agenda/nuovo?data=${selectedDate}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark"
+          >
+            <Plus className="h-4 w-4" />
+            Nuovo Appuntamento
+          </Link>
+        </div>
       </div>
 
       {/* Date navigation bar */}
@@ -405,77 +454,205 @@ function AgendaContent() {
         )}
       </div>
 
-      {/* Time grid */}
-      <div
-        className="rounded-xl border border-border bg-card shadow-sm overflow-y-auto"
-        style={{ maxHeight: "calc(100vh - 280px)" }}
-      >
-        <div className="flex">
-          {/* Hour labels */}
-          <div className="shrink-0 w-14 border-r border-border bg-cream/30">
-            {hours.map((h) => (
+      {/* Vista Singola */}
+      {viewMode === "singola" && (
+        <div
+          className="rounded-xl border border-border bg-card shadow-sm overflow-y-auto"
+          style={{ maxHeight: "calc(100vh - 280px)" }}
+        >
+          <div className="flex">
+            {/* Hour labels */}
+            <div className="shrink-0 w-14 border-r border-border bg-cream/30">
+              {hours.map((h) => (
+                <div
+                  key={h}
+                  className="flex items-start justify-end pr-2 text-[11px] text-muted-foreground"
+                  style={{ height: HOUR_HEIGHT }}
+                >
+                  <span className="-mt-2">{h < 10 ? `0${h}:00` : `${h}:00`}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Appointment area */}
+            <div className="flex-1 relative" style={{ height: gridHeightPx }}>
+              {/* Hour lines */}
+              {hours.map((h) => (
+                <div
+                  key={h}
+                  className="absolute left-0 right-0 border-t border-border/40"
+                  style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
+                />
+              ))}
+              {/* Half-hour lines */}
+              {hours.slice(0, -1).map((h) => (
+                <div
+                  key={`h-${h}`}
+                  className="absolute left-0 right-0 border-t border-border/20 border-dashed"
+                  style={{ top: (h - START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+                />
+              ))}
+
+              {/* Clickable empty slots */}
+              {hours.slice(0, -1).map((h) => (
+                <Link
+                  key={`slot-${h}`}
+                  href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00`}
+                  className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
+                  style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }}
+                />
+              ))}
+
+              {/* Appointment cards */}
+              {aptCards.map(({ apt, topPx, heightPx }) => (
+                <AppointmentCard
+                  key={apt.id}
+                  apt={apt}
+                  topPx={topPx}
+                  heightPx={heightPx}
+                  onStatusChange={handleStatusChange}
+                  showStaffDot={true}
+                />
+              ))}
+
+              {/* Empty state */}
+              {!loading && appointments.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Nessun appuntamento</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Clicca su una fascia oraria per aggiungere</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vista Multi-Operatrice */}
+      {viewMode === "operatrici" && (
+        <div
+          className="rounded-xl border border-border bg-card shadow-sm overflow-auto"
+          style={{ maxHeight: "calc(100vh - 280px)" }}
+        >
+          <div className="flex">
+            {/* Colonna ore - fissa */}
+            <div className="shrink-0 w-14 border-r border-border bg-cream/30 sticky left-0 z-20">
+              {/* Spazio per header operatrici */}
+              <div style={{ height: 40 }} className="border-b border-border" />
+              {hours.map((h) => (
+                <div
+                  key={h}
+                  className="flex items-start justify-end pr-2 text-[11px] text-muted-foreground"
+                  style={{ height: HOUR_HEIGHT }}
+                >
+                  <span className="-mt-2">{h < 10 ? `0${h}:00` : `${h}:00`}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Colonne operatrici */}
+            {staffList.map((staff) => (
               <div
-                key={h}
-                className="flex items-start justify-end pr-2 text-[11px] text-muted-foreground"
-                style={{ height: HOUR_HEIGHT }}
+                key={staff.id}
+                className="flex-1 min-w-[140px] border-l border-border relative"
+                style={{ height: gridHeightPx + 40 }}
               >
-                <span className="-mt-2">{h < 10 ? `0${h}:00` : `${h}:00`}</span>
+                {/* Header operatrice */}
+                <div
+                  className="sticky top-0 z-30 flex items-center justify-center gap-1.5 py-2 border-b border-border"
+                  style={{ backgroundColor: staff.colore + "40", height: 40 }}
+                >
+                  <div
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: staff.colore }}
+                  />
+                  <span className="text-xs font-semibold text-brown truncate">{staff.nome}</span>
+                </div>
+
+                {/* Grid area */}
+                <div className="relative" style={{ height: gridHeightPx }}>
+                  {/* Hour lines */}
+                  {hours.map((h) => (
+                    <div
+                      key={h}
+                      className="absolute left-0 right-0 border-t border-border/30"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
+                    />
+                  ))}
+
+                  {/* Slot vuoti cliccabili */}
+                  {hours.slice(0, -1).map((h) => (
+                    <Link
+                      key={`slot-${h}`}
+                      href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00&staffId=${staff.id}`}
+                      className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }}
+                    />
+                  ))}
+
+                  {/* Appointment cards per questa operatrice */}
+                  {aptCards
+                    .filter(({ apt }) => apt.staff_id === staff.id)
+                    .map(({ apt, topPx, heightPx }) => (
+                      <AppointmentCard
+                        key={apt.id}
+                        apt={apt}
+                        topPx={topPx}
+                        heightPx={heightPx}
+                        onStatusChange={handleStatusChange}
+                        showStaffDot={false}
+                      />
+                    ))}
+                </div>
               </div>
             ))}
-          </div>
 
-          {/* Appointment area */}
-          <div className="flex-1 relative" style={{ height: gridHeightPx }}>
-            {/* Hour lines */}
-            {hours.map((h) => (
+            {/* Colonna appuntamenti senza operatrice */}
+            {aptCards.some(({ apt }) => !apt.staff_id) && (
               <div
-                key={h}
-                className="absolute left-0 right-0 border-t border-border/40"
-                style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
-              />
-            ))}
-            {/* Half-hour lines */}
-            {hours.slice(0, -1).map((h) => (
-              <div
-                key={`h-${h}`}
-                className="absolute left-0 right-0 border-t border-border/20 border-dashed"
-                style={{ top: (h - START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
-              />
-            ))}
-
-            {/* Clickable empty slots */}
-            {hours.slice(0, -1).map((h) => (
-              <Link
-                key={`slot-${h}`}
-                href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00`}
-                className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
-                style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }}
-              />
-            ))}
-
-            {/* Appointment cards */}
-            {aptCards.map(({ apt, topPx, heightPx }) => (
-              <AppointmentCard
-                key={apt.id}
-                apt={apt}
-                topPx={topPx}
-                heightPx={heightPx}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
-
-            {/* Empty state */}
-            {!loading && appointments.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Nessun appuntamento</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Clicca su una fascia oraria per aggiungere</p>
+                className="flex-1 min-w-[140px] border-l border-border relative"
+                style={{ height: gridHeightPx + 40 }}
+              >
+                <div
+                  className="sticky top-0 z-30 flex items-center justify-center gap-1.5 py-2 border-b border-border bg-card"
+                  style={{ height: 40 }}
+                >
+                  <span className="text-xs font-semibold text-muted-foreground">Non assegnato</span>
                 </div>
+                <div className="relative" style={{ height: gridHeightPx }}>
+                  {hours.map((h) => (
+                    <div
+                      key={h}
+                      className="absolute left-0 right-0 border-t border-border/30"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
+                    />
+                  ))}
+                  {aptCards
+                    .filter(({ apt }) => !apt.staff_id)
+                    .map(({ apt, topPx, heightPx }) => (
+                      <AppointmentCard
+                        key={apt.id}
+                        apt={apt}
+                        topPx={topPx}
+                        heightPx={heightPx}
+                        onStatusChange={handleStatusChange}
+                        showStaffDot={false}
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state quando non ci sono operatrici */}
+            {staffList.length === 0 && !loading && (
+              <div className="flex-1 flex items-center justify-center py-20 text-sm text-muted-foreground">
+                Nessuna operatrice trovata. Aggiungi il personale in Impostazioni.
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

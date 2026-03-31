@@ -31,7 +31,21 @@ export async function getAppointments(data?: string) {
 
   const { data: rows, error } = await supabase
     .from("appointments")
-    .select("*, clients(nome, cognome, telefono), services(nome, durata, prezzo, categoria)")
+    .select("*, clients(nome, cognome, telefono), services(nome, durata, prezzo, categoria), staff(id, nome, colore)")
+    .eq("data", safeDate)
+    .order("ora_inizio", { ascending: true });
+
+  if (error) throw error;
+  return rows || [];
+}
+
+export async function getAppointmentsMultiStaff(data: string) {
+  const safeDate = isValidDate(data) ? data : new Date().toISOString().slice(0, 10);
+  const supabase = createAdminClient();
+
+  const { data: rows, error } = await supabase
+    .from("appointments")
+    .select("*, clients(nome, cognome, telefono), services(nome, durata, prezzo, categoria), staff(id, nome, colore)")
     .eq("data", safeDate)
     .order("ora_inizio", { ascending: true });
 
@@ -84,10 +98,12 @@ export async function createAppointment(data: {
   oraFine?: string;
   stato?: string;
   note?: string;
+  staffId?: string;
 }) {
   if (!isValidUUID(data.clientId)) throw new Error("ID cliente non valido");
   if (!isValidUUID(data.serviceId)) throw new Error("ID servizio non valido");
   if (!isValidDate(data.data)) throw new Error("Data non valida");
+  if (data.staffId && !isValidUUID(data.staffId)) throw new Error("ID staff non valido");
 
   // Validate time format HH:MM
   if (!/^\d{2}:\d{2}(:\d{2})?$/.test(data.oraInizio)) throw new Error("Ora inizio non valida");
@@ -107,6 +123,7 @@ export async function createAppointment(data: {
       ora_fine: data.oraFine || null,
       stato,
       note,
+      staff_id: data.staffId || null,
     })
     .select()
     .single();
