@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro } from "lucide-react";
 import { getAppointments, getAppointmentsByRange, updateAppointmentStatus } from "@/lib/actions/appointments";
 
 const HOUR_HEIGHT = 64; // px per hour
@@ -139,6 +140,7 @@ function AppointmentCard({
   const endTime = apt.ora_fine ? apt.ora_fine.slice(0, 5) : null;
   const clientName = apt.clients ? `${apt.clients.nome} ${apt.clients.cognome}` : "Cliente";
   const serviceName = apt.services?.nome ?? "";
+  const showCheckout = apt.stato === "confermato" || apt.stato === "completato";
 
   return (
     <div
@@ -176,6 +178,16 @@ function AppointmentCard({
                 Completa
               </button>
             )}
+            {showCheckout && (
+              <Link
+                href={`/agenda/checkout/${apt.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gold text-white hover:opacity-90"
+              >
+                <Euro className="h-3 w-3" />
+                Checkout
+              </Link>
+            )}
             {apt.stato !== "cancellato" && (
               <button
                 onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "cancellato"); }}
@@ -200,9 +212,12 @@ function AppointmentCard({
   );
 }
 
-export default function AgendaPage() {
+function AgendaContent() {
   const today = toDateStr(new Date());
-  const [selectedDate, setSelectedDate] = useState(today);
+  const searchParams = useSearchParams();
+  const paramData = searchParams.get("data");
+  const initialDate = paramData && /^\d{4}-\d{2}-\d{2}$/.test(paramData) ? paramData : today;
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [weekCounts, setWeekCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
@@ -462,5 +477,13 @@ export default function AgendaPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AgendaPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Caricamento agenda...</div>}>
+      <AgendaContent />
+    </Suspense>
   );
 }

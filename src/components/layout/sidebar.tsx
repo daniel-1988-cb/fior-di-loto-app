@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   Bot,
+  Gift,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const navigation = [
   { name: LABELS.nav.prodotti, href: "/prodotti", icon: Package },
   { name: LABELS.nav.gestionale, href: "/gestionale", icon: BarChart3 },
   { name: LABELS.nav.whatsapp, href: "/whatsapp", icon: MessageCircle },
+  { name: "Voucher", href: "/gestionale/voucher", icon: Gift },
   { name: LABELS.nav.social, href: "/social", icon: Share2 },
   { name: LABELS.nav.assistente, href: "/assistente", icon: Bot },
 ];

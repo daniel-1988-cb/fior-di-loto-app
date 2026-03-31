@@ -84,8 +84,7 @@ function NuovoAppuntamentoForm() {
         oraFine: formData.oraFine || undefined,
         note: formData.note || undefined,
       });
-      router.push("/agenda");
-      router.refresh();
+      router.push(`/agenda?data=${formData.data}`);
     } catch (err) {
       console.error("Errore salvataggio:", err);
       alert("Errore durante il salvataggio. Riprova.");

@@ -55,13 +55,21 @@ export default async function GestionalePage({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Riepilogo finanziario mensile</p>
         </div>
-        <Link
-          href="/gestionale/nuovo"
-          className="inline-flex items-center gap-2 rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark"
-        >
-          <Plus className="h-4 w-4" />
-          Nuova Transazione
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/gestionale/voucher"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-brown hover:bg-cream-dark"
+          >
+            Gestisci Voucher →
+          </Link>
+          <Link
+            href="/gestionale/nuovo"
+            className="inline-flex items-center gap-2 rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark"
+          >
+            <Plus className="h-4 w-4" />
+            Nuova Transazione
+          </Link>
+        </div>
       </div>
 
       {/* Month selector */}

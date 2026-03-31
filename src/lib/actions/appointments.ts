@@ -13,6 +13,18 @@ function isValidStato(stato: string): boolean {
 // READ OPERATIONS
 // ============================================
 
+export async function getAppointment(id: string) {
+  if (!isValidUUID(id)) return null;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("*, clients(id, nome, cognome, telefono), services(id, nome, durata, prezzo, categoria)")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function getAppointments(data?: string) {
   const safeDate = data && isValidDate(data) ? data : new Date().toISOString().slice(0, 10);
   const supabase = createAdminClient();
