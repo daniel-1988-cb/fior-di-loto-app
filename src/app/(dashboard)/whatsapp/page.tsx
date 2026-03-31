@@ -11,6 +11,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { getClients } from "@/lib/actions/messages";
+import { ReminderFlow } from "@/components/whatsapp/reminder-flow";
 
 type Client = {
   id: string;
@@ -329,22 +330,18 @@ export default function WhatsAppPage() {
         </div>
       </div>
 
-      {/* Broadcast */}
+      {/* Promemoria guidati */}
       <div className="mt-8 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-center justify-between">
+        <div className="mb-5 flex items-center gap-2">
+          <MessageCircle className="h-5 w-5 text-rose" />
           <div>
-            <h2 className="font-semibold text-brown">
-              <MessageCircle className="mr-2 inline-block h-4 w-4" />
-              Broadcast per Segmento
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Invia un messaggio a tutte le clienti di un segmento
+            <h2 className="font-semibold text-brown">Promemoria Appuntamenti</h2>
+            <p className="text-xs text-muted-foreground">
+              Invia un promemoria a ogni cliente con appuntamento domani
             </p>
           </div>
-          <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-medium text-gold-dark">
-            Prossimamente
-          </span>
         </div>
+        <ReminderFlow />
       </div>
     </div>
   );
