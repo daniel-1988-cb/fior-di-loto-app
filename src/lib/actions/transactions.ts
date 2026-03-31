@@ -45,17 +45,23 @@ export async function getTransactions(month?: string) {
   return data || [];
 }
 
-export async function getFinancialSummary() {
-  const supabase = createAdminClient();
+export async function getFinancialSummary(month?: string) {
+  let safeMonth = month;
+  if (!safeMonth || !/^\d{4}-\d{2}$/.test(safeMonth)) {
+    const now = new Date();
+    safeMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  }
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-  const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const startDate = `${safeMonth}-01`;
+  const [year, mon] = safeMonth.split("-").map(Number);
+  const nextMonthDate = new Date(year, mon, 1);
   const nextMonthStart = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
 
+  const supabase = createAdminClient();
+
   const [{ data: entrateRows, error: e1 }, { data: usciteRows, error: e2 }] = await Promise.all([
-    supabase.from("transactions").select("importo").eq("tipo", "entrata").gte("data", startOfMonth).lt("data", nextMonthStart),
-    supabase.from("transactions").select("importo").eq("tipo", "uscita").gte("data", startOfMonth).lt("data", nextMonthStart),
+    supabase.from("transactions").select("importo").eq("tipo", "entrata").gte("data", startDate).lt("data", nextMonthStart),
+    supabase.from("transactions").select("importo").eq("tipo", "uscita").gte("data", startDate).lt("data", nextMonthStart),
   ]);
 
   if (e1) throw e1;

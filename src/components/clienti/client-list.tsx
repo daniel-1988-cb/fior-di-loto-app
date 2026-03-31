@@ -9,6 +9,7 @@ import {
   Mail,
   Filter,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import { cn, formatPhone, formatDateShort } from "@/lib/utils";
 import { LABELS } from "@/lib/constants/italian";
@@ -23,7 +24,15 @@ interface Client {
   totale_visite: number;
   totale_speso: string;
   ultima_visita: string | null;
-  tags: string[];
+  tags: unknown;
+}
+
+function parseTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) return tags as string[];
+  if (typeof tags === "string") {
+    try { return JSON.parse(tags) as string[]; } catch { return []; }
+  }
+  return [];
 }
 
 const segmenti = [
@@ -110,6 +119,20 @@ export function ClientList({
         </div>
       </div>
 
+      {/* Segment summary bar */}
+      <div className="mb-4 flex gap-3 overflow-x-auto pb-1 text-xs">
+        {segmenti.filter(s => s.value !== 'tutti').map(seg => {
+          const count = initialClients.filter(c => c.segmento === seg.value).length;
+          if (count === 0) return null;
+          return (
+            <button key={seg.value} onClick={() => handleSegmentoChange(seg.value)}
+              className={`shrink-0 rounded-full px-3 py-1 font-medium ${seg.color}`}>
+              {seg.label}: {count}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Client List */}
       <div className="space-y-3">
         {initialClients.length === 0 ? (
@@ -162,9 +185,9 @@ export function ClientList({
                   )}
                 </div>
 
-                {client.tags && (client.tags as string[]).length > 0 && (
+                {parseTags(client.tags).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {(client.tags as string[]).map((tag) => (
+                    {parseTags(client.tags).map((tag) => (
                       <span
                         key={tag}
                         className="rounded-md bg-cream-dark px-2 py-0.5 text-xs text-brown/70"
@@ -189,6 +212,19 @@ export function ClientList({
                   </p>
                 )}
               </div>
+
+              {client.telefono && (
+                <a
+                  href={`https://wa.me/39${client.telefono.replace(/\s/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="hidden shrink-0 items-center gap-1 rounded-lg bg-success/10 px-2 py-1.5 text-xs font-medium text-success hover:bg-success/20 sm:flex"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  WA
+                </a>
+              )}
 
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
             </Link>

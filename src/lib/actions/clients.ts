@@ -212,6 +212,7 @@ export async function getDashboardStats() {
     { count: nuoviMese },
     { data: entrateRows },
     { count: appuntamentiOggi },
+    { data: birthdayRows },
   ] = await Promise.all([
     supabase.from("clients").select("*", { count: "exact", head: true }),
     supabase.from("clients").select("*", { count: "exact", head: true }).gte("created_at", startOfMonth),
@@ -221,14 +222,39 @@ export async function getDashboardStats() {
       .select("*", { count: "exact", head: true })
       .eq("data", today)
       .neq("stato", "cancellato"),
+    supabase
+      .from("clients")
+      .select("id, nome, cognome, data_nascita")
+      .not("data_nascita", "is", null),
   ]);
 
   const entrateMese = (entrateRows || []).reduce((sum, r) => sum + Number(r.importo || 0), 0);
+
+  // Filter clients with birthdays in the next 7 days (by month/day only)
+  const now = new Date();
+  const compleanniSettimana: Array<{id: string, nome: string, cognome: string, data_nascita: string}> = [];
+  for (const row of (birthdayRows || [])) {
+    if (!row.data_nascita) continue;
+    const bDate = new Date(row.data_nascita + "T00:00:00");
+    for (let offset = 0; offset < 7; offset++) {
+      const checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      if (bDate.getMonth() === checkDate.getMonth() && bDate.getDate() === checkDate.getDate()) {
+        compleanniSettimana.push({
+          id: row.id as string,
+          nome: row.nome as string,
+          cognome: row.cognome as string,
+          data_nascita: row.data_nascita as string,
+        });
+        break;
+      }
+    }
+  }
 
   return {
     totaleClienti: totaleClienti ?? 0,
     nuoviMese: nuoviMese ?? 0,
     entrateMese,
     appuntamentiOggi: appuntamentiOggi ?? 0,
+    compleanniSettimana,
   };
 }

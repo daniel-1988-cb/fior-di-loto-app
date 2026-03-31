@@ -7,6 +7,14 @@ import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
 // READ OPERATIONS
 // ============================================
 
+export async function getProduct(id: string) {
+  if (!isValidUUID(id)) return null;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function getProducts() {
   const supabase = createAdminClient();
   const { data, error } = await supabase

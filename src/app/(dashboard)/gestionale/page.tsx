@@ -27,10 +27,20 @@ function getMetodoLabel(metodo: string | null) {
   }
 }
 
-export default async function GestionalePage() {
+export default async function GestionalePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const { month } = await searchParams;
+
+  const now = new Date();
+  const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonth = month && /^\d{4}-\d{2}$/.test(month) ? month : todayMonth;
+
   const [summary, transactions] = await Promise.all([
-    getFinancialSummary(),
-    getTransactions(),
+    getFinancialSummary(currentMonth),
+    getTransactions(currentMonth),
   ]);
 
   const recentTransactions = (transactions as unknown as Transaction[]).slice(0, 20);
@@ -43,7 +53,7 @@ export default async function GestionalePage() {
           <h1 className="font-[family-name:var(--font-playfair)] text-3xl font-bold text-brown">
             Gestionale
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Riepilogo finanziario del mese corrente</p>
+          <p className="mt-1 text-sm text-muted-foreground">Riepilogo finanziario mensile</p>
         </div>
         <Link
           href="/gestionale/nuovo"
@@ -52,6 +62,29 @@ export default async function GestionalePage() {
           <Plus className="h-4 w-4" />
           Nuova Transazione
         </Link>
+      </div>
+
+      {/* Month selector */}
+      <div className="mb-6 flex items-center gap-3">
+        {(() => {
+          const [y, m] = currentMonth.split('-').map(Number);
+          const prevDate = new Date(y, m - 2, 1);
+          const prev = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+          const nextDate = new Date(y, m, 1);
+          const next = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+          return (
+            <>
+              <Link href={`/gestionale?month=${prev}`} className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:bg-cream-dark">←</Link>
+              <span className="font-semibold text-brown capitalize">
+                {new Date(currentMonth + '-01').toLocaleDateString('it-IT', {month: 'long', year: 'numeric'})}
+              </span>
+              <Link href={`/gestionale?month=${next}`} className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:bg-cream-dark">→</Link>
+              {currentMonth !== todayMonth && (
+                <Link href="/gestionale" className="rounded-lg bg-rose/10 px-3 py-1.5 text-sm font-medium text-rose hover:bg-rose/20">Oggi</Link>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* KPI Cards */}
@@ -155,6 +188,29 @@ export default async function GestionalePage() {
                 ))}
               </tbody>
             </table>
+
+            {/* Payment breakdown */}
+            {recentTransactions.filter(t => t.tipo === 'entrata').length > 0 && (
+              <div className="mt-4 border-t border-border px-5 pb-5 pt-4">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Entrate per metodo</p>
+                <div className="flex flex-wrap gap-3">
+                  {Object.entries(
+                    recentTransactions
+                      .filter(t => t.tipo === 'entrata')
+                      .reduce((acc: Record<string, number>, t) => {
+                        const k = t.metodo_pagamento || 'altro';
+                        acc[k] = (acc[k] || 0) + Number(t.importo);
+                        return acc;
+                      }, {})
+                  ).map(([metodo, totale]) => (
+                    <div key={metodo} className="rounded-lg bg-cream-dark px-3 py-1.5 text-xs">
+                      <span className="capitalize text-muted-foreground">{metodo}</span>
+                      <span className="ml-2 font-semibold text-brown">{formatCurrency(totale)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -71,7 +71,7 @@ export default async function ClienteDetailPage({
   }
 
   const interactions = await getClientInteractions(id);
-  const tags = (client.tags as string[]) || [];
+  const tags: string[] = Array.isArray(client.tags) ? client.tags as string[] : (typeof client.tags === "string" ? (() => { try { return JSON.parse(client.tags as string) as string[]; } catch { return [] as string[]; } })() : []);
 
   return (
     <div>

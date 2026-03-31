@@ -1,16 +1,9 @@
 export const dynamic = "force-dynamic";
 
-import { Users, CalendarDays, TrendingUp, UserPlus } from "lucide-react";
+import { Users, CalendarDays, TrendingUp, UserPlus, Calendar, Euro, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { getDashboardStats } from "@/lib/actions/clients";
 import { formatCurrency } from "@/lib/utils";
-
-const quickActions = [
-  { label: "Nuovo Cliente", href: "/clienti/nuovo", icon: UserPlus },
-  { label: "Nuovo Appuntamento", href: "/agenda", icon: CalendarDays },
-  { label: "Invia WhatsApp", href: "/whatsapp", icon: Users },
-  { label: "Nuovo Post", href: "/social/nuovo", icon: TrendingUp },
-];
 
 export default async function DashboardPage() {
   const stats = await getDashboardStats();
@@ -82,6 +75,46 @@ export default async function DashboardPage() {
         ))}
       </div>
 
+      {/* Birthday Alerts */}
+      {stats.compleanniSettimana.length > 0 && (
+        <div className="mb-6 rounded-xl border border-gold/30 bg-gold/5 p-4">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gold-dark">
+            🎂 Compleanni questa settimana
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {stats.compleanniSettimana.map(c => (
+              <Link key={c.id} href={`/clienti/${c.id}`}
+                className="inline-flex items-center gap-2 rounded-lg bg-white border border-gold/20 px-3 py-1.5 text-sm hover:border-gold/50">
+                <span className="font-medium text-brown">{c.nome} {c.cognome}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(c.data_nascita + 'T00:00:00').toLocaleDateString('it-IT', {day: 'numeric', month: 'short'})}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Link href="/agenda/nuovo" className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center hover:border-rose/30 hover:bg-rose/5">
+          <Calendar className="h-6 w-6 text-rose" />
+          <span className="text-xs font-medium text-brown">Nuovo<br/>Appuntamento</span>
+        </Link>
+        <Link href="/clienti/nuovo" className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center hover:border-rose/30 hover:bg-rose/5">
+          <UserPlus className="h-6 w-6 text-gold" />
+          <span className="text-xs font-medium text-brown">Nuova<br/>Cliente</span>
+        </Link>
+        <Link href="/gestionale/nuovo" className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center hover:border-rose/30 hover:bg-rose/5">
+          <Euro className="h-6 w-6 text-success" />
+          <span className="text-xs font-medium text-brown">Registra<br/>Incasso</span>
+        </Link>
+        <Link href="/whatsapp" className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center hover:border-rose/30 hover:bg-rose/5">
+          <MessageCircle className="h-6 w-6 text-blue-500" />
+          <span className="text-xs font-medium text-brown">Invia<br/>WhatsApp</span>
+        </Link>
+      </div>
+
       {/* Obiettivo Mensile */}
       <div className="mb-8 rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
@@ -99,27 +132,6 @@ export default async function DashboardPage() {
         <p className="mt-2 text-xs text-muted-foreground">
           {percentuale}% dell&apos;obiettivo raggiunto
         </p>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="mb-4 font-semibold text-brown">Azioni Rapide</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {quickActions.map((action) => (
-            <Link
-              key={action.label}
-              href={action.href}
-              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 text-center transition-colors hover:border-rose hover:bg-rose/5"
-            >
-              <div className="rounded-lg bg-rose/10 p-2">
-                <action.icon className="h-5 w-5 text-rose" />
-              </div>
-              <span className="text-sm font-medium text-brown">
-                {action.label}
-              </span>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* CTA */}

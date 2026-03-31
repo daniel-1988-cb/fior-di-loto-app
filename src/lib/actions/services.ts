@@ -13,6 +13,14 @@ function isValidCategoria(cat: string): boolean {
 // READ OPERATIONS
 // ============================================
 
+export async function getService(id: string) {
+  if (!isValidUUID(id)) return null;
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from("services").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function getServices(categoria?: string) {
   const supabase = createAdminClient();
   const safeCat = categoria && isValidCategoria(categoria) ? categoria : null;

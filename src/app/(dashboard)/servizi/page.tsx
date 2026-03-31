@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Plus, Clock, Euro } from "lucide-react";
+import { Plus, Clock, Euro, Pencil } from "lucide-react";
 import { getServices } from "@/lib/actions/services";
 import { formatCurrency } from "@/lib/utils";
 import { LABELS } from "@/lib/constants/italian";
@@ -97,7 +97,16 @@ export default async function ServiziPage() {
                     key={service.id}
                     className="rounded-xl border border-border bg-card p-5 shadow-sm"
                   >
-                    <h3 className="font-semibold text-brown">{service.nome}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-brown">{service.nome}</h3>
+                      <Link
+                        href={`/servizi/${service.id}/modifica`}
+                        className="shrink-0 rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:border-rose/30 hover:text-rose"
+                        title="Modifica"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
                     {service.descrizione && (
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                         {service.descrizione}

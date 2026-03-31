@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Plus, AlertTriangle, Package } from "lucide-react";
+import { Plus, AlertTriangle, Package, Pencil } from "lucide-react";
 import { getProducts } from "@/lib/actions/products";
 import { formatCurrency } from "@/lib/utils";
 
@@ -82,12 +82,21 @@ export default async function ProdottiPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="font-semibold text-brown">{product.nome}</h3>
-                      {product.low_stock && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                          <AlertTriangle className="h-3 w-3" />
-                          Bassa
-                        </span>
-                      )}
+                      <div className="flex shrink-0 items-center gap-1">
+                        {product.low_stock && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            <AlertTriangle className="h-3 w-3" />
+                            Bassa
+                          </span>
+                        )}
+                        <Link
+                          href={`/prodotti/${product.id}/modifica`}
+                          className="rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:border-rose/30 hover:text-rose"
+                          title="Modifica"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </div>
                     {product.descrizione && (
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
