@@ -236,6 +236,13 @@ function AgendaContent() {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"singola" | "operatrici">("singola");
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Current time indicator — updates every minute
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Load staff list
   useEffect(() => {
@@ -502,6 +509,22 @@ function AgendaContent() {
                   style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }}
                 />
               ))}
+
+              {/* Current time indicator */}
+              {(() => {
+                const mins = currentTime.getHours() * 60 + currentTime.getMinutes();
+                const topPx = ((mins - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+                if (selectedDate !== today || mins < START_HOUR * 60 || mins > END_HOUR * 60) return null;
+                return (
+                  <div className="pointer-events-none absolute left-0 right-0 z-30 flex items-center" style={{ top: topPx }}>
+                    <div className="h-3 w-3 shrink-0 rounded-full bg-red-500 shadow-sm" style={{ marginLeft: -6 }} />
+                    <div className="h-[2px] flex-1 bg-red-500 opacity-80" />
+                    <span className="shrink-0 rounded-sm bg-red-500 px-1 py-px text-[9px] font-bold text-white">
+                      {currentTime.getHours().toString().padStart(2, "0")}:{currentTime.getMinutes().toString().padStart(2, "0")}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Appointment cards */}
               {aptCards.map(({ apt, topPx, heightPx }) => (

@@ -57,26 +57,27 @@ export function Sidebar() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — full width on mobile, compact on desktop */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-brown transition-transform duration-300 lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-brown transition-transform duration-300",
+          "w-64 lg:w-[70px]",
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Logo */}
-        <div className="flex h-20 items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose">
-              <span className="font-[family-name:var(--font-playfair)] text-lg font-bold text-white">
+        <div className="flex h-16 items-center justify-between px-4 lg:justify-center">
+          <Link href="/" className="flex items-center gap-3 lg:gap-0" onClick={() => setMobileOpen(false)}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose">
+              <span className="font-[family-name:var(--font-playfair)] text-base font-bold text-white">
                 F
               </span>
             </div>
-            <div>
-              <h1 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-cream">
+            <div className="lg:hidden">
+              <h1 className="font-[family-name:var(--font-playfair)] text-base font-semibold text-cream">
                 Fior di Loto
               </h1>
-              <p className="text-xs text-cream/60">Centro Estetico</p>
+              <p className="text-[10px] text-cream/60">Centro Estetico</p>
             </div>
           </Link>
           <button
@@ -88,48 +89,76 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-2 py-3 overflow-y-auto">
           {navigation.map((item) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
                 : pathname.startsWith(item.href);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-rose text-white"
-                    : "text-cream/70 hover:bg-brown-light hover:text-cream"
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {item.name}
-              </Link>
+              <div key={item.href} className="group relative">
+                <Link
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "lg:justify-center lg:px-0 lg:py-2.5",
+                    isActive
+                      ? "bg-rose text-white"
+                      : "text-cream/70 hover:bg-white/10 hover:text-cream"
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="lg:hidden">{item.name}</span>
+                </Link>
+
+                {/* Tooltip — desktop only */}
+                <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
+                  <div className="whitespace-nowrap rounded-md bg-brown-dark px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                    {item.name}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown-dark" />
+                  </div>
+                </div>
+              </div>
             );
           })}
         </nav>
 
-        {/* Bottom section */}
-        <div className="border-t border-cream/10 p-3">
-          <Link
-            href="/impostazioni"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-brown-light hover:text-cream"
-          >
-            <Settings className="h-5 w-5" />
-            {LABELS.nav.impostazioni}
-          </Link>
-          <form action="/api/auth/logout" method="POST">
-            <button
-              type="submit"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-brown-light hover:text-cream"
+        {/* Bottom */}
+        <div className="border-t border-cream/10 px-2 py-3 space-y-1">
+          <div className="group relative">
+            <Link
+              href="/impostazioni"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-white/10 hover:text-cream lg:justify-center lg:px-0"
             >
-              <LogOut className="h-5 w-5" />
-              Esci
-            </button>
+              <Settings className="h-5 w-5 shrink-0" />
+              <span className="lg:hidden">{LABELS.nav.impostazioni}</span>
+            </Link>
+            <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
+              <div className="whitespace-nowrap rounded-md bg-brown-dark px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                {LABELS.nav.impostazioni}
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown-dark" />
+              </div>
+            </div>
+          </div>
+
+          <form action="/api/auth/logout" method="POST">
+            <div className="group relative">
+              <button
+                type="submit"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-white/10 hover:text-cream lg:justify-center lg:px-0"
+              >
+                <LogOut className="h-5 w-5 shrink-0" />
+                <span className="lg:hidden">Esci</span>
+              </button>
+              <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
+                <div className="whitespace-nowrap rounded-md bg-brown-dark px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                  Esci
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown-dark" />
+                </div>
+              </div>
+            </div>
           </form>
         </div>
       </aside>
