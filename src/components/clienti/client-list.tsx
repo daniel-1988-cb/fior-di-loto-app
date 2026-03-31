@@ -143,10 +143,10 @@ export function ClientList({
           </div>
         ) : (
           initialClients.map((client) => (
-            <Link
+            <div
               key={client.id}
-              href={`/clienti/${client.id}`}
-              className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-rose/30 hover:shadow-sm"
+              onClick={() => router.push(`/clienti/${client.id}`)}
+              className="group flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-rose/30 hover:shadow-sm"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose/10">
                 <span className="text-lg font-semibold text-rose">
@@ -227,7 +227,7 @@ export function ClientList({
               )}
 
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
-            </Link>
+            </div>
           ))
         )}
       </div>
