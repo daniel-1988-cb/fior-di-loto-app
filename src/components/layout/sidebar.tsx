@@ -15,7 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bot,
   Gift,
 } from "lucide-react";
 import { useState } from "react";
@@ -32,7 +31,6 @@ const navigation = [
   { name: LABELS.nav.whatsapp, href: "/whatsapp", icon: MessageCircle },
   { name: "Voucher", href: "/gestionale/voucher", icon: Gift },
   { name: LABELS.nav.social, href: "/social", icon: Share2 },
-  { name: LABELS.nav.assistente, href: "/assistente", icon: Bot },
 ];
 
 export function Sidebar() {

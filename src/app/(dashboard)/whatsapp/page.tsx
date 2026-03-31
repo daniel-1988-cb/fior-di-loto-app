@@ -3,16 +3,14 @@
 import { useState, useEffect } from "react";
 import {
   MessageCircle,
-  Send,
-  Sparkles,
   ChevronDown,
   Copy,
   Check,
   ExternalLink,
   User,
+  Edit3,
 } from "lucide-react";
 import { getClients } from "@/lib/actions/messages";
-import { generaMessaggioAI, type TipoMessaggio } from "@/lib/actions/ai-messages";
 
 type Client = {
   id: string;
@@ -22,15 +20,62 @@ type Client = {
   segmento: string;
 };
 
-const TIPI_MESSAGGIO: { value: TipoMessaggio; label: string; emoji: string }[] = [
-  { value: "promemoria_appuntamento", label: "Promemoria Appuntamento", emoji: "📅" },
-  { value: "conferma_appuntamento", label: "Conferma Appuntamento", emoji: "✅" },
-  { value: "follow_up_trattamento", label: "Follow-up Trattamento", emoji: "💆" },
-  { value: "offerta_speciale", label: "Offerta Speciale", emoji: "🎁" },
-  { value: "auguri_compleanno", label: "Auguri Compleanno", emoji: "🎂" },
-  { value: "ringraziamento", label: "Ringraziamento", emoji: "💖" },
-  { value: "riattivazione", label: "Riattivazione Cliente", emoji: "✨" },
-  { value: "personalizzato", label: "Messaggio Personalizzato", emoji: "✍️" },
+const TEMPLATE_MESSAGGI = [
+  {
+    tipo: "promemoria_appuntamento",
+    label: "Promemoria Appuntamento",
+    emoji: "📅",
+    testo: (nome: string) =>
+      `Ciao ${nome}! 😊\nTi ricordiamo il tuo appuntamento da Fior di Loto.\nSe hai bisogno di modificarlo, scrivici pure!\nTi aspettiamo 🌸`,
+  },
+  {
+    tipo: "conferma_appuntamento",
+    label: "Conferma Appuntamento",
+    emoji: "✅",
+    testo: (nome: string) =>
+      `Ciao ${nome}! ✅\nIl tuo appuntamento da Fior di Loto è confermato.\nNon vediamo l'ora di vederti! 🌸`,
+  },
+  {
+    tipo: "follow_up",
+    label: "Follow-up Trattamento",
+    emoji: "💆",
+    testo: (nome: string) =>
+      `Ciao ${nome}! 😊\nCome ti senti dopo il trattamento?\nSiamo qui se hai domande o vuoi prenotare il prossimo appuntamento 🌸`,
+  },
+  {
+    tipo: "offerta",
+    label: "Offerta Speciale",
+    emoji: "🎁",
+    testo: (nome: string) =>
+      `Ciao ${nome}! 🎁\nAbbiamo una proposta speciale per te!\nContattaci per scoprire l'offerta del momento da Fior di Loto 🌸`,
+  },
+  {
+    tipo: "compleanno",
+    label: "Auguri Compleanno",
+    emoji: "🎂",
+    testo: (nome: string) =>
+      `Tanti auguri ${nome}! 🎂🎉\nIn occasione del tuo compleanno, ti aspettiamo da Fior di Loto con una sorpresa speciale 🌸\nBuon compleanno! 💖`,
+  },
+  {
+    tipo: "ringraziamento",
+    label: "Ringraziamento",
+    emoji: "💖",
+    testo: (nome: string) =>
+      `Grazie ${nome}! 💖\nÈ sempre un piacere averti da Fior di Loto.\nTi aspettiamo presto! 🌸`,
+  },
+  {
+    tipo: "riattivazione",
+    label: "Riattivazione Cliente",
+    emoji: "✨",
+    testo: (nome: string) =>
+      `Ciao ${nome}! ✨\nÈ un po' che non ci vediamo...\nAbbiamo tante novità per te da Fior di Loto! Quando vuoi fissare un appuntamento? 🌸`,
+  },
+  {
+    tipo: "personalizzato",
+    label: "Messaggio Libero",
+    emoji: "✍️",
+    testo: (_nome: string) => "",
+  },
 ];
 
 const SEGMENTO_STYLE: Record<string, string> = {
@@ -50,11 +95,8 @@ const inputClass =
 export default function WhatsAppPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
-  const [tipoMessaggio, setTipoMessaggio] = useState<TipoMessaggio>("promemoria_appuntamento");
-  const [contestoExtra, setContestaExtra] = useState("");
-  const [messaggioGenerato, setMessaggioGenerato] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [tipoSelezionato, setTipoSelezionato] = useState("promemoria_appuntamento");
+  const [messaggio, setMessaggio] = useState("");
   const [copied, setCopied] = useState(false);
   const [searchCliente, setSearchCliente] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -72,39 +114,33 @@ export default function WhatsAppPage() {
       )
     : clients;
 
-  async function handleGenera() {
-    if (!selectedClientId) { setError("Seleziona una cliente"); return; }
-    setLoading(true);
-    setError("");
-    setMessaggioGenerato("");
-    try {
-      const result = await generaMessaggioAI({
-        clientId: selectedClientId,
-        tipo: tipoMessaggio,
-        contestoExtra: contestoExtra || undefined,
-      });
-      setMessaggioGenerato(result.messaggio);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Errore generazione";
-      if (msg.includes("ANTHROPIC_API_KEY") || msg.includes("API key")) {
-        setError("Chiave API Anthropic non configurata. Aggiungi ANTHROPIC_API_KEY in .env.local");
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setLoading(false);
+  function handleSelectTemplate(tipo: string) {
+    setTipoSelezionato(tipo);
+    const template = TEMPLATE_MESSAGGI.find((t) => t.tipo === tipo);
+    if (template && selectedClient) {
+      setMessaggio(template.testo(selectedClient.nome));
+    } else if (template) {
+      setMessaggio(template.testo(""));
     }
+  }
+
+  function handleSelectClient(c: Client) {
+    setSelectedClientId(c.id);
+    setSearchCliente("");
+    setShowDropdown(false);
+    const template = TEMPLATE_MESSAGGI.find((t) => t.tipo === tipoSelezionato);
+    if (template) setMessaggio(template.testo(c.nome));
   }
 
   function handleOpenWhatsApp() {
     if (!selectedClient?.telefono) return;
     const phone = selectedClient.telefono.replace(/\D/g, "");
-    const url = `https://wa.me/39${phone}?text=${encodeURIComponent(messaggioGenerato)}`;
+    const url = `https://wa.me/39${phone}?text=${encodeURIComponent(messaggio)}`;
     window.open(url, "_blank");
   }
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(messaggioGenerato);
+    await navigator.clipboard.writeText(messaggio);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -114,16 +150,17 @@ export default function WhatsAppPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-[family-name:var(--font-playfair)] text-3xl font-bold text-brown">
-          WhatsApp AI
+          WhatsApp
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          L&apos;AI genera messaggi personalizzati per ogni cliente basandosi sul suo profilo CRM
+          Invia messaggi rapidi alle clienti direttamente su WhatsApp
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* LEFT — Configuration */}
+        {/* LEFT */}
         <div className="space-y-4">
+
           {/* Client selector */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <h2 className="mb-4 flex items-center gap-2 font-semibold text-brown">
@@ -136,10 +173,7 @@ export default function WhatsAppPage() {
                 placeholder="Cerca per nome o telefono..."
                 value={selectedClient ? `${selectedClient.nome} ${selectedClient.cognome}` : searchCliente}
                 onChange={(e) => {
-                  if (selectedClient) {
-                    setSelectedClientId("");
-                    setMessaggioGenerato("");
-                  }
+                  if (selectedClient) setSelectedClientId("");
                   setSearchCliente(e.target.value);
                   setShowDropdown(true);
                 }}
@@ -153,12 +187,7 @@ export default function WhatsAppPage() {
                   {filteredClients.slice(0, 20).map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => {
-                        setSelectedClientId(c.id);
-                        setSearchCliente("");
-                        setShowDropdown(false);
-                        setMessaggioGenerato("");
-                      }}
+                      onClick={() => handleSelectClient(c)}
                       className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-cream-dark"
                     >
                       <div>
@@ -196,7 +225,7 @@ export default function WhatsAppPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => { setSelectedClientId(""); setMessaggioGenerato(""); }}
+                  onClick={() => { setSelectedClientId(""); setMessaggio(""); }}
                   className="text-xs text-muted-foreground hover:text-brown"
                 >
                   Cambia
@@ -205,71 +234,37 @@ export default function WhatsAppPage() {
             )}
           </div>
 
-          {/* Message type */}
+          {/* Template selector */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-4 font-semibold text-brown">Tipo di Messaggio</h2>
+            <h2 className="mb-4 font-semibold text-brown">Template Messaggio</h2>
             <div className="grid grid-cols-2 gap-2">
-              {TIPI_MESSAGGIO.map((tipo) => (
+              {TEMPLATE_MESSAGGI.map((t) => (
                 <button
-                  key={tipo.value}
-                  onClick={() => { setTipoMessaggio(tipo.value); setMessaggioGenerato(""); }}
+                  key={t.tipo}
+                  onClick={() => handleSelectTemplate(t.tipo)}
                   className={`rounded-lg border px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                    tipoMessaggio === tipo.value
+                    tipoSelezionato === t.tipo
                       ? "border-rose bg-rose/5 text-rose"
                       : "border-border bg-white text-brown hover:border-rose/40"
                   }`}
                 >
-                  <span className="mr-1">{tipo.emoji}</span>
-                  {tipo.label}
+                  <span className="mr-1">{t.emoji}</span>
+                  {t.label}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Extra context */}
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="mb-2 font-semibold text-brown">Contesto Extra <span className="text-xs font-normal text-muted-foreground">(opzionale)</span></h2>
-            <textarea
-              value={contestoExtra}
-              onChange={(e) => setContestaExtra(e.target.value)}
-              placeholder="Es: ha un appuntamento domani alle 15:00 per pulizia viso, offerta del 20% sul prossimo trattamento..."
-              rows={3}
-              className={`${inputClass} resize-none`}
-            />
-          </div>
-
-          {/* Generate button */}
-          <button
-            onClick={handleGenera}
-            disabled={loading || !selectedClientId}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brown px-4 py-3 text-sm font-semibold text-white hover:bg-brown/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Generazione in corso...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4" />
-                Genera con AI
-              </>
-            )}
-          </button>
-
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-600">
-              {error}
-            </div>
-          )}
         </div>
 
-        {/* RIGHT — Preview & Send */}
+        {/* RIGHT — Edit & Send */}
         <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-semibold text-brown">Messaggio Generato</h2>
-              {messaggioGenerato && (
+              <h2 className="flex items-center gap-2 font-semibold text-brown">
+                <Edit3 className="h-4 w-4" />
+                Messaggio
+              </h2>
+              {messaggio && (
                 <button
                   onClick={handleCopy}
                   className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-cream-dark"
@@ -280,89 +275,70 @@ export default function WhatsAppPage() {
               )}
             </div>
 
-            {messaggioGenerato ? (
-              <>
-                {/* WhatsApp bubble preview */}
-                <div className="mb-4 rounded-xl bg-[#ECE5DD] p-4">
-                  <div className="max-w-xs rounded-2xl rounded-tl-none bg-white px-4 py-3 shadow-sm">
-                    <p className="whitespace-pre-wrap text-sm text-[#111]">{messaggioGenerato}</p>
-                    <p className="mt-1 text-right text-[10px] text-[#999]">
-                      {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} ✓✓
-                    </p>
-                  </div>
-                </div>
-
-                {/* Editable version */}
-                <textarea
-                  value={messaggioGenerato}
-                  onChange={(e) => setMessaggioGenerato(e.target.value)}
-                  rows={6}
-                  className={`${inputClass} resize-none`}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">Puoi modificare il testo prima di inviare</p>
-
-                {/* Send buttons */}
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={handleOpenWhatsApp}
-                    disabled={!selectedClient?.telefono}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#20bc5a] disabled:opacity-50"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Apri WhatsApp
-                  </button>
-                  <button
-                    onClick={handleGenera}
-                    disabled={loading}
-                    className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-brown hover:bg-cream-dark"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Rigenera
-                  </button>
-                </div>
-
-                {selectedClient && !selectedClient.telefono && (
-                  <p className="mt-2 text-center text-xs text-red-500">
-                    Questa cliente non ha un numero di telefono registrato
+            {/* WhatsApp bubble preview */}
+            {messaggio && (
+              <div className="mb-4 rounded-xl bg-[#ECE5DD] p-4">
+                <div className="max-w-xs rounded-2xl rounded-tl-none bg-white px-4 py-3 shadow-sm">
+                  <p className="whitespace-pre-wrap text-sm text-[#111]">{messaggio}</p>
+                  <p className="mt-1 text-right text-[10px] text-[#999]">
+                    {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} ✓✓
                   </p>
-                )}
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-cream-dark/30 py-16">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose/10">
-                  <MessageCircle className="h-6 w-6 text-rose/60" />
                 </div>
-                <p className="text-sm font-medium text-brown">Il messaggio apparirà qui</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Seleziona una cliente e clicca &quot;Genera con AI&quot;
-                </p>
               </div>
+            )}
+
+            <textarea
+              value={messaggio}
+              onChange={(e) => setMessaggio(e.target.value)}
+              placeholder="Scrivi o modifica il messaggio..."
+              rows={6}
+              className={`${inputClass} resize-none`}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Puoi modificare liberamente il testo prima di inviare
+            </p>
+
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={handleOpenWhatsApp}
+                disabled={!selectedClient?.telefono || !messaggio}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#20bc5a] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Apri WhatsApp
+              </button>
+            </div>
+
+            {selectedClient && !selectedClient.telefono && (
+              <p className="mt-2 text-center text-xs text-red-500">
+                Questa cliente non ha un numero di telefono registrato
+              </p>
             )}
           </div>
 
-          {/* How it works */}
+          {/* Tip */}
           <div className="rounded-xl border border-border bg-cream-dark/40 p-4">
             <p className="mb-2 text-xs font-medium text-brown">Come funziona</p>
             <ul className="space-y-1 text-xs text-muted-foreground">
-              <li>🤖 L&apos;AI legge il profilo completo della cliente dal CRM</li>
-              <li>📝 Genera un messaggio personalizzato in italiano</li>
-              <li>✏️ Puoi modificare il testo prima di inviare</li>
-              <li>📱 Un click apre WhatsApp con il messaggio pronto</li>
+              <li>1️⃣ Seleziona la cliente</li>
+              <li>2️⃣ Scegli un template o scrivi il messaggio</li>
+              <li>3️⃣ Modifica il testo se necessario</li>
+              <li>4️⃣ Clicca "Apri WhatsApp" per inviare</li>
             </ul>
           </div>
         </div>
       </div>
 
-      {/* Broadcast section */}
+      {/* Broadcast */}
       <div className="mt-8 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-brown">
-              <Send className="mr-2 inline-block h-4 w-4" />
+              <MessageCircle className="mr-2 inline-block h-4 w-4" />
               Broadcast per Segmento
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Genera messaggi personalizzati per tutte le clienti di un segmento
+              Invia un messaggio a tutte le clienti di un segmento
             </p>
           </div>
           <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-medium text-gold-dark">
