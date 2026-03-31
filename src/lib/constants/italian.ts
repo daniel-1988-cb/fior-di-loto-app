@@ -11,6 +11,7 @@ export const LABELS = {
     prodotti: "Prodotti",
     whatsapp: "WhatsApp",
     social: "Social Media",
+    assistente: "Assistente AI",
     impostazioni: "Impostazioni",
   },
 

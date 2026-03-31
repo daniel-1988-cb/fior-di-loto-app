@@ -1,0 +1,187 @@
+"use server";
+
+import Anthropic from "@anthropic-ai/sdk";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { sanitizeString, truncate, isValidUUID } from "@/lib/security/validate";
+
+const VALID_CATEGORIE = ["generale", "protocollo", "trattamento", "prodotto", "procedura", "policy"] as const;
+type Categoria = (typeof VALID_CATEGORIE)[number];
+
+// ─── Auth helpers ────────────────────────────────────────────────────────────
+
+export async function getCurrentUser() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+export async function isAdmin() {
+  const user = await getCurrentUser();
+  if (!user?.email) return false;
+  const adminEmails = (process.env.ADMIN_EMAILS || "laura@fiordiloto.it,daniel@fiordiloto.it")
+    .split(",")
+    .map((e) => e.trim().toLowerCase());
+  return adminEmails.includes(user.email.toLowerCase());
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+export async function getDocuments() {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("ai_documents")
+    .select("id, nome, descrizione, categoria, created_at, created_by_email")
+    .order("categoria", { ascending: true })
+    .order("nome", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createDocument(data: {
+  nome: string;
+  descrizione?: string;
+  contenuto: string;
+  categoria: string;
+}) {
+  const admin = await isAdmin();
+  if (!admin) throw new Error("Accesso negato");
+
+  if (!data.nome?.trim()) throw new Error("Nome obbligatorio");
+  if (!data.contenuto?.trim()) throw new Error("Contenuto obbligatorio");
+  if (!VALID_CATEGORIE.includes(data.categoria as Categoria)) throw new Error("Categoria non valida");
+
+  const user = await getCurrentUser();
+  const supabase = createAdminClient();
+
+  const { data: row, error } = await supabase
+    .from("ai_documents")
+    .insert({
+      nome: truncate(sanitizeString(data.nome), 200),
+      descrizione: data.descrizione ? truncate(sanitizeString(data.descrizione), 500) : null,
+      contenuto: truncate(data.contenuto.trim(), 50000),
+      categoria: data.categoria,
+      created_by_email: user?.email || "unknown",
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return row;
+}
+
+export async function deleteDocument(id: string) {
+  const admin = await isAdmin();
+  if (!admin) throw new Error("Accesso negato");
+  if (!isValidUUID(id)) throw new Error("ID non valido");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("ai_documents").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ─── AI Query ────────────────────────────────────────────────────────────────
+
+export async function askAssistant(domanda: string) {
+  if (!domanda?.trim()) throw new Error("Domanda obbligatoria");
+
+  const user = await getCurrentUser();
+  const cleanQuestion = truncate(sanitizeString(domanda), 1000);
+
+  const supabase = createAdminClient();
+
+  // Load all documents as context
+  const { data: docs } = await supabase
+    .from("ai_documents")
+    .select("nome, categoria, contenuto")
+    .order("categoria");
+
+  const hasDocs = docs && docs.length > 0;
+
+  const contextSection = hasDocs
+    ? docs
+        .map(
+          (d) =>
+            `## ${d.nome} [${d.categoria}]\n${d.contenuto}`
+        )
+        .join("\n\n---\n\n")
+    : "Nessun documento caricato ancora.";
+
+  const systemPrompt = `Sei l'assistente AI interno di Fior di Loto, un centro estetico premium a Campobasso.
+Il tuo compito è supportare lo staff (estetiste, receptionist) rispondendo a domande sui protocolli di trattamento, procedure operative, prodotti e policy interne.
+
+DOCUMENTI INTERNI DISPONIBILI:
+${contextSection}
+
+ISTRUZIONI:
+- Rispondi SEMPRE in italiano
+- Sii precisa e concisa
+- Se la risposta è nei documenti, citala con precisione
+- Se non hai informazioni sufficienti, dillo chiaramente
+- Non inventare protocolli o dosaggi — la sicurezza è prioritaria
+- Usa un tono professionale ma accessibile`;
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 600,
+    system: systemPrompt,
+    messages: [{ role: "user", content: cleanQuestion }],
+  });
+
+  const risposta =
+    response.content[0].type === "text" ? response.content[0].text.trim() : "";
+
+  // Log the query
+  await supabase.from("ai_query_logs").insert({
+    user_id: user?.id || null,
+    user_email: user?.email || "anonimo",
+    domanda: cleanQuestion,
+    risposta,
+  });
+
+  return { risposta, hasDocs };
+}
+
+// ─── Logs (admin only) ────────────────────────────────────────────────────────
+
+export async function getQueryLogs(filters?: { userEmail?: string; limit?: number }) {
+  const admin = await isAdmin();
+  if (!admin) throw new Error("Accesso negato");
+
+  const supabase = createAdminClient();
+  let query = supabase
+    .from("ai_query_logs")
+    .select("id, user_email, domanda, risposta, created_at")
+    .order("created_at", { ascending: false })
+    .limit(filters?.limit || 200);
+
+  if (filters?.userEmail) {
+    query = query.eq("user_email", filters.userEmail);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getLogUsers() {
+  const admin = await isAdmin();
+  if (!admin) throw new Error("Accesso negato");
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("ai_query_logs")
+    .select("user_email")
+    .order("user_email");
+
+  if (error) throw error;
+
+  const unique = [...new Set((data || []).map((r) => r.user_email as string))];
+  return unique;
+}
