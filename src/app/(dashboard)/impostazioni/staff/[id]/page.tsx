@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
-import { getStaffMember, updateStaff, getStaffFerie, createFerie, deleteFerie, Staff, StaffFerie } from "@/lib/actions/staff";
+import Image from "next/image";
+import { ArrowLeft, Save, Trash2, Camera, Loader2 } from "lucide-react";
+import { getStaffMember, updateStaff, uploadStaffAvatar, getStaffFerie, createFerie, deleteFerie, Staff, StaffFerie } from "@/lib/actions/staff";
 
 const GIORNI_SETTIMANA = [
   { value: 1, label: "Lun" },
@@ -25,7 +26,10 @@ export default function StaffDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [ferie, setFerie] = useState<StaffFerie[]>([]);
   const [addingFerie, setAddingFerie] = useState(false);
 
@@ -59,6 +63,7 @@ export default function StaffDetailPage() {
           getStaffFerie(id),
         ]);
         setStaff(staffData);
+        setAvatarUrl(staffData.avatar_url || null);
         setFerie(ferieData);
         setFormData({
           nome: staffData.nome || "",
@@ -158,6 +163,22 @@ export default function StaffDetailPage() {
     }
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const url = await uploadStaffAvatar(id, fd);
+      setAvatarUrl(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Errore upload foto");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   async function handleDeleteFerie(feriaId: string) {
     if (!confirm("Eliminare questa voce?")) return;
     try {
@@ -199,6 +220,50 @@ export default function StaffDetailPage() {
         {/* Profilo */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-brown">Profilo</h2>
+
+          {/* Avatar */}
+          <div className="mb-5 flex items-center gap-4">
+            <div className="relative">
+              <div
+                className="flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white overflow-hidden"
+                style={{ backgroundColor: formData.colore }}
+              >
+                {avatarUrl ? (
+                  <Image src={avatarUrl} alt="Avatar" width={80} height={80} className="h-full w-full object-cover" />
+                ) : (
+                  <span>{formData.nome?.[0] || "?"}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-rose text-white shadow-md hover:bg-rose-dark"
+              >
+                {uploadingAvatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-brown">Foto profilo</p>
+              <p className="text-xs text-muted-foreground">JPG, PNG o WebP · max 2MB</p>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => { setAvatarUrl(null); updateStaff(id, { avatar_url: null }); }}
+                  className="mt-1 text-xs text-red-500 hover:underline"
+                >
+                  Rimuovi foto
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-brown">Nome *</label>

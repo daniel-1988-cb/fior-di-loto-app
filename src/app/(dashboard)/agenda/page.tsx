@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro, RefreshCw, Settings2, CalendarDays, ChevronDown } from "lucide-react";
@@ -397,9 +398,11 @@ function AgendaContent() {
                 <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-card px-2 py-2"
                   style={{ height: 72 }}>
                   <div className="relative">
-                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-sm font-bold text-white"
+                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-sm font-bold text-white overflow-hidden"
                       style={{ backgroundColor: staff.colore }}>
-                      {staff.nome[0]}
+                      {(staff as any).avatar_url ? (
+                        <Image src={(staff as any).avatar_url} alt={staff.nome} width={40} height={40} className="h-full w-full object-cover" />
+                      ) : staff.nome[0]}
                     </div>
                     <div className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 2px white, 0 0 0 3.5px ${staff.colore}` }} />
                   </div>

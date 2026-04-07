@@ -17,6 +17,7 @@ export type Staff = {
   telefono: string | null;
   email: string | null;
   note: string | null;
+  avatar_url: string | null;
 };
 
 export type StaffFerie = {
@@ -89,6 +90,7 @@ export async function updateStaff(id: string, data: Partial<Staff>): Promise<Sta
   if (data.telefono !== undefined) allowed.telefono = data.telefono ? String(data.telefono).trim().slice(0, 30) : null;
   if (data.email !== undefined) allowed.email = data.email ? String(data.email).trim().toLowerCase().slice(0, 255) : null;
   if (data.note !== undefined) allowed.note = data.note ? String(data.note).trim().slice(0, 2000) : null;
+  if (data.avatar_url !== undefined) allowed.avatar_url = data.avatar_url || null;
   allowed.updated_at = new Date().toISOString();
 
   const supabase = createAdminClient();
@@ -132,6 +134,34 @@ export async function createStaff(data: Partial<Staff>): Promise<Staff> {
     .single();
   if (error) throw error;
   return row as Staff;
+}
+
+// ============================================
+// AVATAR UPLOAD
+// ============================================
+
+export async function uploadStaffAvatar(staffId: string, formData: FormData): Promise<string> {
+  if (!isValidUUID(staffId)) throw new Error("ID non valido");
+  const file = formData.get("avatar") as File;
+  if (!file || file.size === 0) throw new Error("File non trovato");
+  if (file.size > 2 * 1024 * 1024) throw new Error("File troppo grande (max 2MB)");
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Formato non supportato (usa JPG, PNG o WebP)");
+
+  const supabase = createAdminClient();
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${staffId}.${ext}`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const { error: uploadError } = await supabase.storage
+    .from("staff-avatars")
+    .upload(path, arrayBuffer, { contentType: file.type, upsert: true });
+  if (uploadError) throw uploadError;
+
+  const { data: { publicUrl } } = supabase.storage.from("staff-avatars").getPublicUrl(path);
+  const urlWithBust = `${publicUrl}?t=${Date.now()}`;
+
+  await supabase.from("staff").update({ avatar_url: urlWithBust, updated_at: new Date().toISOString() }).eq("id", staffId);
+  return urlWithBust;
 }
 
 // ============================================
