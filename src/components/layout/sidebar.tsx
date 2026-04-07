@@ -72,7 +72,7 @@ export function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 rounded-lg bg-brown p-2 text-cream shadow-lg lg:hidden"
+        className="fixed top-4 left-4 z-50 rounded-lg bg-brown p-2 text-sidebar-foreground shadow-lg lg:hidden"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -88,7 +88,7 @@ export function Sidebar() {
       {/* Sidebar — full width on mobile, compact on desktop */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-brown transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar transition-transform duration-300",
           "w-64 lg:w-[70px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
@@ -102,15 +102,15 @@ export function Sidebar() {
               </span>
             </div>
             <div className="lg:hidden">
-              <h1 className="font-[family-name:var(--font-playfair)] text-base font-semibold text-cream">
+              <h1 className="font-[family-name:var(--font-playfair)] text-base font-semibold text-sidebar-foreground">
                 Fior di Loto
               </h1>
-              <p className="text-[10px] text-cream/60">Centro Estetico</p>
+              <p className="text-[10px] text-sidebar-foreground/60">Centro Estetico</p>
             </div>
           </Link>
           <button
             onClick={() => setMobileOpen(false)}
-            className="text-cream/60 hover:text-cream lg:hidden"
+            className="text-sidebar-foreground/60 hover:text-sidebar-foreground lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -133,7 +133,7 @@ export function Sidebar() {
                     "lg:justify-center lg:px-0 lg:py-2.5",
                     isActive
                       ? "bg-rose text-white"
-                      : "text-cream/70 hover:bg-card/10 hover:text-cream"
+                      : "text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground"
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
@@ -142,7 +142,7 @@ export function Sidebar() {
 
                 {/* Tooltip — desktop only */}
                 <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-                  <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                  <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-sidebar-foreground shadow-lg">
                     {item.name}
                     <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
                   </div>
@@ -158,13 +158,13 @@ export function Sidebar() {
             <Link
               href="/impostazioni"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-card/10 hover:text-cream lg:justify-center lg:px-0"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground lg:justify-center lg:px-0"
             >
               <Settings className="h-5 w-5 shrink-0" />
               <span className="lg:hidden">{LABELS.nav.impostazioni}</span>
             </Link>
             <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-              <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+              <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-sidebar-foreground shadow-lg">
                 {LABELS.nav.impostazioni}
                 <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
               </div>
@@ -175,7 +175,7 @@ export function Sidebar() {
           <div className="group relative">
             <button
               onClick={toggle}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-card/10 hover:text-cream lg:justify-center lg:px-0"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground lg:justify-center lg:px-0"
             >
               {theme === "dark" ? <Moon className="h-5 w-5 shrink-0" /> : theme === "light" ? <Sun className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0 opacity-60" />}
               <span className="lg:hidden">
@@ -183,7 +183,7 @@ export function Sidebar() {
               </span>
             </button>
             <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-              <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+              <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-sidebar-foreground shadow-lg">
                 {theme === "dark" ? "Tema scuro" : theme === "light" ? "Tema chiaro" : "Tema sistema"}
                 <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
               </div>
@@ -194,13 +194,13 @@ export function Sidebar() {
             <div className="group relative">
               <button
                 type="submit"
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-card/10 hover:text-cream lg:justify-center lg:px-0"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground lg:justify-center lg:px-0"
               >
                 <LogOut className="h-5 w-5 shrink-0" />
                 <span className="lg:hidden">Esci</span>
               </button>
               <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-                <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-sidebar-foreground shadow-lg">
                   Esci
                   <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
                 </div>
