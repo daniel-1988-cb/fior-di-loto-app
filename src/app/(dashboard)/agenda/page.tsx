@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Euro, RefreshCw, Settings2, CalendarDays, ChevronDown } from "lucide-react";
@@ -169,6 +169,24 @@ function AgendaContent() {
   const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Mobile swipe: 3 colonne alla volta
+  const MOBILE_COLS = 3;
+  const [mobileGroup, setMobileGroup] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) < 40) return; // ignora micro-swipe
+    const totalGroups = Math.ceil(staffList.length / MOBILE_COLS);
+    if (diff > 0) setMobileGroup(g => Math.min(totalGroups - 1, g + 1)); // swipe sx → gruppo successivo
+    else setMobileGroup(g => Math.max(0, g - 1)); // swipe dx → gruppo precedente
+    touchStartX.current = null;
+  }
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -342,13 +360,17 @@ function AgendaContent() {
       </div>
 
       {/* ── CALENDAR GRID ── */}
-      <div className="flex-1 overflow-auto">
+      <div
+        className="flex-1 overflow-auto"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="flex min-w-max">
 
           {/* Hour labels column */}
-          <div className="sticky left-0 z-20 w-14 shrink-0 bg-white border-r border-border">
+          <div className="sticky left-0 z-20 w-10 sm:w-14 shrink-0 bg-card border-r border-border">
             {/* Spacer for staff header */}
-            <div className="h-[72px] border-b border-border bg-white" />
+            <div className="h-[72px] border-b border-border bg-card" />
             {hours.map(h => (
               <div key={h} className="flex items-start justify-end pr-2"
                 style={{ height: HOUR_HEIGHT }}>
@@ -359,13 +381,17 @@ function AgendaContent() {
             ))}
           </div>
 
-          {/* Staff columns */}
-          {staffList.map(staff => {
+          {/* Staff columns — mobile: 3 per gruppo, desktop: tutte */}
+          {staffList.map((staff, idx) => {
+            const totalGroups = Math.ceil(staffList.length / MOBILE_COLS);
+            const currentGroup = Math.min(mobileGroup, totalGroups - 1);
+            const inMobileView = idx >= currentGroup * MOBILE_COLS && idx < (currentGroup + 1) * MOBILE_COLS;
+            return { staff, idx, inMobileView };
+          }).map(({ staff, inMobileView }) => {
             const aptCards = getAptCards(staff.id);
             const onFerie = isOnFerie(staff.id);
-
             return (
-              <div key={staff.id} className="flex-1 min-w-[88px] sm:min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
+              <div key={staff.id} className={`flex-1 min-w-[88px] sm:min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col ${inMobileView ? "" : "hidden sm:flex"}`}>
 
                 {/* Staff header */}
                 <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-card px-2 py-2"
@@ -455,31 +481,43 @@ function AgendaContent() {
       </div>
 
       {/* ── MOBILE BOTTOM BAR (stile Fresha) ── */}
-      <div className="sm:hidden flex items-center justify-around border-t border-border bg-card px-4 py-2 safe-area-pb">
-        <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-          className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-          className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
-          <CalendarDays className="h-5 w-5" />
-          <span className="text-[9px]">Calendario</span>
-        </button>
-        <Link
-          href={`/agenda/nuovo?data=${selectedDate}`}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-rose shadow-lg text-white"
-        >
-          <Plus className="h-6 w-6" />
-        </Link>
-        <button onClick={() => setRefreshKey(k => k + 1)}
-          className={`flex flex-col items-center gap-0.5 p-2 text-muted-foreground ${loading ? "animate-spin" : ""}`}>
-          <RefreshCw className="h-5 w-5" />
-          <span className="text-[9px]">Aggiorna</span>
-        </button>
-        <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-          className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
-          <ChevronRight className="h-5 w-5" />
-        </button>
+      <div className="sm:hidden border-t border-border bg-card">
+        {/* Indicatori gruppo operatrici */}
+        {staffList.length > MOBILE_COLS && (
+          <div className="flex items-center justify-center gap-1.5 pt-1.5">
+            {Array.from({ length: Math.ceil(staffList.length / MOBILE_COLS) }).map((_, i) => (
+              <button key={i} onClick={() => setMobileGroup(i)}
+                className={`h-1.5 rounded-full transition-all ${i === mobileGroup ? "w-4 bg-rose" : "w-1.5 bg-border"}`}
+              />
+            ))}
+          </div>
+        )}
+        <div className="flex items-center justify-around px-4 py-2">
+          <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+            className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button onClick={() => setSelectedDate(today)}
+            className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
+            <CalendarDays className="h-5 w-5" />
+            <span className="text-[9px]">Oggi</span>
+          </button>
+          <Link
+            href={`/agenda/nuovo?data=${selectedDate}`}
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-rose shadow-lg text-white"
+          >
+            <Plus className="h-6 w-6" />
+          </Link>
+          <button onClick={() => setRefreshKey(k => k + 1)}
+            className={`flex flex-col items-center gap-0.5 p-2 text-muted-foreground ${loading ? "animate-spin" : ""}`}>
+            <RefreshCw className="h-5 w-5" />
+            <span className="text-[9px]">Aggiorna</span>
+          </button>
+          <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+            className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
       </div>
     </div>
   );
