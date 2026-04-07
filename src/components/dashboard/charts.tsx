@@ -16,7 +16,7 @@ import type { DayData } from "@/lib/actions/dashboard";
 function EuroTooltip({ active, payload, label }: { active?: boolean; payload?: {value: number}[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-border bg-white px-3 py-2 shadow-md text-xs">
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
       <p className="font-semibold text-brown mb-1">{label}</p>
       <p className="text-rose">€ {Number(payload[0]?.value || 0).toFixed(0)}</p>
     </div>
@@ -26,7 +26,7 @@ function EuroTooltip({ active, payload, label }: { active?: boolean; payload?: {
 function AptTooltip({ active, payload, label }: { active?: boolean; payload?: {value: number}[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-border bg-white px-3 py-2 shadow-md text-xs">
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md text-xs">
       <p className="font-semibold text-brown mb-1">{label}</p>
       <p className="text-info">{payload[0]?.value} appuntamenti</p>
     </div>

@@ -159,14 +159,14 @@ export function ReminderFlow() {
                 )}
               </div>
             </div>
-            <span className="rounded-lg bg-white px-2 py-1 text-xs font-medium text-brown shadow-sm">
+            <span className="rounded-lg bg-card px-2 py-1 text-xs font-medium text-brown shadow-sm">
               {step + 1} / {totale}
             </span>
           </div>
 
           {/* Anteprima messaggio */}
           <div className="mb-4 rounded-lg bg-[#ECE5DD] p-3">
-            <div className="max-w-xs rounded-xl rounded-tl-none bg-white px-3 py-2.5 shadow-sm">
+            <div className="max-w-xs rounded-xl rounded-tl-none bg-card px-3 py-2.5 shadow-sm">
               <p className="whitespace-pre-wrap text-xs text-[#111]">
                 {buildMessaggio(corrente)}
               </p>
@@ -184,7 +184,7 @@ export function ReminderFlow() {
               </button>
               <button
                 onClick={() => segnaInviato(corrente.id)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-success bg-white px-4 py-2.5 text-sm font-medium text-success hover:bg-success/5"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-success bg-card px-4 py-2.5 text-sm font-medium text-success hover:bg-success/5"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Fatto

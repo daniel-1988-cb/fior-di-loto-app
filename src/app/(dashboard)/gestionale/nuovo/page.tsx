@@ -64,7 +64,7 @@ export default function NuovaTransazionePage() {
   }
 
   const inputClass =
-    "w-full rounded-lg border border-input bg-white px-3 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
+    "w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
 
   const currentCategorie = formData.tipo === "entrata" ? categorie.entrata : categorie.uscita;
 

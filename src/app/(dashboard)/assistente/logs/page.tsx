@@ -166,7 +166,7 @@ export default function LogsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Cerca per domanda o utente..."
-          className="w-full rounded-lg border border-input bg-white py-2.5 pl-9 pr-3 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
+          className="w-full rounded-lg border border-input bg-card py-2.5 pl-9 pr-3 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
         />
       </div>
 

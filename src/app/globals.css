@@ -75,6 +75,8 @@ body {
     --color-accent-foreground: #f0e8df;
     --color-cream: #f0e8df;
     --color-cream-dark: #2e2520;
+    --color-brown: #f0e8df;
+    --color-brown-light: #c8bdb5;
   }
 }
 
@@ -92,6 +94,9 @@ html.dark {
   --color-accent-foreground: #f0e8df;
   --color-cream: #f0e8df;
   --color-cream-dark: #2e2520;
+  /* Brown si inverte: diventa chiaro su sfondo scuro */
+  --color-brown: #f0e8df;
+  --color-brown-light: #c8bdb5;
 }
 
 /* Classe .light per forzare tema chiaro */

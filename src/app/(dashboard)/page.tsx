@@ -205,7 +205,7 @@ export default async function DashboardPage() {
                 {compleanni.oggi.map((c) => (
                   <div
                     key={c.id}
-                    className="flex items-center gap-2 rounded-lg border border-gold/30 bg-white px-3 py-2"
+                    className="flex items-center gap-2 rounded-lg border border-gold/30 bg-card px-3 py-2"
                   >
                     <Link
                       href={`/clienti/${c.id}`}
@@ -248,7 +248,7 @@ export default async function DashboardPage() {
                 {compleanni.prossimi7giorni.map((c) => (
                   <div
                     key={c.id}
-                    className="flex items-center gap-2 rounded-lg border border-gold/20 bg-white px-3 py-1.5"
+                    className="flex items-center gap-2 rounded-lg border border-gold/20 bg-card px-3 py-1.5"
                   >
                     <Link
                       href={`/clienti/${c.id}`}
@@ -298,7 +298,7 @@ export default async function DashboardPage() {
               </h3>
               <div className="space-y-2">
                 {clientiARischio.slice(0, 5).map((c) => (
-                  <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
+                  <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg bg-card px-3 py-2">
                     <Link href={`/clienti/${c.id}`} className="min-w-0">
                       <p className="truncate text-sm font-medium text-brown hover:text-rose">
                         {c.nome} {c.cognome}
@@ -343,7 +343,7 @@ export default async function DashboardPage() {
               </h3>
               <div className="space-y-2">
                 {prodottiScorteBasse.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-card px-3 py-2">
                     <Link href={`/prodotti/${p.id}/modifica`} className="min-w-0">
                       <p className="truncate text-sm font-medium text-brown hover:text-rose">{p.nome}</p>
                       <p className="text-xs capitalize text-muted-foreground">{p.categoria}</p>

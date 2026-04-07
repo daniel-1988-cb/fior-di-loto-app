@@ -352,7 +352,7 @@ export default function StaffDetailPage() {
                     ? p.giorni_lavoro.filter(d => d !== g.value)
                     : [...p.giorni_lavoro, g.value].sort((a,b) => a-b)
                 }))}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${formData.giorni_lavoro.includes(g.value) ? "bg-rose text-white" : "border border-border bg-white text-muted-foreground hover:border-rose/40"}`}>
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${formData.giorni_lavoro.includes(g.value) ? "bg-rose text-white" : "border border-border bg-card text-muted-foreground hover:border-rose/40"}`}>
                   {g.label}
                 </button>
               ))}

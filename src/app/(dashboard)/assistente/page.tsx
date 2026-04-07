@@ -189,7 +189,7 @@ export default function AssistentePage() {
             onKeyDown={handleKeyDown}
             placeholder="Fai una domanda su protocolli, trattamenti, prodotti..."
             rows={2}
-            className="w-full resize-none rounded-xl border border-input bg-white px-4 py-3 pr-12 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
+            className="w-full resize-none rounded-xl border border-input bg-card px-4 py-3 pr-12 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
           />
           <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground">
             ↵ invia

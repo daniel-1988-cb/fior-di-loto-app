@@ -135,17 +135,17 @@ function AppointmentCard({
           <div className="flex flex-wrap gap-1 justify-center mt-1">
             {apt.stato !== "completato" && (
               <button onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "completato"); }}
-                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white hover:bg-white/40">
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-card/20 text-white hover:bg-card/40">
                 <CheckCircle2 className="h-3 w-3" />Completa
               </button>
             )}
             <Link href={`/agenda/checkout/${apt.id}`} onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white hover:bg-white/40">
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-card/20 text-white hover:bg-card/40">
               <Euro className="h-3 w-3" />Checkout
             </Link>
             {apt.stato !== "cancellato" && (
               <button onClick={(e) => { e.stopPropagation(); onStatusChange(apt.id, "cancellato"); }}
-                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-white/20 text-white hover:bg-white/40">
+                className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-card/20 text-white hover:bg-card/40">
                 <XCircle className="h-3 w-3" />Cancella
               </button>
             )}
@@ -289,13 +289,13 @@ function AgendaContent() {
         <button
           onClick={() => setSelectedDate(today)}
           className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-            selectedDate === today ? "border-brown bg-brown text-white" : "border-border bg-white text-brown hover:bg-cream-dark"
+            selectedDate === today ? "border-brown bg-brown text-white" : "border-border bg-card text-brown hover:bg-cream-dark"
           }`}
         >
           Oggi
         </button>
 
-        <div className="flex items-center rounded-lg border border-border bg-white overflow-hidden">
+        <div className="flex items-center rounded-lg border border-border bg-card overflow-hidden">
           <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
             className="px-2.5 py-1.5 text-brown hover:bg-cream-dark transition-colors">
             <ChevronLeft className="h-4 w-4" />
@@ -310,7 +310,7 @@ function AgendaContent() {
         </div>
 
         {/* Week mini strip */}
-        <div className="hidden md:flex items-center gap-0.5 rounded-lg border border-border bg-white p-1">
+        <div className="hidden md:flex items-center gap-0.5 rounded-lg border border-border bg-card p-1">
           {weekDays.map((day) => {
             const isSelected = day.date === selectedDate;
             const isToday = day.date === today;
@@ -338,15 +338,15 @@ function AgendaContent() {
         {/* Right controls */}
         <div className="ml-auto flex items-center gap-2">
           <button onClick={() => setRefreshKey(k => k + 1)}
-            className={`rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark transition-colors ${loading ? "animate-spin" : ""}`}>
+            className={`rounded-lg border border-border bg-card p-1.5 text-muted-foreground hover:bg-cream-dark transition-colors ${loading ? "animate-spin" : ""}`}>
             <RefreshCw className="h-4 w-4" />
           </button>
           <Link href="/impostazioni"
-            className="rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark">
+            className="rounded-lg border border-border bg-card p-1.5 text-muted-foreground hover:bg-cream-dark">
             <Settings2 className="h-4 w-4" />
           </Link>
           <Link href="/agenda/nuovo"
-            className="rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark">
+            className="rounded-lg border border-border bg-card p-1.5 text-muted-foreground hover:bg-cream-dark">
             <CalendarDays className="h-4 w-4" />
           </Link>
           <Link

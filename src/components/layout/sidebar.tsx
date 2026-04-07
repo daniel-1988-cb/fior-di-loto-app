@@ -133,7 +133,7 @@ export function Sidebar() {
                     "lg:justify-center lg:px-0 lg:py-2.5",
                     isActive
                       ? "bg-rose text-white"
-                      : "text-cream/70 hover:bg-white/10 hover:text-cream"
+                      : "text-cream/70 hover:bg-card/10 hover:text-cream"
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
@@ -158,7 +158,7 @@ export function Sidebar() {
             <Link
               href="/impostazioni"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-white/10 hover:text-cream lg:justify-center lg:px-0"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-card/10 hover:text-cream lg:justify-center lg:px-0"
             >
               <Settings className="h-5 w-5 shrink-0" />
               <span className="lg:hidden">{LABELS.nav.impostazioni}</span>
@@ -175,7 +175,7 @@ export function Sidebar() {
           <div className="group relative">
             <button
               onClick={toggle}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-white/10 hover:text-cream lg:justify-center lg:px-0"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-card/10 hover:text-cream lg:justify-center lg:px-0"
             >
               {theme === "dark" ? <Moon className="h-5 w-5 shrink-0" /> : theme === "light" ? <Sun className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0 opacity-60" />}
               <span className="lg:hidden">
@@ -194,7 +194,7 @@ export function Sidebar() {
             <div className="group relative">
               <button
                 type="submit"
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-white/10 hover:text-cream lg:justify-center lg:px-0"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-card/10 hover:text-cream lg:justify-center lg:px-0"
               >
                 <LogOut className="h-5 w-5 shrink-0" />
                 <span className="lg:hidden">Esci</span>

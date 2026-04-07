@@ -92,7 +92,7 @@ export default async function ProdottiPage() {
                         )}
                         <Link
                           href={`/prodotti/${product.id}/modifica`}
-                          className="rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:border-rose/30 hover:text-rose"
+                          className="rounded-lg border border-border bg-card p-1.5 text-muted-foreground hover:border-rose/30 hover:text-rose"
                           title="Modifica"
                         >
                           <Pencil className="h-3.5 w-3.5" />

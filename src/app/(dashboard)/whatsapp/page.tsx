@@ -91,7 +91,7 @@ const SEGMENTO_LABEL: Record<string, string> = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-input bg-white px-3 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
+  "w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
 
 export default function WhatsAppPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -184,7 +184,7 @@ export default function WhatsAppPage() {
               <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
 
               {showDropdown && filteredClients.length > 0 && !selectedClient && (
-                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-white shadow-lg">
+                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
                   {filteredClients.slice(0, 20).map((c) => (
                     <button
                       key={c.id}
@@ -246,7 +246,7 @@ export default function WhatsAppPage() {
                   className={`rounded-lg border px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                     tipoSelezionato === t.tipo
                       ? "border-rose bg-rose/5 text-rose"
-                      : "border-border bg-white text-brown hover:border-rose/40"
+                      : "border-border bg-card text-brown hover:border-rose/40"
                   }`}
                 >
                   <span className="mr-1">{t.emoji}</span>

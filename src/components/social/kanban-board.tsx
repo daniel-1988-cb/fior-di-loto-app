@@ -168,7 +168,7 @@ export function KanbanBoard({
           {/* Column header */}
           <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${col.headerClass}`}>
             <span className="text-sm font-semibold">{col.label}</span>
-            <span className="rounded-full bg-white/40 px-2 py-0.5 text-xs font-semibold">
+            <span className="rounded-full bg-card/40 px-2 py-0.5 text-xs font-semibold">
               {col.count}
             </span>
           </div>

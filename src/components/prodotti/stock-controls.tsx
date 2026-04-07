@@ -36,7 +36,7 @@ export function StockControls({
       <button
         onClick={() => handleDelta(-1)}
         disabled={giacenza === 0 || isPending}
-        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Minus className="h-3.5 w-3.5" />
       </button>
@@ -54,7 +54,7 @@ export function StockControls({
       <button
         onClick={() => handleDelta(1)}
         disabled={isPending}
-        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-white text-muted-foreground hover:border-green-300 hover:bg-green-50 hover:text-green-600 disabled:opacity-40"
+        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:border-green-300 hover:bg-green-50 hover:text-green-600 disabled:opacity-40"
       >
         <Plus className="h-3.5 w-3.5" />
       </button>

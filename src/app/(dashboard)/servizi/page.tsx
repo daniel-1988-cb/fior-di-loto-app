@@ -101,7 +101,7 @@ export default async function ServiziPage() {
                       <h3 className="font-semibold text-brown">{service.nome}</h3>
                       <Link
                         href={`/servizi/${service.id}/modifica`}
-                        className="shrink-0 rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:border-rose/30 hover:text-rose"
+                        className="shrink-0 rounded-lg border border-border bg-card p-1.5 text-muted-foreground hover:border-rose/30 hover:text-rose"
                         title="Modifica"
                       >
                         <Pencil className="h-3.5 w-3.5" />
