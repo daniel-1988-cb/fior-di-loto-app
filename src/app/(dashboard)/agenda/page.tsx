@@ -169,14 +169,6 @@ function AgendaContent() {
   const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -269,15 +261,6 @@ function AgendaContent() {
   // Unassigned appointments
   const unassignedCards = getAptCards(null);
 
-  // Mobile: show 3 columns at a time
-  const MOBILE_COLS = 3;
-  const [mobileGroupIndex, setMobileGroupIndex] = useState(0);
-  const totalGroups = Math.ceil(staffList.length / MOBILE_COLS);
-  const mobileStaff = staffList.slice(
-    mobileGroupIndex * MOBILE_COLS,
-    mobileGroupIndex * MOBILE_COLS + MOBILE_COLS
-  );
-
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 flex flex-col" style={{ height: "calc(100vh - 0px)" }}>
 
@@ -333,31 +316,8 @@ function AgendaContent() {
           {loading ? "..." : <><strong className="text-brown">{totalAppointments}</strong> appuntamenti</>}
         </span>
 
-        {/* Mobile operator group navigation */}
-        {totalGroups > 1 && (
-          <div className="flex md:hidden items-center gap-1 rounded-lg border border-border bg-white overflow-hidden ml-auto">
-            <button
-              onClick={() => setMobileGroupIndex(i => Math.max(0, i - 1))}
-              disabled={mobileGroupIndex === 0}
-              className="px-2 py-1.5 text-brown hover:bg-cream-dark transition-colors disabled:opacity-30"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="px-2 text-xs font-medium text-brown">
-              {mobileGroupIndex * MOBILE_COLS + 1}–{Math.min((mobileGroupIndex + 1) * MOBILE_COLS, staffList.length)} / {staffList.length}
-            </span>
-            <button
-              onClick={() => setMobileGroupIndex(i => Math.min(totalGroups - 1, i + 1))}
-              disabled={mobileGroupIndex === totalGroups - 1}
-              className="px-2 py-1.5 text-brown hover:bg-cream-dark transition-colors disabled:opacity-30"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
         {/* Right controls */}
-        <div className="md:ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <button onClick={() => setRefreshKey(k => k + 1)}
             className={`rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark transition-colors ${loading ? "animate-spin" : ""}`}>
             <RefreshCw className="h-4 w-4" />
@@ -399,25 +359,26 @@ function AgendaContent() {
             ))}
           </div>
 
-          {/* Staff columns — mobile: 3 at a time, desktop: all */}
-          {(isMobile ? mobileStaff : staffList).map(staff => {
+          {/* Staff columns */}
+          {staffList.map(staff => {
             const aptCards = getAptCards(staff.id);
             const onFerie = isOnFerie(staff.id);
 
             return (
-              <div key={staff.id} className="flex-1 min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
+              <div key={staff.id} className="flex-1 min-w-[88px] sm:min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
 
                 {/* Staff header */}
-                <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-white px-2 py-2"
+                <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-card px-2 py-2"
                   style={{ height: 72 }}>
                   <div className="relative">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
+                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-sm font-bold text-white"
                       style={{ backgroundColor: staff.colore }}>
                       {staff.nome[0]}
                     </div>
                     <div className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 2px white, 0 0 0 3.5px ${staff.colore}` }} />
                   </div>
-                  <span className="text-[11px] font-semibold text-brown">{staff.nome}</span>
+                  <span className="hidden sm:block text-[11px] font-semibold text-brown">{staff.nome}</span>
+                  <span className="sm:hidden text-[9px] font-semibold text-brown truncate max-w-[80px] text-center">{staff.nome.split(" ")[0]}</span>
                 </div>
 
                 {/* Time area */}
@@ -471,11 +432,11 @@ function AgendaContent() {
 
           {/* Unassigned column (only if there are unassigned appointments) */}
           {unassignedCards.length > 0 && (
-            <div className="flex-1 min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
-              <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-white px-2 py-2"
+            <div className="flex-1 min-w-[88px] sm:min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col">
+              <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-card px-2 py-2"
                 style={{ height: 72 }}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-500">?</div>
-                <span className="text-[11px] font-semibold text-muted-foreground">Non assegnato</span>
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-500">?</div>
+                <span className="text-[9px] sm:text-[11px] font-semibold text-muted-foreground text-center">N/A</span>
               </div>
               <div className="relative" style={{ height: gridHeightPx }}>
                 {hours.map(h => (
@@ -491,6 +452,34 @@ function AgendaContent() {
           )}
 
         </div>
+      </div>
+
+      {/* ── MOBILE BOTTOM BAR (stile Fresha) ── */}
+      <div className="sm:hidden flex items-center justify-around border-t border-border bg-card px-4 py-2 safe-area-pb">
+        <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+          className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+          className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
+          <CalendarDays className="h-5 w-5" />
+          <span className="text-[9px]">Calendario</span>
+        </button>
+        <Link
+          href={`/agenda/nuovo?data=${selectedDate}`}
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-rose shadow-lg text-white"
+        >
+          <Plus className="h-6 w-6" />
+        </Link>
+        <button onClick={() => setRefreshKey(k => k + 1)}
+          className={`flex flex-col items-center gap-0.5 p-2 text-muted-foreground ${loading ? "animate-spin" : ""}`}>
+          <RefreshCw className="h-5 w-5" />
+          <span className="text-[9px]">Aggiorna</span>
+        </button>
+        <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+          className="flex flex-col items-center gap-0.5 p-2 text-muted-foreground">
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );
