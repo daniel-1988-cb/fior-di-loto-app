@@ -177,17 +177,17 @@ function CheckoutForm({ id }: { id: string }) {
         <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <h2 className="mb-4 font-semibold text-brown">Riepilogo Appuntamento</h2>
           <dl className="space-y-3 text-sm">
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-1">
               <dt className="text-muted-foreground">Cliente</dt>
-              <dd className="font-medium text-brown">{clientName}</dd>
+              <dd className="font-medium text-brown text-right">{clientName}</dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-1">
               <dt className="text-muted-foreground">Servizio</dt>
-              <dd className="font-medium text-brown">{appointment.services?.nome ?? "—"}</dd>
+              <dd className="font-medium text-brown text-right">{appointment.services?.nome ?? "—"}</dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-1">
               <dt className="text-muted-foreground">Data</dt>
-              <dd className="font-medium text-brown">
+              <dd className="font-medium text-brown text-right">
                 {new Date(appointment.data + "T00:00:00").toLocaleDateString("it-IT", {
                   weekday: "short",
                   day: "numeric",
@@ -195,11 +195,11 @@ function CheckoutForm({ id }: { id: string }) {
                 })}
               </dd>
             </div>
-            <div className="flex justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-1">
               <dt className="text-muted-foreground">Ora</dt>
               <dd className="font-medium text-brown">{appointment.ora_inizio.slice(0, 5)}</dd>
             </div>
-            <div className="flex justify-between border-t border-border pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-1 border-t border-border pt-3">
               <dt className="font-semibold text-brown">Prezzo base</dt>
               <dd className="text-xl font-bold text-brown">€{prezzoBase.toFixed(2)}</dd>
             </div>
@@ -315,9 +315,9 @@ function CheckoutForm({ id }: { id: string }) {
 
           {/* Totale e conferma */}
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <span className="text-lg font-semibold text-brown">Totale da pagare</span>
-              <span className="text-3xl font-bold text-rose">€{totale.toFixed(2)}</span>
+              <span className="text-2xl font-bold text-rose sm:text-3xl">€{totale.toFixed(2)}</span>
             </div>
             {(scontoManuale > 0 || scontoVoucher > 0) && (
               <div className="mb-4 space-y-1 text-sm text-muted-foreground">

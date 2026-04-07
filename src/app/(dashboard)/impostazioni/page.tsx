@@ -25,7 +25,7 @@ export default async function ImpostazioniPage() {
 
       {/* Gestione Personale */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold text-brown text-lg">Gestione Personale</h2>
           <Link
             href="/impostazioni/staff/nuovo"

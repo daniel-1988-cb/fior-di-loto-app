@@ -161,9 +161,10 @@ export function KanbanBoard({
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-4" style={{ minWidth: "min(100%, 56rem)" }}>
       {columns.map((col) => (
-        <div key={col.id} className="flex flex-col gap-3">
+        <div key={col.id} className="flex w-[72vw] flex-none flex-col gap-3 sm:w-auto">
           {/* Column header */}
           <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${col.headerClass}`}>
             <span className="text-sm font-semibold">{col.label}</span>
@@ -184,6 +185,7 @@ export function KanbanBoard({
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

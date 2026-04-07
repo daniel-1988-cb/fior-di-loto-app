@@ -163,32 +163,38 @@ export default async function GestionalePage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-cream-dark/50">
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Data</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Descrizione</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Categoria</th>
-                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">Metodo</th>
-                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">Importo</th>
+                  <th className="px-3 py-3 text-left font-medium text-muted-foreground sm:px-5">Data</th>
+                  <th className="px-3 py-3 text-left font-medium text-muted-foreground sm:px-5">Descrizione</th>
+                  <th className="hidden px-5 py-3 text-left font-medium text-muted-foreground sm:table-cell">Categoria</th>
+                  <th className="hidden px-5 py-3 text-left font-medium text-muted-foreground sm:table-cell">Metodo</th>
+                  <th className="px-3 py-3 text-right font-medium text-muted-foreground sm:px-5">Importo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {recentTransactions.map((t) => (
                   <tr key={t.id} className="hover:bg-cream-dark/30">
-                    <td className="px-5 py-3 text-muted-foreground">
+                    <td className="px-3 py-3 text-muted-foreground sm:px-5">
                       {formatDate(t.data)}
                     </td>
-                    <td className="px-5 py-3 text-brown">
+                    <td className="px-3 py-3 text-brown sm:px-5">
                       <div>{t.descrizione}</div>
                       {t.client_nome && (
                         <div className="text-xs text-muted-foreground">
                           {t.client_nome} {t.client_cognome}
                         </div>
                       )}
+                      {/* Su mobile mostra categoria e metodo inline */}
+                      <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground sm:hidden">
+                        <span className="capitalize">{t.categoria}</span>
+                        <span>·</span>
+                        <span>{getMetodoLabel(t.metodo_pagamento)}</span>
+                      </div>
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground capitalize">{t.categoria}</td>
-                    <td className="px-5 py-3 text-muted-foreground">
+                    <td className="hidden px-5 py-3 text-muted-foreground capitalize sm:table-cell">{t.categoria}</td>
+                    <td className="hidden px-5 py-3 text-muted-foreground sm:table-cell">
                       {getMetodoLabel(t.metodo_pagamento)}
                     </td>
-                    <td className={`px-5 py-3 text-right font-semibold ${t.tipo === "entrata" ? "text-success" : "text-red-500"}`}>
+                    <td className={`px-3 py-3 text-right font-semibold sm:px-5 ${t.tipo === "entrata" ? "text-success" : "text-red-500"}`}>
                       {t.tipo === "entrata" ? "+" : "-"}
                       {formatCurrency(Number(t.importo))}
                     </td>

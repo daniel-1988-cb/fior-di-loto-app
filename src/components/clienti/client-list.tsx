@@ -189,9 +189,9 @@ export function ClientList({
                     </span>
                   )}
                   {client.email && (
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {client.email}
+                    <span className="flex max-w-[160px] items-center gap-1 truncate sm:max-w-none">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{client.email}</span>
                     </span>
                   )}
                 </div>
