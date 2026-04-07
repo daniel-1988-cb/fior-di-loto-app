@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Plus } from "lucide-react";
 import { ExportSection } from "@/components/impostazioni/export-section";
+import { ObiettiviTeam } from "@/components/impostazioni/obiettivi-team";
 import { getStaff } from "@/lib/actions/staff";
 
 export default async function ImpostazioniPage() {
@@ -52,10 +54,12 @@ export default async function ImpostazioniPage() {
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div
-                    className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
+                    className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden"
                     style={{ backgroundColor: staff.colore }}
                   >
-                    {staff.nome[0]}
+                    {staff.avatar_url ? (
+                      <Image src={staff.avatar_url} alt={staff.nome} width={40} height={40} className="h-full w-full object-cover" />
+                    ) : staff.nome[0]}
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-brown truncate">{staff.nome} {staff.cognome || ""}</p>
@@ -110,6 +114,9 @@ export default async function ImpostazioniPage() {
           </div>
         </div>
       </div>
+
+      {/* Obiettivi Team */}
+      <ObiettiviTeam staffList={staffList} />
 
       {/* Export / Backup */}
       <ExportSection />
