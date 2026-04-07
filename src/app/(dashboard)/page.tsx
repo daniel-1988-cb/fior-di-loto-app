@@ -13,6 +13,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Phone,
+  Package,
+  UserX,
 } from "lucide-react";
 import Link from "next/link";
 import { getDashboardStats } from "@/lib/actions/clients";
@@ -23,12 +25,14 @@ import {
   getCompleanni,
   getTopServizi,
   getStaffPerformance,
+  getClientiARischio,
+  getProdottiScorteBasse,
 } from "@/lib/actions/dashboard";
 import { formatCurrency } from "@/lib/utils";
 import { VenditeChart, AppuntamentiChart } from "@/components/dashboard/charts";
 
 export default async function DashboardPage() {
-  const [stats, chartData, fatturatoOggi, appOggi, compleanni, topServizi, staffPerf] =
+  const [stats, chartData, fatturatoOggi, appOggi, compleanni, topServizi, staffPerf, clientiARischio, prodottiScorteBasse] =
     await Promise.all([
       getDashboardStats(),
       getDashboardChartData(),
@@ -37,6 +41,8 @@ export default async function DashboardPage() {
       getCompleanni(),
       getTopServizi(),
       getStaffPerformance(),
+      getClientiARischio(),
+      getProdottiScorteBasse(),
     ]);
 
   const percentuale = Math.min(Math.round((stats.entrateMese / 30000) * 100), 100);
@@ -272,6 +278,85 @@ export default async function DashboardPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === ALERT WIDGETS === */}
+      {(clientiARischio.length > 0 || prodottiScorteBasse.length > 0) && (
+        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Clienti a rischio */}
+          {clientiARischio.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-700">
+                <UserX className="h-4 w-4" />
+                Clienti da Riattivare
+                <span className="ml-auto rounded-full bg-amber-200 px-2 py-0.5 text-xs font-bold text-amber-800">
+                  {clientiARischio.length}
+                </span>
+              </h3>
+              <div className="space-y-2">
+                {clientiARischio.slice(0, 5).map((c) => (
+                  <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
+                    <Link href={`/clienti/${c.id}`} className="min-w-0">
+                      <p className="truncate text-sm font-medium text-brown hover:text-rose">
+                        {c.nome} {c.cognome}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.giorni_assenza} giorni fa
+                      </p>
+                    </Link>
+                    {c.telefono && (
+                      <a
+                        href={`https://wa.me/39${c.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(
+                          `Ciao ${c.nome}! ✨ È un po' che non ci vediamo... Abbiamo tante novità per te da Fior di Loto! Quando vuoi fissare un appuntamento? 🌸`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 inline-flex items-center gap-1 rounded-md bg-green-500 px-2 py-0.5 text-xs font-medium text-white hover:bg-green-600"
+                      >
+                        <Phone className="h-3 w-3" />
+                        WA
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {clientiARischio.length > 5 && (
+                <Link href="/clienti" className="mt-2 block text-center text-xs text-amber-600 hover:underline">
+                  Vedi tutti ({clientiARischio.length})
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Scorte basse */}
+          {prodottiScorteBasse.length > 0 && (
+            <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-red-700">
+                <Package className="h-4 w-4" />
+                Scorte in Esaurimento
+                <span className="ml-auto rounded-full bg-red-200 px-2 py-0.5 text-xs font-bold text-red-800">
+                  {prodottiScorteBasse.length}
+                </span>
+              </h3>
+              <div className="space-y-2">
+                {prodottiScorteBasse.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
+                    <Link href={`/prodotti/${p.id}/modifica`} className="min-w-0">
+                      <p className="truncate text-sm font-medium text-brown hover:text-rose">{p.nome}</p>
+                      <p className="text-xs capitalize text-muted-foreground">{p.categoria}</p>
+                    </Link>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${p.giacenza === 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                      {p.giacenza === 0 ? "Esaurito" : `${p.giacenza} pz`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/prodotti" className="mt-2 block text-center text-xs text-red-600 hover:underline">
+                Gestisci prodotti
+              </Link>
             </div>
           )}
         </div>

@@ -338,3 +338,88 @@ export async function getStaffPerformance(): Promise<StaffPerformanceItem[]> {
     return [];
   }
 }
+
+// ============================================
+// CLIENTI A RISCHIO (non vengono da 60+ giorni)
+// ============================================
+
+export type ClienteARischio = {
+  id: string;
+  nome: string;
+  cognome: string;
+  telefono: string | null;
+  ultima_visita: string | null;
+  giorni_assenza: number;
+  segmento: string;
+};
+
+export async function getClientiARischio(giorniSoglia = 60): Promise<ClienteARischio[]> {
+  try {
+    const supabase = createAdminClient();
+    const soglia = new Date();
+    soglia.setDate(soglia.getDate() - giorniSoglia);
+    const sogliaStr = soglia.toISOString().slice(0, 10);
+
+    const { data: rows } = await supabase
+      .from("clients")
+      .select("id, nome, cognome, telefono, ultima_visita, segmento")
+      .not("ultima_visita", "is", null)
+      .lte("ultima_visita", sogliaStr)
+      .neq("segmento", "lead")
+      .order("ultima_visita", { ascending: true })
+      .limit(10);
+
+    const today = new Date();
+    return (rows || []).map((r) => {
+      const lastVisit = new Date(String(r.ultima_visita) + "T00:00:00");
+      const giorni = Math.floor((today.getTime() - lastVisit.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        id: r.id as string,
+        nome: r.nome as string,
+        cognome: r.cognome as string,
+        telefono: (r.telefono as string) || null,
+        ultima_visita: r.ultima_visita as string,
+        giorni_assenza: giorni,
+        segmento: (r.segmento as string) || "—",
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ============================================
+// PRODOTTI SCORTE BASSE
+// ============================================
+
+export type ProdottoScortaBassa = {
+  id: string;
+  nome: string;
+  categoria: string;
+  giacenza: number;
+  soglia_alert: number;
+};
+
+export async function getProdottiScorteBasse(): Promise<ProdottoScortaBassa[]> {
+  try {
+    const supabase = createAdminClient();
+    const { data: rows } = await supabase
+      .from("products")
+      .select("id, nome, categoria, giacenza, soglia_alert")
+      .eq("attivo", true)
+      .order("giacenza", { ascending: true })
+      .limit(20);
+
+    return (rows || [])
+      .filter((r) => Number(r.giacenza) <= Number(r.soglia_alert ?? 5))
+      .map((r) => ({
+        id: r.id as string,
+        nome: r.nome as string,
+        categoria: r.categoria as string,
+        giacenza: Number(r.giacenza),
+        soglia_alert: Number(r.soglia_alert ?? 5),
+      }));
+  } catch {
+    return [];
+  }
+}

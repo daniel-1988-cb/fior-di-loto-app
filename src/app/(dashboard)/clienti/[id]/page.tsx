@@ -11,8 +11,12 @@ import {
   Edit,
   MessageCircle,
   Tag,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
-import { getClient, getClientInteractions } from "@/lib/actions/clients";
+import { getClient, getClientInteractions, getClientAppointments } from "@/lib/actions/clients";
 import { formatPhone, formatDate, formatCurrency } from "@/lib/utils";
 import { AddInteractionForm } from "@/components/clienti/add-interaction-form";
 
@@ -70,7 +74,10 @@ export default async function ClienteDetailPage({
     notFound();
   }
 
-  const interactions = await getClientInteractions(id);
+  const [interactions, appointments] = await Promise.all([
+    getClientInteractions(id),
+    getClientAppointments(id),
+  ]);
   const tags: string[] = Array.isArray(client.tags) ? client.tags as string[] : (typeof client.tags === "string" ? (() => { try { return JSON.parse(client.tags as string) as string[]; } catch { return [] as string[]; } })() : []);
 
   return (
@@ -222,7 +229,64 @@ export default async function ClienteDetailPage({
         </div>
 
         {/* Right Column — History */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Appointment History */}
+          {appointments.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <h2 className="mb-4 font-semibold text-brown">
+                Storico Appuntamenti ({appointments.length})
+              </h2>
+              <div className="space-y-2">
+                {(appointments as Record<string, unknown>[]).map((apt) => {
+                  const stato = apt.stato as string;
+                  const service = apt.services as { nome?: string; prezzo?: number } | null;
+                  const staff = apt.staff as { nome?: string; cognome?: string; colore?: string } | null;
+                  const dataStr = String(apt.data || "").slice(0, 10);
+                  const oraStr = String(apt.ora_inizio || "").slice(0, 5);
+                  const dataFormatted = dataStr ? new Date(dataStr + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" }) : "—";
+
+                  const statoConfig: Record<string, { icon: import("react").ReactElement; label: string; color: string }> = {
+                    completato: { icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: "Completato", color: "text-success bg-success/10" },
+                    confermato: { icon: <Clock className="h-3.5 w-3.5" />, label: "Confermato", color: "text-info bg-info/10" },
+                    no_show: { icon: <XCircle className="h-3.5 w-3.5" />, label: "No-show", color: "text-destructive bg-destructive/10" },
+                    cancellato: { icon: <AlertCircle className="h-3.5 w-3.5" />, label: "Cancellato", color: "text-muted-foreground bg-muted" },
+                  };
+                  const s = statoConfig[stato] || statoConfig.confermato;
+
+                  return (
+                    <div key={apt.id as string} className="flex items-center gap-3 rounded-lg border border-border/60 bg-cream-dark/30 px-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ${s.color}`}>
+                            {s.icon}
+                            {s.label}
+                          </span>
+                          <span className="text-sm font-medium text-brown truncate">
+                            {service?.nome || "—"}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{dataFormatted} {oraStr && `• ${oraStr}`}</span>
+                          {staff && (
+                            <span className="flex items-center gap-1">
+                              <span className="h-2 w-2 rounded-full inline-block" style={{ backgroundColor: staff.colore || "#e8a4a4" }} />
+                              {staff.nome}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {service?.prezzo != null && service.prezzo > 0 && stato === "completato" && (
+                        <span className="shrink-0 text-sm font-semibold text-brown">
+                          €{Number(service.prezzo).toFixed(0)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <h2 className="mb-4 font-semibold text-brown">
               Storico Interazioni ({interactions.length})

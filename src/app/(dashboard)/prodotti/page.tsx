@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Plus, AlertTriangle, Package, Pencil } from "lucide-react";
 import { getProducts } from "@/lib/actions/products";
 import { formatCurrency } from "@/lib/utils";
+import { StockControls } from "@/components/prodotti/stock-controls";
 
 type Product = {
   id: string;
@@ -110,14 +111,16 @@ export default async function ProdottiPage() {
                           {formatCurrency(Number(product.prezzo))}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex flex-col items-end gap-1">
                         <p className="text-xs text-muted-foreground">Giacenza</p>
-                        <p className={`font-semibold ${product.low_stock ? "text-amber-600" : "text-brown"}`}>
-                          {product.giacenza} pz
-                        </p>
+                        <StockControls
+                          productId={product.id}
+                          initialGiacenza={product.giacenza}
+                          sogliaAlert={product.soglia_alert}
+                        />
                         {product.low_stock && (
                           <p className="text-xs text-amber-500">
-                            Alert: ≤{product.soglia_alert}
+                            Soglia: {product.soglia_alert}
                           </p>
                         )}
                       </div>

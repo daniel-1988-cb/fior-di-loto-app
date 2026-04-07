@@ -258,3 +258,17 @@ export async function getDashboardStats() {
     compleanniSettimana,
   };
 }
+
+export async function getClientAppointments(clientId: string) {
+  if (!isValidUUID(clientId)) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("id, data, ora_inizio, stato, services(nome, prezzo), staff(nome, cognome, colore)")
+    .eq("client_id", clientId)
+    .order("data", { ascending: false })
+    .order("ora_inizio", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data || [];
+}
