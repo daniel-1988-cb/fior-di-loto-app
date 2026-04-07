@@ -16,8 +16,10 @@ import {
   Menu,
   X,
   Gift,
+  Sun,
+  Moon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { LABELS } from "@/lib/constants/italian";
 
@@ -33,9 +35,37 @@ const navigation = [
   { name: LABELS.nav.social, href: "/social", icon: Share2 },
 ];
 
+function useTheme() {
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
+    if (saved) setTheme(saved);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    if (theme === "light") root.classList.add("light");
+    else if (theme === "dark") root.classList.add("dark");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggle = () => {
+    setTheme(t => {
+      if (t === "system") return "dark";
+      if (t === "dark") return "light";
+      return "system";
+    });
+  };
+
+  return { theme, toggle };
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, toggle } = useTheme();
 
   return (
     <>
@@ -112,9 +142,9 @@ export function Sidebar() {
 
                 {/* Tooltip — desktop only */}
                 <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-                  <div className="whitespace-nowrap rounded-md bg-brown-dark px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                  <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
                     {item.name}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown-dark" />
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
                   </div>
                 </div>
               </div>
@@ -134,9 +164,28 @@ export function Sidebar() {
               <span className="lg:hidden">{LABELS.nav.impostazioni}</span>
             </Link>
             <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-              <div className="whitespace-nowrap rounded-md bg-brown-dark px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+              <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
                 {LABELS.nav.impostazioni}
-                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown-dark" />
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Theme toggle */}
+          <div className="group relative">
+            <button
+              onClick={toggle}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-cream/70 hover:bg-white/10 hover:text-cream lg:justify-center lg:px-0"
+            >
+              {theme === "dark" ? <Moon className="h-5 w-5 shrink-0" /> : theme === "light" ? <Sun className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0 opacity-60" />}
+              <span className="lg:hidden">
+                {theme === "dark" ? "Tema scuro" : theme === "light" ? "Tema chiaro" : "Tema sistema"}
+              </span>
+            </button>
+            <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
+              <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                {theme === "dark" ? "Tema scuro" : theme === "light" ? "Tema chiaro" : "Tema sistema"}
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
               </div>
             </div>
           </div>
@@ -151,9 +200,9 @@ export function Sidebar() {
                 <span className="lg:hidden">Esci</span>
               </button>
               <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 lg:group-hover:block">
-                <div className="whitespace-nowrap rounded-md bg-brown-dark px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
+                <div className="whitespace-nowrap rounded-md bg-[#2a1d14] px-2.5 py-1 text-xs font-medium text-cream shadow-lg">
                   Esci
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown-dark" />
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a1d14]" />
                 </div>
               </div>
             </div>

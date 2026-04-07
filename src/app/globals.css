@@ -57,6 +57,57 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Dark mode: segue il tema del dispositivo oppure classe .dark ── */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-background: #1a1612;
+    --color-foreground: #f0e8df;
+    --color-card: #241e19;
+    --color-card-foreground: #f0e8df;
+    --color-muted: #2e2520;
+    --color-muted-foreground: #a89484;
+    --color-border: #3d3028;
+    --color-input: #3d3028;
+    --color-accent: #2e2520;
+    --color-accent-foreground: #f0e8df;
+    --color-cream: #f0e8df;
+    --color-cream-dark: #2e2520;
+  }
+}
+
+/* Classe .dark per override manuale */
+html.dark {
+  --color-background: #1a1612;
+  --color-foreground: #f0e8df;
+  --color-card: #241e19;
+  --color-card-foreground: #f0e8df;
+  --color-muted: #2e2520;
+  --color-muted-foreground: #a89484;
+  --color-border: #3d3028;
+  --color-input: #3d3028;
+  --color-accent: #2e2520;
+  --color-accent-foreground: #f0e8df;
+  --color-cream: #f0e8df;
+  --color-cream-dark: #2e2520;
+}
+
+/* Classe .light per forzare tema chiaro */
+html.light {
+  --color-background: #FDF6F0;
+  --color-foreground: #3D2B1F;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #3D2B1F;
+  --color-muted: #F5F0EB;
+  --color-muted-foreground: #8B7D6B;
+  --color-border: #E8DDD3;
+  --color-input: #E8DDD3;
+  --color-accent: #F5E6D8;
+  --color-accent-foreground: #3D2B1F;
+  --color-cream: #FDF6F0;
+  --color-cream-dark: #F5E6D8;
 }
 
 /* Scrollbar styling */
