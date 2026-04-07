@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme inline {
+@theme {
   /* Brand Colors - Fior di Loto */
   --color-rose: #C97A7A;
   --color-rose-light: #E8B4B4;
@@ -13,22 +13,22 @@
   --color-brown: #3D2B1F;
   --color-brown-light: #5C4333;
 
-  /* Semantic Colors */
-  --color-background: var(--color-cream);
-  --color-foreground: var(--color-brown);
+  /* Semantic Colors — valori diretti (no var()) per generare utility con var() */
+  --color-background: #FDF6F0;
+  --color-foreground: #3D2B1F;
   --color-card: #FFFFFF;
-  --color-card-foreground: var(--color-brown);
-  --color-primary: var(--color-rose);
+  --color-card-foreground: #3D2B1F;
+  --color-primary: #C97A7A;
   --color-primary-foreground: #FFFFFF;
-  --color-secondary: var(--color-gold);
+  --color-secondary: #C8A96E;
   --color-secondary-foreground: #FFFFFF;
   --color-muted: #F5F0EB;
   --color-muted-foreground: #8B7D6B;
   --color-border: #E8DDD3;
   --color-input: #E8DDD3;
-  --color-ring: var(--color-rose);
-  --color-accent: var(--color-cream-dark);
-  --color-accent-foreground: var(--color-brown);
+  --color-ring: #C97A7A;
+  --color-accent: #F5E6D8;
+  --color-accent-foreground: #3D2B1F;
 
   /* Status Colors */
   --color-success: #4CAF50;
@@ -37,10 +37,10 @@
   --color-info: #2196F3;
 
   /* Sidebar */
-  --color-sidebar: var(--color-brown);
-  --color-sidebar-foreground: var(--color-cream);
-  --color-sidebar-hover: var(--color-brown-light);
-  --color-sidebar-active: var(--color-rose);
+  --color-sidebar: #3D2B1F;
+  --color-sidebar-foreground: #FDF6F0;
+  --color-sidebar-hover: #5C4333;
+  --color-sidebar-active: #C97A7A;
 
   /* Fonts */
   --font-sans: var(--font-inter);
