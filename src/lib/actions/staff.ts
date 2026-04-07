@@ -137,6 +137,95 @@ export async function createStaff(data: Partial<Staff>): Promise<Staff> {
 }
 
 // ============================================
+// PERFORMANCE
+// ============================================
+
+export type StaffPerformance = {
+  appuntamenti: number;
+  appuntamentiPrecedenti: number;
+  vendite: number;
+  venditePreced: number;
+  noShow: number;
+  cancellati: number;
+  dailyData: { data: string; appuntamenti: number; vendite: number }[];
+};
+
+export async function getStaffPerformance(
+  staffId: string,
+  periodo: "settimana" | "mese" | "mese_scorso" = "settimana"
+): Promise<StaffPerformance> {
+  if (!isValidUUID(staffId)) throw new Error("ID non valido");
+  const supabase = createAdminClient();
+
+  const now = new Date();
+  let dataInizio: string, dataFine: string, prevInizio: string, prevFine: string;
+
+  if (periodo === "settimana") {
+    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const monday = new Date(now); monday.setDate(now.getDate() - dow); monday.setHours(0,0,0,0);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    dataInizio = monday.toISOString().slice(0,10);
+    dataFine = sunday.toISOString().slice(0,10);
+    const prevMonday = new Date(monday); prevMonday.setDate(monday.getDate() - 7);
+    const prevSunday = new Date(prevMonday); prevSunday.setDate(prevMonday.getDate() + 6);
+    prevInizio = prevMonday.toISOString().slice(0,10);
+    prevFine = prevSunday.toISOString().slice(0,10);
+  } else {
+    const y = now.getFullYear(), m = now.getMonth();
+    const target = periodo === "mese_scorso" ? (m === 0 ? 11 : m - 1) : m;
+    const ty = periodo === "mese_scorso" && m === 0 ? y - 1 : y;
+    dataInizio = `${ty}-${String(target+1).padStart(2,"0")}-01`;
+    dataFine = new Date(ty, target+1, 0).toISOString().slice(0,10);
+    const pm = target === 0 ? 11 : target - 1;
+    const py = target === 0 ? ty - 1 : ty;
+    prevInizio = `${py}-${String(pm+1).padStart(2,"0")}-01`;
+    prevFine = new Date(py, pm+1, 0).toISOString().slice(0,10);
+  }
+
+  const [curr, prev] = await Promise.all([
+    supabase.from("appointments")
+      .select("id, data, stato, services(prezzo)")
+      .eq("staff_id", staffId)
+      .gte("data", dataInizio).lte("data", dataFine),
+    supabase.from("appointments")
+      .select("id, stato, services(prezzo)")
+      .eq("staff_id", staffId)
+      .gte("data", prevInizio).lte("data", prevFine),
+  ]);
+
+  const currData = (curr.data || []) as any[];
+  const prevData = (prev.data || []) as any[];
+
+  const completati = currData.filter(a => a.stato === "completato");
+  const prevCompletati = prevData.filter(a => a.stato === "completato");
+
+  const vendite = completati.reduce((s: number, a: any) => s + (Number(a.services?.prezzo) || 0), 0);
+  const venditePreced = prevCompletati.reduce((s: number, a: any) => s + (Number(a.services?.prezzo) || 0), 0);
+
+  // Daily breakdown
+  const dailyMap: Record<string, { appuntamenti: number; vendite: number }> = {};
+  completati.forEach((a: any) => {
+    if (!dailyMap[a.data]) dailyMap[a.data] = { appuntamenti: 0, vendite: 0 };
+    dailyMap[a.data].appuntamenti++;
+    dailyMap[a.data].vendite += Number(a.services?.prezzo) || 0;
+  });
+
+  const dailyData = Object.entries(dailyMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([data, v]) => ({ data: new Date(data+"T00:00:00").toLocaleDateString("it-IT", { day:"numeric", month:"short" }), ...v }));
+
+  return {
+    appuntamenti: completati.length,
+    appuntamentiPrecedenti: prevCompletati.length,
+    vendite,
+    venditePreced,
+    noShow: currData.filter(a => a.stato === "no_show").length,
+    cancellati: currData.filter(a => a.stato === "cancellato").length,
+    dailyData,
+  };
+}
+
+// ============================================
 // AVATAR UPLOAD
 // ============================================
 
