@@ -60,43 +60,42 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ── Dark mode: segue il tema del dispositivo oppure classe .dark ── */
+/* ── Dark mode stile Fresha: nero neutro, alto contrasto ── */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --color-background: #1a1612;
-    --color-foreground: #f0e8df;
-    --color-card: #241e19;
-    --color-card-foreground: #f0e8df;
-    --color-muted: #2e2520;
-    --color-muted-foreground: #a89484;
-    --color-border: #3d3028;
-    --color-input: #3d3028;
-    --color-accent: #2e2520;
-    --color-accent-foreground: #f0e8df;
-    --color-cream: #f0e8df;
-    --color-cream-dark: #2e2520;
-    --color-brown: #f0e8df;
-    --color-brown-light: #c8bdb5;
+    --color-background: #111113;
+    --color-foreground: #f2f2f5;
+    --color-card: #1c1c1f;
+    --color-card-foreground: #f2f2f5;
+    --color-muted: #232328;
+    --color-muted-foreground: #8e8e9a;
+    --color-border: #2a2a30;
+    --color-input: #2a2a30;
+    --color-accent: #232328;
+    --color-accent-foreground: #f2f2f5;
+    --color-cream: #f2f2f5;
+    --color-cream-dark: #232328;
+    --color-brown: #f2f2f5;
+    --color-brown-light: #b0b0be;
   }
 }
 
 /* Classe .dark per override manuale */
 html.dark {
-  --color-background: #1a1612;
-  --color-foreground: #f0e8df;
-  --color-card: #241e19;
-  --color-card-foreground: #f0e8df;
-  --color-muted: #2e2520;
-  --color-muted-foreground: #a89484;
-  --color-border: #3d3028;
-  --color-input: #3d3028;
-  --color-accent: #2e2520;
-  --color-accent-foreground: #f0e8df;
-  --color-cream: #f0e8df;
-  --color-cream-dark: #2e2520;
-  /* Brown si inverte: diventa chiaro su sfondo scuro */
-  --color-brown: #f0e8df;
-  --color-brown-light: #c8bdb5;
+  --color-background: #111113;
+  --color-foreground: #f2f2f5;
+  --color-card: #1c1c1f;
+  --color-card-foreground: #f2f2f5;
+  --color-muted: #232328;
+  --color-muted-foreground: #8e8e9a;
+  --color-border: #2a2a30;
+  --color-input: #2a2a30;
+  --color-accent: #232328;
+  --color-accent-foreground: #f2f2f5;
+  --color-cream: #f2f2f5;
+  --color-cream-dark: #232328;
+  --color-brown: #f2f2f5;
+  --color-brown-light: #b0b0be;
 }
 
 /* Classe .light per forzare tema chiaro */

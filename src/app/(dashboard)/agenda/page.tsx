@@ -71,6 +71,21 @@ function getCategoriaAbbr(categoria: string) {
   return map[categoria?.toLowerCase()] || categoria?.toUpperCase().slice(0, 4) || "";
 }
 
+function useIsDark() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const check = () => setDark(document.documentElement.classList.contains("dark") ||
+      (!document.documentElement.classList.contains("light") && window.matchMedia("(prefers-color-scheme: dark)").matches));
+    check();
+    const mo = new MutationObserver(check);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", check);
+    return () => { mo.disconnect(); mq.removeEventListener("change", check); };
+  }, []);
+  return dark;
+}
+
 function AppointmentCard({
   apt, topPx, heightPx, staffColor, onStatusChange,
 }: {
@@ -78,6 +93,7 @@ function AppointmentCard({
   onStatusChange: (id: string, stato: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const isDark = useIsDark();
   const startTime = apt.ora_inizio.slice(0, 5);
   const endTime = apt.ora_fine ? apt.ora_fine.slice(0, 5) : null;
   const clientName = apt.clients ? `${apt.clients.nome} ${apt.clients.cognome}` : "Cliente";
@@ -88,14 +104,23 @@ function AppointmentCard({
   const isCompleted = apt.stato === "completato";
   const isNoShow = apt.stato === "no_show";
 
-  const bgColor = isCancelled || isNoShow
-    ? "rgba(156,163,175,0.15)"
-    : isCompleted
-    ? hexToRgba(staffColor, 0.25)
-    : hexToRgba(staffColor, 0.18);
+  // Dark mode: opacità alta + testo bianco (stile Fresha)
+  // Light mode: opacità bassa + testo scuro
+  const bgAlpha = isDark
+    ? (isCancelled || isNoShow ? 0.18 : isCompleted ? 0.55 : 0.45)
+    : (isCancelled || isNoShow ? 0.15 : isCompleted ? 0.25 : 0.18);
 
-  const borderColor = isCancelled || isNoShow ? "#9ca3af" : staffColor;
-  const textColor = isCancelled || isNoShow ? "#9ca3af" : "#1a1a2e";
+  const bgColor = isCancelled || isNoShow
+    ? (isDark ? "rgba(120,120,130,0.22)" : "rgba(156,163,175,0.15)")
+    : hexToRgba(staffColor, bgAlpha);
+
+  const borderColor = isCancelled || isNoShow ? (isDark ? "#6b6b7a" : "#9ca3af") : staffColor;
+  const textColor = isDark
+    ? (isCancelled || isNoShow ? "#8e8e9a" : "#f2f2f5")
+    : (isCancelled || isNoShow ? "#9ca3af" : "#1a1a2e");
+  const subTextColor = isDark
+    ? (isCancelled || isNoShow ? "#6b6b7a" : "#c8c8d4")
+    : (isCancelled ? "#9ca3af" : "#6b7280");
 
   return (
     <div
@@ -104,7 +129,9 @@ function AppointmentCard({
         top: topPx, height: heightPx, zIndex: hovered ? 30 : 10,
         backgroundColor: bgColor,
         borderLeft: `3px solid ${borderColor}`,
-        boxShadow: hovered ? "0 4px 12px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.06)",
+        boxShadow: hovered
+          ? (isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 4px 12px rgba(0,0,0,0.12)")
+          : (isDark ? "0 1px 4px rgba(0,0,0,0.3)" : "0 1px 3px rgba(0,0,0,0.06)"),
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -119,12 +146,12 @@ function AppointmentCard({
             {clientName}
           </p>
           {heightPx > 48 && serviceName && (
-            <p className="text-[10px] leading-tight truncate" style={{ color: isCancelled ? "#9ca3af" : "#6b7280" }}>
+            <p className="text-[10px] leading-tight truncate" style={{ color: subTextColor }}>
               {abbr ? `${abbr} | ` : ""}{serviceName}
             </p>
           )}
           {apt.note && heightPx > 68 && (
-            <p className="text-[10px] italic leading-tight truncate text-muted-foreground">{apt.note}</p>
+            <p className="text-[10px] italic leading-tight truncate" style={{ color: subTextColor }}>{apt.note}</p>
           )}
         </div>
       ) : (
