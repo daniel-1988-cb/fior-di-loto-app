@@ -169,6 +169,14 @@ function AgendaContent() {
   const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -261,6 +269,15 @@ function AgendaContent() {
   // Unassigned appointments
   const unassignedCards = getAptCards(null);
 
+  // Mobile: show 3 columns at a time
+  const MOBILE_COLS = 3;
+  const [mobileGroupIndex, setMobileGroupIndex] = useState(0);
+  const totalGroups = Math.ceil(staffList.length / MOBILE_COLS);
+  const mobileStaff = staffList.slice(
+    mobileGroupIndex * MOBILE_COLS,
+    mobileGroupIndex * MOBILE_COLS + MOBILE_COLS
+  );
+
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 flex flex-col" style={{ height: "calc(100vh - 0px)" }}>
 
@@ -316,8 +333,31 @@ function AgendaContent() {
           {loading ? "..." : <><strong className="text-brown">{totalAppointments}</strong> appuntamenti</>}
         </span>
 
+        {/* Mobile operator group navigation */}
+        {totalGroups > 1 && (
+          <div className="flex md:hidden items-center gap-1 rounded-lg border border-border bg-white overflow-hidden ml-auto">
+            <button
+              onClick={() => setMobileGroupIndex(i => Math.max(0, i - 1))}
+              disabled={mobileGroupIndex === 0}
+              className="px-2 py-1.5 text-brown hover:bg-cream-dark transition-colors disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="px-2 text-xs font-medium text-brown">
+              {mobileGroupIndex * MOBILE_COLS + 1}–{Math.min((mobileGroupIndex + 1) * MOBILE_COLS, staffList.length)} / {staffList.length}
+            </span>
+            <button
+              onClick={() => setMobileGroupIndex(i => Math.min(totalGroups - 1, i + 1))}
+              disabled={mobileGroupIndex === totalGroups - 1}
+              className="px-2 py-1.5 text-brown hover:bg-cream-dark transition-colors disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Right controls */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="md:ml-auto flex items-center gap-2">
           <button onClick={() => setRefreshKey(k => k + 1)}
             className={`rounded-lg border border-border bg-white p-1.5 text-muted-foreground hover:bg-cream-dark transition-colors ${loading ? "animate-spin" : ""}`}>
             <RefreshCw className="h-4 w-4" />
@@ -359,8 +399,8 @@ function AgendaContent() {
             ))}
           </div>
 
-          {/* Staff columns */}
-          {staffList.map(staff => {
+          {/* Staff columns — mobile: 3 at a time, desktop: all */}
+          {(isMobile ? mobileStaff : staffList).map(staff => {
             const aptCards = getAptCards(staff.id);
             const onFerie = isOnFerie(staff.id);
 
