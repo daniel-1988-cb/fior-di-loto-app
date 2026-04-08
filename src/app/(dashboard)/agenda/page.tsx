@@ -104,59 +104,53 @@ function AppointmentCard({
  const isCompleted = apt.stato === "completato";
  const isNoShow = apt.stato === "no_show";
 
- // Dark mode: opacità alta + testo bianco (stile Fresha)
- // Light mode: opacità bassa + testo scuro
- const bgAlpha = isDark
-  ? (isCancelled || isNoShow ? 0.18 : isCompleted ? 0.55 : 0.45)
-  : (isCancelled || isNoShow ? 0.15 : isCompleted ? 0.25 : 0.18);
-
+ // Stile Fresha: blocchi solidi con testo contrastato
+ const bgAlpha = isCancelled || isNoShow ? 0.12 : isCompleted ? 0.75 : 0.82;
  const bgColor = isCancelled || isNoShow
-  ? (isDark ? "rgba(120,120,130,0.22)" : "rgba(156,163,175,0.15)")
+  ? (isDark ? "rgba(100,100,110,0.18)" : "rgba(156,163,175,0.12)")
   : hexToRgba(staffColor, bgAlpha);
+ const borderColor = isCancelled || isNoShow ? (isDark ? "#555560" : "#9ca3af") : staffColor;
 
- const borderColor = isCancelled || isNoShow ? (isDark ? "#6b6b7a" : "#9ca3af") : staffColor;
- const textColor = isDark
-  ? (isCancelled || isNoShow ? "#8e8e9a" : "#f2f2f5")
-  : (isCancelled || isNoShow ? "#9ca3af" : "#1a1a2e");
- const subTextColor = isDark
-  ? (isCancelled || isNoShow ? "#6b6b7a" : "#c8c8d4")
-  : (isCancelled ? "#9ca3af" : "#6b7280");
+ // Testo: bianco su blocchi scuri/medi
+ const textColor = isCancelled || isNoShow
+  ? (isDark ? "#6b6b7a" : "#9ca3af")
+  : "#ffffff";
+ const subTextColor = isCancelled || isNoShow
+  ? (isDark ? "#555560" : "#9ca3af")
+  : "rgba(255,255,255,0.8)";
+ const timeColor = isCancelled || isNoShow
+  ? (isDark ? "#555560" : "#9ca3af")
+  : "rgba(255,255,255,0.9)";
 
  return (
   <div
-   className="absolute left-1 right-1 cursor-pointer overflow-hidden rounded-lg transition-all"
+   className="absolute left-0.5 right-0.5 cursor-pointer overflow-hidden rounded-md transition-all"
    style={{
-    top: topPx, height: heightPx, zIndex: hovered ? 30 : 10,
+    top: topPx + 1, height: heightPx - 2, zIndex: hovered ? 30 : 10,
     backgroundColor: bgColor,
     borderLeft: `3px solid ${borderColor}`,
-    boxShadow: hovered
-     ? (isDark ? "0 4px 16px rgba(0,0,0,0.5)" : "0 4px 12px rgba(0,0,0,0.12)")
-     : (isDark ? "0 1px 4px rgba(0,0,0,0.3)" : "0 1px 3px rgba(0,0,0,0.06)"),
    }}
    onMouseEnter={() => setHovered(true)}
    onMouseLeave={() => setHovered(false)}
   >
    {!hovered ? (
-    <div className="px-2 py-1.5 h-full flex flex-col gap-0.5 overflow-hidden">
-     <p className="text-[10px] font-medium leading-none" style={{ color: borderColor }}>
-      {startTime}{endTime ? ` - ${endTime}` : ""}
-      {isCompleted && <span className="ml-1">✓</span>}
+    <div className="px-1.5 py-1 h-full flex flex-col gap-0 overflow-hidden">
+     <p className="text-[9px] font-semibold leading-none truncate" style={{ color: timeColor }}>
+      {startTime}{endTime ? `–${endTime}` : ""}
+      {isCompleted && " ✓"}
      </p>
-     <p className="text-xs font-bold leading-tight truncate" style={{ color: textColor }}>
+     <p className="text-[11px] font-bold leading-tight truncate mt-0.5" style={{ color: textColor }}>
       {clientName}
      </p>
-     {heightPx > 48 && serviceName && (
-      <p className="text-[10px] leading-tight truncate" style={{ color: subTextColor }}>
+     {heightPx > 52 && serviceName && (
+      <p className="text-[9px] leading-tight truncate" style={{ color: subTextColor }}>
        {abbr ? `${abbr} | ` : ""}{serviceName}
       </p>
      )}
-     {apt.note && heightPx > 68 && (
-      <p className="text-[10px] italic leading-tight truncate" style={{ color: subTextColor }}>{apt.note}</p>
-     )}
     </div>
    ) : (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-lg p-2"
-     style={{ backgroundColor: hexToRgba(staffColor, 0.95) }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-md p-2"
+     style={{ backgroundColor: hexToRgba(staffColor, 0.97) }}>
      <p className="text-[11px] font-bold text-white truncate max-w-full px-1">{clientName}</p>
      <p className="text-[10px] text-white/80 truncate max-w-full px-1">{serviceName}</p>
      <div className="flex flex-wrap gap-1 justify-center mt-1">
@@ -378,7 +372,7 @@ function AgendaContent() {
      </Link>
      <Link
       href={`/agenda/nuovo?data=${selectedDate}`}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-brown px-3 py-1.5 text-sm font-semibold text-white hover:bg-brown/90"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-rose px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-dark"
      >
       <Plus className="h-4 w-4" />
       Aggiungi
@@ -398,7 +392,7 @@ function AgendaContent() {
      {/* Hour labels column */}
      <div className="sticky left-0 z-20 w-10 sm:w-14 shrink-0 bg-card border-r border-border">
       {/* Spacer for staff header */}
-      <div className="h-[72px] border-b border-border bg-card" />
+      <div className="h-[80px] border-b border-border bg-card" />
       {hours.map(h => (
        <div key={h} className="flex items-start justify-end pr-2"
         style={{ height: HOUR_HEIGHT }}>
@@ -421,20 +415,19 @@ function AgendaContent() {
       return (
        <div key={staff.id} className={`flex-1 min-w-[88px] sm:min-w-[160px] max-w-[280px] border-r border-border/50 flex flex-col ${inMobileView ? "" : "hidden sm:flex"}`}>
 
-        {/* Staff header */}
-        <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1 border-b border-border bg-card px-2 py-2"
-         style={{ height: 72 }}>
+        {/* Staff header — stile Fresha: foto grande centrata */}
+        <div className="sticky top-0 z-20 flex flex-col items-center justify-center gap-1.5 border-b border-border bg-card px-1 py-3"
+         style={{ height: 80 }}>
          <div className="relative">
-          <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-sm font-bold text-white overflow-hidden"
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full text-sm font-bold text-white overflow-hidden"
            style={{ backgroundColor: staff.colore }}>
            {(staff as any).avatar_url ? (
-            <Image src={(staff as any).avatar_url} alt={staff.nome} width={40} height={40} className="h-full w-full object-cover" />
-           ) : staff.nome[0]}
+            <Image src={(staff as any).avatar_url} alt={staff.nome} width={48} height={48} className="h-full w-full object-cover" />
+           ) : <span className="text-base font-bold text-white">{staff.nome[0]}</span>}
           </div>
-          <div className="absolute inset-0 rounded-full" style={{ boxShadow: `0 0 0 2px white, 0 0 0 3.5px ${staff.colore}` }} />
+          <div className="absolute inset-0 rounded-full ring-2 ring-offset-1 ring-offset-card" style={{ boxShadow: `0 0 0 2px ${staff.colore}` }} />
          </div>
-         <span className="hidden sm:block text-[11px] font-semibold text-brown">{staff.nome}</span>
-         <span className="sm:hidden text-[9px] font-semibold text-brown truncate max-w-[80px] text-center">{staff.nome.split(" ")[0]}</span>
+         <span className="text-[10px] sm:text-[11px] font-semibold text-brown truncate max-w-[90px] text-center leading-tight">{staff.nome}</span>
         </div>
 
         {/* Time area */}
@@ -459,12 +452,12 @@ function AgendaContent() {
           </div>
          )}
 
-         {/* Current time line */}
+         {/* Current time line — rose Fresha-style */}
          {showTimeLine && (
           <div className="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
            style={{ top: currentTimePx }}>
-           <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" style={{ marginLeft: -5 }} />
-           <div className="h-[2px] flex-1 bg-red-500/70" />
+           <div className="h-2 w-2 shrink-0 rounded-full bg-rose" style={{ marginLeft: -4 }} />
+           <div className="h-[1.5px] flex-1 bg-rose/60" />
           </div>
          )}
 

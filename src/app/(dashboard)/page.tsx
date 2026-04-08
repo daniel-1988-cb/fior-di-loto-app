@@ -51,22 +51,22 @@ export default async function DashboardPage() {
 
  return (
   <div>
-   {/* Header */}
-   <div className="mb-6">
-    <h1 className="text-3xl font-bold text-brown">
-     Dashboard
-    </h1>
-    <p className="mt-1 text-sm text-muted-foreground">
-     Benvenuta in Fior di Loto Gestionale
-    </p>
+   {/* Header — compatto stile Fresha */}
+   <div className="mb-5 flex items-center justify-between">
+    <div>
+     <h1 className="text-xl font-bold tracking-tight text-brown">Dashboard</h1>
+     <p className="text-xs text-muted-foreground mt-0.5">
+      {new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
+     </p>
+    </div>
    </div>
 
    {/* === KPI LIVE CARDS === */}
-   <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+   <div className="mb-5 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
     {/* Fatturato Oggi */}
     <Link
      href="/gestionale"
-     className="group rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-md"
+     className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-border/80"
     >
      <div className="flex items-start justify-between">
       <div className="min-w-0">
@@ -102,7 +102,7 @@ export default async function DashboardPage() {
     {/* Appuntamenti Oggi */}
     <Link
      href="/agenda"
-     className="group rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-md"
+     className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-border/80"
     >
      <div className="flex items-start justify-between">
       <div className="min-w-0">
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
     {/* No-show */}
     <Link
      href="/agenda"
-     className="group rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-md"
+     className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-border/80"
     >
      <div className="flex items-start justify-between">
       <div className="min-w-0">
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
     {/* Prossimo Appuntamento */}
     <Link
      href="/agenda"
-     className="group rounded-lg border border-border bg-card p-5 transition-shadow hover:shadow-md"
+     className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-border/80"
     >
      <div className="flex items-start justify-between">
       <div className="min-w-0 flex-1 overflow-hidden">
