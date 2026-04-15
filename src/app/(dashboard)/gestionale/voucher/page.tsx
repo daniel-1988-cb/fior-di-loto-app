@@ -66,7 +66,7 @@ export default function VoucherPage() {
   <div>
    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-     <h1 className="text-3xl font-bold text-brown">
+     <h1 className="font-display text-3xl font-bold text-brown">
       Voucher
      </h1>
      <p className="mt-1 text-sm text-muted-foreground">Gestisci buoni regalo e voucher sconto</p>

@@ -52,6 +52,19 @@ function useTheme() {
   return { theme, toggle };
 }
 
+function LotusIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="16" cy="12" rx="3.2" ry="9" fill="currentColor" opacity="0.95" />
+      <ellipse cx="16" cy="12" rx="3.2" ry="9" fill="currentColor" opacity="0.7" transform="rotate(-28 16 16)" />
+      <ellipse cx="16" cy="12" rx="3.2" ry="9" fill="currentColor" opacity="0.45" transform="rotate(-56 16 16)" />
+      <ellipse cx="16" cy="12" rx="3.2" ry="9" fill="currentColor" opacity="0.7" transform="rotate(28 16 16)" />
+      <ellipse cx="16" cy="12" rx="3.2" ry="9" fill="currentColor" opacity="0.45" transform="rotate(56 16 16)" />
+      <circle cx="16" cy="15" r="1.5" fill="currentColor" opacity="0.4" />
+    </svg>
+  );
+}
+
 function NavItem({
   href, icon: Icon, label, active, onClick,
 }: {
@@ -66,26 +79,26 @@ function NavItem({
           "relative flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
           "lg:justify-center lg:px-0 lg:py-3",
           active
-            ? "text-rose"
+            ? "text-gold"
             : "text-sidebar-foreground/50 hover:text-sidebar-foreground/90"
         )}
       >
-        {/* Active left bar */}
+        {/* Active left bar — gold brand */}
         {active && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-rose lg:left-0" />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-gold lg:left-0" />
         )}
         {/* Active background pill on desktop */}
         {active && (
-          <span className="absolute inset-0 lg:inset-x-1 lg:inset-y-0.5 rounded-lg bg-rose/10" />
+          <span className="absolute inset-0 lg:inset-x-1 lg:inset-y-0.5 rounded-lg bg-gold/10" />
         )}
         <Icon className="relative h-5 w-5 shrink-0" />
         <span className="relative lg:hidden">{label}</span>
       </Link>
       {/* Tooltip desktop */}
       <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 lg:group-hover:block">
-        <div className="whitespace-nowrap rounded-md bg-[#1a1210] px-2.5 py-1 text-xs font-medium text-white shadow-lg">
+        <div className="whitespace-nowrap rounded-md bg-brown px-2.5 py-1 text-xs font-medium text-white shadow-lg">
           {label}
-          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1a1210]" />
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown" />
         </div>
       </div>
     </div>
@@ -122,13 +135,13 @@ export function Sidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        {/* Logo */}
+        {/* Logo — Lotus Brand */}
         <div className="flex h-14 items-center justify-between px-3 lg:justify-center lg:px-0 lg:h-16">
           <Link href="/" onClick={close} className="flex items-center gap-3 lg:gap-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose">
-              <span className="text-sm font-bold text-white">F</span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+              <LotusIcon className="h-8 w-8 text-gold" />
             </div>
-            <span className="text-sm font-semibold text-sidebar-foreground lg:hidden">Fior di Loto</span>
+            <span className="font-display text-base font-bold text-sidebar-foreground lg:hidden">Fior di Loto</span>
           </Link>
           <button onClick={close} className="text-sidebar-foreground/40 hover:text-sidebar-foreground lg:hidden">
             <X className="h-5 w-5" />
@@ -165,9 +178,9 @@ export function Sidebar() {
               <span className="lg:hidden">{theme === "dark" ? "Tema scuro" : theme === "light" ? "Tema chiaro" : "Auto"}</span>
             </button>
             <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 lg:group-hover:block">
-              <div className="whitespace-nowrap rounded-md bg-[#1a1210] px-2.5 py-1 text-xs font-medium text-white shadow-lg">
+              <div className="whitespace-nowrap rounded-md bg-brown px-2.5 py-1 text-xs font-medium text-white shadow-lg">
                 {theme === "dark" ? "Tema scuro" : theme === "light" ? "Tema chiaro" : "Auto"}
-                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1a1210]" />
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown" />
               </div>
             </div>
           </div>
@@ -183,9 +196,9 @@ export function Sidebar() {
                 <span className="lg:hidden">Esci</span>
               </button>
               <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 lg:group-hover:block">
-                <div className="whitespace-nowrap rounded-md bg-[#1a1210] px-2.5 py-1 text-xs font-medium text-white shadow-lg">
+                <div className="whitespace-nowrap rounded-md bg-brown px-2.5 py-1 text-xs font-medium text-white shadow-lg">
                   Esci
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1a1210]" />
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-brown" />
                 </div>
               </div>
             </div>

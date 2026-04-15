@@ -37,11 +37,11 @@ export function MobileBottomNav() {
        key={item.href}
        href={item.href}
        className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 transition-colors ${
-        isActive ? "text-rose" : "text-muted-foreground hover:text-brown"
+        isActive ? "text-gold" : "text-muted-foreground hover:text-brown"
        }`}
       >
        <item.icon className={`h-5 w-5 ${isActive ? "stroke-[2.5px]" : ""}`} />
-       <span className={`text-[10px] font-medium ${isActive ? "text-rose" : ""}`}>
+       <span className={`text-[10px] font-medium ${isActive ? "text-gold" : ""}`}>
         {item.label}
        </span>
       </Link>

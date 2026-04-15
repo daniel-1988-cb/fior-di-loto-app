@@ -51,11 +51,11 @@ export default async function DashboardPage() {
 
  return (
   <div>
-   {/* Header — compatto stile Fresha */}
-   <div className="mb-5 flex items-center justify-between">
+   {/* Header — brand Fior di Loto */}
+   <div className="mb-6 flex items-center justify-between">
     <div>
-     <h1 className="text-xl font-bold tracking-tight text-brown">Dashboard</h1>
-     <p className="text-xs text-muted-foreground mt-0.5">
+     <h1 className="font-display text-2xl font-bold tracking-tight text-brown">Dashboard</h1>
+     <p className="text-xs text-muted-foreground mt-1">
       {new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
      </p>
     </div>
@@ -431,7 +431,7 @@ export default async function DashboardPage() {
       <div className="space-y-3">
        {topServizi.map((s, i) => (
         <div key={s.nome} className="flex items-center gap-3">
-         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose/10 text-xs font-bold text-rose">
+         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold/10 text-xs font-bold text-gold-dark">
           {i + 1}
          </span>
          <div className="min-w-0 flex-1">

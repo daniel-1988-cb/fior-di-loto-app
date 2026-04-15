@@ -372,7 +372,7 @@ function AgendaContent() {
      </Link>
      <Link
       href={`/agenda/nuovo?data=${selectedDate}`}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-rose px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-dark"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3 py-1.5 text-sm font-semibold text-white hover:bg-gold-dark"
      >
       <Plus className="h-4 w-4" />
       Aggiungi
@@ -510,7 +510,7 @@ function AgendaContent() {
      <div className="flex items-center justify-center gap-1.5 pt-1.5">
       {Array.from({ length: Math.ceil(staffList.length / MOBILE_COLS) }).map((_, i) => (
        <button key={i} onClick={() => setMobileGroup(i)}
-        className={`h-1.5 rounded-full transition-all ${i === mobileGroup ? "w-4 bg-rose" : "w-1.5 bg-border"}`}
+        className={`h-1.5 rounded-full transition-all ${i === mobileGroup ? "w-4 bg-gold" : "w-1.5 bg-border"}`}
        />
       ))}
      </div>
@@ -527,7 +527,7 @@ function AgendaContent() {
      </button>
      <Link
       href={`/agenda/nuovo?data=${selectedDate}`}
-      className="flex h-12 w-12 items-center justify-center rounded-full bg-rose shadow-lg text-white"
+      className="flex h-12 w-12 items-center justify-center rounded-full bg-gold shadow-lg text-white"
      >
       <Plus className="h-6 w-6" />
      </Link>
