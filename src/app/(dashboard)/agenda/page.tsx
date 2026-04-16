@@ -461,13 +461,23 @@ function AgendaContent() {
           </div>
          )}
 
-         {/* Clickable empty slots */}
-         {!onFerie && hours.slice(0, -1).map(h => (
-          <Link key={`slot-${h}`}
-           href={`/agenda/nuovo?data=${selectedDate}&ora=${h < 10 ? `0${h}` : h}:00&staffId=${staff.id}`}
-           className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
-           style={{ top: (h - START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT, zIndex: 1 }} />
-         ))}
+         {/* Clickable empty slots — 30 min each */}
+         {!onFerie && hours.slice(0, -1).flatMap(h => {
+          const hh = h < 10 ? `0${h}` : `${h}`;
+          return [0, 30].map(min => {
+           const mm = min === 0 ? "00" : "30";
+           return (
+            <Link key={`slot-${h}-${min}`}
+             href={`/agenda/nuovo?data=${selectedDate}&ora=${hh}:${mm}&staffId=${staff.id}`}
+             className="absolute left-0 right-0 hover:bg-rose/5 transition-colors"
+             style={{
+              top: (h - START_HOUR) * HOUR_HEIGHT + (min === 30 ? HOUR_HEIGHT / 2 : 0),
+              height: HOUR_HEIGHT / 2,
+              zIndex: 1,
+             }} />
+           );
+          });
+         })}
 
          {/* Appointment cards */}
          {!onFerie && aptCards.map(({ apt, topPx, heightPx }) => (

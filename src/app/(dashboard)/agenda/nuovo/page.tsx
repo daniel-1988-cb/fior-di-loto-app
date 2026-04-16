@@ -191,11 +191,11 @@ function NuovoAppuntamentoForm() {
       </div>
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Ora Inizio *</label>
-       <input type="time" name="oraInizio" value={formData.oraInizio} onChange={handleChange} required className={inputClass} />
+       <input type="time" name="oraInizio" value={formData.oraInizio} onChange={handleChange} step={1800} required className={inputClass} />
       </div>
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Ora Fine</label>
-       <input type="time" name="oraFine" value={formData.oraFine} onChange={handleChange} className={inputClass} />
+       <input type="time" name="oraFine" value={formData.oraFine} onChange={handleChange} step={1800} className={inputClass} />
       </div>
      </div>
     </div>
