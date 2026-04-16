@@ -130,7 +130,7 @@ export default function LoginPage() {
         maxLength={255}
         autoComplete="email"
         placeholder="info@fiordiloto.it"
-        className="w-full rounded-lg border border-input bg-cream/50 px-3.5 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20"
+        className="w-full rounded-lg border border-input bg-cream/50 px-3.5 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold-dark/40"
        />
       </div>
 
@@ -148,7 +148,7 @@ export default function LoginPage() {
          maxLength={128}
          autoComplete="current-password"
          placeholder="••••••••"
-         className="w-full rounded-lg border border-input bg-cream/50 px-3.5 py-2.5 pr-10 text-sm text-brown placeholder:text-muted-foreground focus:border-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20"
+         className="w-full rounded-lg border border-input bg-cream/50 px-3.5 py-2.5 pr-10 text-sm text-brown placeholder:text-muted-foreground focus:border-gold focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold-dark/40"
         />
         <button
          type="button"

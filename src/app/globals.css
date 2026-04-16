@@ -163,10 +163,10 @@ button, a, input, select, textarea {
   transition: all 0.2s ease;
 }
 
-/* Focus state dorato */
+/* Focus state dorato — contrasto accessibile (WCAG AA) */
 input:focus, select:focus, textarea:focus {
   border-color: #CFB06C;
-  box-shadow: 0 0 0 3px rgba(207, 176, 108, 0.15);
+  box-shadow: 0 0 0 3px rgba(168, 139, 74, 0.35);
 }
 
 /* Scrollbar styling — toni caldi */
