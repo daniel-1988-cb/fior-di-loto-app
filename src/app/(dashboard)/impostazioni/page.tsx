@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui";
 import {
   Building2,
@@ -61,6 +62,12 @@ const marketingCards: SettingCard[] = [
 ];
 
 const altro: SettingCard[] = [
+  {
+    icon: Bot,
+    title: "Assistente AI",
+    description: "Carica documenti, gestisci visibilità e rivedi i log delle query.",
+    href: "/impostazioni/assistente",
+  },
   { icon: Plug, title: "Componenti aggiuntivi", description: "AI, insights, data connector, plugin premium." },
   { icon: Wrench, title: "Integrazioni", description: "Connetti strumenti terzi (Meta, WhatsApp, Google)." },
 ];
@@ -70,17 +77,21 @@ function SettingCardGrid({ items }: { items: SettingCard[] }) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => {
         const Icon = item.icon;
-        return (
-          <Card
-            key={item.title}
-            className="cursor-pointer transition-colors hover:border-foreground/20"
-          >
+        const card = (
+          <Card className="h-full cursor-pointer transition-colors hover:border-foreground/20">
             <CardContent className="p-5">
               <Icon className="h-6 w-6 text-primary" />
               <h3 className="mt-3 font-semibold">{item.title}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
             </CardContent>
           </Card>
+        );
+        return item.href ? (
+          <Link key={item.title} href={item.href} className="block h-full">
+            {card}
+          </Link>
+        ) : (
+          <div key={item.title}>{card}</div>
         );
       })}
     </div>

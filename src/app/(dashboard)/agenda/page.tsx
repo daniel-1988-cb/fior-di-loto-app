@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { Button } from "@/components/ui";
 import { Plus } from "lucide-react";
 import { CalendarGrid } from "@/components/v2/calendar-grid";
@@ -30,9 +31,11 @@ export default async function V2AgendaPage({ searchParams }: PageProps) {
             {staff.length} membri del team · {appointments.length} appuntamenti
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4" /> Aggiungi
-        </Button>
+        <Link href={`/agenda/nuovo?data=${date}`}>
+          <Button>
+            <Plus className="h-4 w-4" /> Aggiungi
+          </Button>
+        </Link>
       </header>
 
       <CalendarToolbar currentDate={date} />

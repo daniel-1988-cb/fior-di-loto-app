@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Search, BarChart3, Rocket, Bell, CalendarDays, User } from "lucide-react";
+import { Search, BarChart3, Rocket, Bell, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProfileMenu } from "./profile-menu";
 
 interface TopbarProps {
   logo?: React.ReactNode;
@@ -54,9 +55,7 @@ export function Topbar({
         <IconButton label="Agenda oggi" href={agendaHref}>
           <CalendarDays className="h-4 w-4" />
         </IconButton>
-        <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-          <User className="h-4 w-4" />
-        </div>
+        <ProfileMenu />
       </div>
     </header>
   );

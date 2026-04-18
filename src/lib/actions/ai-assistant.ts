@@ -7,6 +7,8 @@ import { sanitizeString, truncate, isValidUUID } from "@/lib/security/validate";
 
 const VALID_CATEGORIE = ["generale", "protocollo", "trattamento", "prodotto", "procedura", "policy"] as const;
 type Categoria = (typeof VALID_CATEGORIE)[number];
+const VALID_VISIBILITA = ["tutti", "operatrice", "admin"] as const;
+type Visibilita = (typeof VALID_VISIBILITA)[number];
 
 // ─── Auth helpers ────────────────────────────────────────────────────────────
 
@@ -33,11 +35,16 @@ export async function isAdmin() {
 
 export async function getDocuments() {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const admin = await isAdmin();
+  let query = supabase
     .from("ai_documents")
-    .select("id, nome, descrizione, categoria, created_at, created_by_email")
+    .select("id, nome, descrizione, categoria, visibilita, created_at, created_by_email")
     .order("categoria", { ascending: true })
     .order("nome", { ascending: true });
+  if (!admin) {
+    query = query.in("visibilita", ["tutti", "operatrice"]);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }
@@ -47,6 +54,7 @@ export async function createDocument(data: {
   descrizione?: string;
   contenuto: string;
   categoria: string;
+  visibilita?: string;
 }) {
   const admin = await isAdmin();
   if (!admin) throw new Error("Accesso negato");
@@ -54,6 +62,9 @@ export async function createDocument(data: {
   if (!data.nome?.trim()) throw new Error("Nome obbligatorio");
   if (!data.contenuto?.trim()) throw new Error("Contenuto obbligatorio");
   if (!VALID_CATEGORIE.includes(data.categoria as Categoria)) throw new Error("Categoria non valida");
+  const vis = data.visibilita && VALID_VISIBILITA.includes(data.visibilita as Visibilita)
+    ? data.visibilita
+    : "tutti";
 
   const user = await getCurrentUser();
   const supabase = createAdminClient();
@@ -65,6 +76,7 @@ export async function createDocument(data: {
       descrizione: data.descrizione ? truncate(sanitizeString(data.descrizione), 500) : null,
       contenuto: truncate(data.contenuto.trim(), 50000),
       categoria: data.categoria,
+      visibilita: vis,
       created_by_email: user?.email || "unknown",
     })
     .select()
@@ -99,11 +111,16 @@ export async function askAssistant(domanda: string) {
 
   const supabase = createAdminClient();
 
-  // Load all documents as context (graceful if table doesn't exist yet)
-  const docsResult = await supabase
+  // Load documents visible to the current user as context
+  const admin = await isAdmin();
+  let docsQuery = supabase
     .from("ai_documents")
-    .select("nome, categoria, contenuto")
+    .select("nome, categoria, contenuto, visibilita")
     .order("categoria");
+  if (!admin) {
+    docsQuery = docsQuery.in("visibilita", ["tutti", "operatrice"]);
+  }
+  const docsResult = await docsQuery;
   const docs = docsResult.data;
 
   const hasDocs = docs && docs.length > 0;

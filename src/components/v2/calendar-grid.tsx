@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
@@ -149,24 +150,29 @@ export function CalendarGrid({
                 key={s.id}
                 className="relative border-r border-border last:border-r-0"
               >
-                {/* hour guides */}
-                {slots.map((slot, i) => (
-                  <div
-                    key={i}
-                    className="border-b border-border/60"
-                    style={{ height: 60 * pxPerMinute }}
-                  />
-                ))}
-                {/* 30min inner guides */}
-                {slots.map((_, i) => (
-                  <div
-                    key={`half-${i}`}
-                    className="absolute left-0 right-0 border-b border-dashed border-border/40"
-                    style={{
-                      top: (30 + i * 60) * pxPerMinute,
-                    }}
-                  />
-                ))}
+                {/* clickable 30-min slots (below appointments) */}
+                {slots.flatMap((slot, i) => [
+                  { minute: slot.minutes, top: i * 60 * pxPerMinute, half: false },
+                  { minute: slot.minutes + 30, top: (i * 60 + 30) * pxPerMinute, half: true },
+                ]).map(({ minute, top, half }) => {
+                  const hh = Math.floor(minute / 60).toString().padStart(2, "0");
+                  const mm = (minute % 60).toString().padStart(2, "0");
+                  const ora = `${hh}:${mm}`;
+                  return (
+                    <Link
+                      key={`slot-${minute}`}
+                      href={`/agenda/nuovo?data=${date}&ora=${ora}&staffId=${s.id}`}
+                      aria-label={`Crea appuntamento ${ora} con ${s.nome}`}
+                      className={cn(
+                        "absolute left-0 right-0 block transition-colors hover:bg-primary/5",
+                        half
+                          ? "border-b border-dashed border-border/40"
+                          : "border-b border-border/60"
+                      )}
+                      style={{ top, height: 30 * pxPerMinute }}
+                    />
+                  );
+                })}
 
                 {/* appointments */}
                 {apts.map((a) => {
