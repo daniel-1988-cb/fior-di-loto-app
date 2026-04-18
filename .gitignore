@@ -45,3 +45,5 @@ scripts/enable-rls.mjs
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+graphify-out/
+
