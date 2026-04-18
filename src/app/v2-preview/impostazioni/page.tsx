@@ -13,7 +13,7 @@ import {
   ClipboardList,
   CreditCard,
   Globe,
-  Facebook,
+  Share2,
   Link2,
   ShoppingCart,
   MapPin,
@@ -48,7 +48,7 @@ const impostazioni: SettingCard[] = [
 const presenza: SettingCard[] = [
   { icon: Globe, title: "Profilo marketplace", description: "Presentati ai nuovi clienti sul marketplace Fior di Loto." },
   { icon: MapPin, title: "Prenota con Google", description: "Ricevi prenotazioni da Google Search e Maps." },
-  { icon: Facebook, title: "Prenota con Facebook/Instagram", description: "Integra le pagine social per prenotazioni dirette." },
+  { icon: Share2, title: "Prenota con Facebook/Instagram", description: "Integra le pagine social per prenotazioni dirette." },
   { icon: ShoppingCart, title: "Negozio online", description: "Vendi prodotti e voucher direttamente dal tuo sito." },
   { icon: Link2, title: "Generatore di link", description: "Crea link di prenotazione e QR code condivisibili." },
 ];
