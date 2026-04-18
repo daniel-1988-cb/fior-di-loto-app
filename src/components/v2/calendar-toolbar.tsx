@@ -1,0 +1,59 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { Button } from "@/components/ui";
+
+export function CalendarToolbar({ currentDate }: { currentDate: string }) {
+  const router = useRouter();
+  const sp = useSearchParams();
+
+  const navTo = (date: string) => {
+    const params = new URLSearchParams(sp.toString());
+    params.set("date", date);
+    router.push(`/v2-preview/agenda?${params.toString()}`);
+  };
+
+  const go = (deltaDays: number) => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + deltaDays);
+    navTo(d.toISOString().slice(0, 10));
+  };
+
+  const today = () => navTo(new Date().toISOString().slice(0, 10));
+
+  const label = new Date(currentDate).toLocaleDateString("it-IT", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Button variant="outline" size="sm" onClick={today}>
+        Oggi
+      </Button>
+      <button
+        type="button"
+        onClick={() => go(-1)}
+        aria-label="Giorno precedente"
+        className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium">
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => go(1)}
+        aria-label="Giorno successivo"
+        className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
