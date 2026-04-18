@@ -1,51 +1,30 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
+import { clientiSubNav } from "@/components/layout/v2-sidenav";
+import { Button } from "@/components/ui";
 import { Plus } from "lucide-react";
+import { ClientsTable } from "@/components/v2/clients-table";
 import { getClients } from "@/lib/actions/clients";
-import { LABELS } from "@/lib/constants/italian";
-import { ClientList } from "@/components/clienti/client-list";
+import type { TableRow } from "@/types/database";
 
-export default async function ClientiPage({
- searchParams,
-}: {
- searchParams: Promise<{ segmento?: string; q?: string }>;
-}) {
- const params = await searchParams;
- // Passa il segmento iniziale per il filtro visivo, ma carica tutti i clienti
- // così il filtro e la ricerca avvengono lato client senza round-trip
- const initialSegmento = params.segmento || "tutti";
- const initialSearch = params.q || "";
+export default async function V2ClientiPage() {
+  const clients = (await getClients()) as unknown as TableRow<"clients">[];
 
- // Carica sempre tutti i clienti — il filtro è client-side
- const clienti = await getClients();
+  return (
+    <>
+      <header className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Elenco clienti</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {clients.length} clienti totali · visualizza, aggiungi e modifica anagrafiche.
+          </p>
+        </div>
+        <Button>
+          <Plus className="h-4 w-4" /> Aggiungi
+        </Button>
+      </header>
 
- return (
-  <div>
-   {/* Header */}
-   <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-     <h1 className="font-display text-3xl font-bold text-brown">
-      {LABELS.clienti.titolo}
-     </h1>
-     <p className="mt-1 text-sm text-muted-foreground">
-      {clienti.length} clienti
-     </p>
-    </div>
-    <Link
-     href="/clienti/nuovo"
-     className="inline-flex items-center gap-2 rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark"
-    >
-     <Plus className="h-4 w-4" />
-     {LABELS.clienti.nuovoCliente}
-    </Link>
-   </div>
-
-   <ClientList
-    initialClients={clienti as unknown as Parameters<typeof ClientList>[0]["initialClients"]}
-    initialSegmento={initialSegmento}
-    initialSearch={initialSearch}
-   />
-  </div>
- );
+      <ClientsTable clients={clients} />
+    </>
+  );
 }

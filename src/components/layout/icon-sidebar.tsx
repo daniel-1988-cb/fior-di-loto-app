@@ -38,16 +38,16 @@ const defaultNavigation: IconNavItem[] = [
 ];
 
 export const v2Navigation: IconNavItem[] = [
-  { href: "/v2-preview", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/v2-preview/agenda", label: "Calendario", icon: Calendar },
-  { href: "/v2-preview/vendite", label: "Vendite", icon: ShoppingBag },
-  { href: "/v2-preview/clienti", label: "Clienti", icon: Users },
-  { href: "/v2-preview/catalogo", label: "Catalogo", icon: Tag },
-  { href: "/v2-preview/team", label: "Team", icon: UserCircle2 },
-  { href: "/v2-preview/marketing", label: "Marketing", icon: Megaphone },
-  { href: "/v2-preview/reports", label: "Report", icon: BarChart3 },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/agenda", label: "Calendario", icon: Calendar },
+  { href: "/vendite", label: "Vendite", icon: ShoppingBag },
+  { href: "/clienti", label: "Clienti", icon: Users },
+  { href: "/catalogo", label: "Catalogo", icon: Tag },
+  { href: "/team", label: "Team", icon: UserCircle2 },
+  { href: "/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/reports", label: "Report", icon: BarChart3 },
   { href: "/components-preview", label: "Componenti", icon: Puzzle },
-  { href: "/v2-preview/impostazioni", label: "Impostazioni", icon: Settings },
+  { href: "/impostazioni", label: "Impostazioni", icon: Settings },
 ];
 
 interface IconSidebarProps {

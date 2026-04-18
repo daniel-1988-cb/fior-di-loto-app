@@ -1,20 +1,41 @@
-import { Sidebar } from "@/components/layout/sidebar";
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+"use client";
+
+import { usePathname } from "next/navigation";
+import { V2Shell } from "@/components/layout/v2-shell";
+import {
+  venditeSubNav,
+  clientiSubNav,
+  catalogoSubNav,
+  teamSubNav,
+  marketingSubNav,
+  reportsSubNav,
+} from "@/components/layout/v2-sidenav";
+
+function subNavFor(pathname: string) {
+  if (pathname.startsWith("/vendite")) return { title: "Vendite", groups: venditeSubNav };
+  if (pathname.startsWith("/clienti")) return { title: "Clienti", groups: clientiSubNav };
+  if (pathname.startsWith("/catalogo")) return { title: "Catalogo", groups: catalogoSubNav };
+  if (pathname.startsWith("/team")) return { title: "Team", groups: teamSubNav };
+  if (pathname.startsWith("/marketing")) return { title: "Marketing", groups: marketingSubNav };
+  if (pathname.startsWith("/reports")) return { title: "Report", groups: reportsSubNav };
+  return undefined;
+}
+
+function maxWidthFor(pathname: string): "full" | "7xl" | "5xl" {
+  if (pathname.startsWith("/agenda")) return "full";
+  if (pathname.startsWith("/catalogo/servizi")) return "full";
+  return "7xl";
+}
 
 export default function DashboardLayout({
- children,
+  children,
 }: {
- children: React.ReactNode;
+  children: React.ReactNode;
 }) {
- return (
-  <div className="min-h-screen bg-background">
-   <Sidebar />
-   <main className="lg:pl-14">
-    <div className="mx-auto max-w-7xl px-4 py-6 pt-16 pb-20 sm:px-6 sm:pb-6 lg:px-8 lg:pt-6 lg:pb-6">
-     {children}
-    </div>
-   </main>
-   <MobileBottomNav />
-  </div>
- );
+  const pathname = usePathname();
+  return (
+    <V2Shell subNav={subNavFor(pathname)} maxWidth={maxWidthFor(pathname)}>
+      {children}
+    </V2Shell>
+  );
 }

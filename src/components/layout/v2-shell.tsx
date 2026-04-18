@@ -15,13 +15,13 @@ export function V2Shell({
   return (
     <Shell
       nav={v2Navigation}
-      brandHref="/v2-preview"
+      brandHref="/"
       topbar={
         <Topbar
-          brandHref="/v2-preview"
-          reportsHref="/v2-preview/reports"
-          marketingHref="/v2-preview/marketing"
-          agendaHref="/v2-preview/agenda"
+          brandHref="/"
+          reportsHref="/reports"
+          marketingHref="/marketing"
+          agendaHref="/agenda"
         />
       }
       subNav={subNav}

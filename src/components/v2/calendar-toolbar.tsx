@@ -11,7 +11,7 @@ export function CalendarToolbar({ currentDate }: { currentDate: string }) {
   const navTo = (date: string) => {
     const params = new URLSearchParams(sp.toString());
     params.set("date", date);
-    router.push(`/v2-preview/agenda?${params.toString()}`);
+    router.push(`/agenda?${params.toString()}`);
   };
 
   const go = (deltaDays: number) => {

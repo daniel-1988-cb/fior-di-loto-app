@@ -1,125 +1,124 @@
-export const dynamic = "force-dynamic";
+"use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { Plus } from "lucide-react";
-import { ExportSection } from "@/components/impostazioni/export-section";
-import { ObiettiviTeam } from "@/components/impostazioni/obiettivi-team";
-import { getStaff } from "@/lib/actions/staff";
+import { useState } from "react";
+import { Card, CardContent, Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui";
+import {
+  Building2,
+  CalendarCog,
+  Wallet,
+  Users,
+  FileText,
+  UserCog,
+  ClipboardList,
+  CreditCard,
+  Globe,
+  Share2,
+  Link2,
+  ShoppingCart,
+  MapPin,
+  Send,
+  Bot,
+  Tag,
+  Star,
+  MessageSquare,
+  Plug,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 
-export default async function ImpostazioniPage() {
- let staffList: Awaited<ReturnType<typeof getStaff>> = [];
- try {
-  staffList = await getStaff();
- } catch {
-  // Se la tabella non esiste ancora (migration non eseguita), mostra lista vuota
-  staffList = [];
- }
+interface SettingCard {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  href?: string;
+}
 
- return (
-  <div>
-   <div className="mb-6">
-    <h1 className="font-display text-3xl font-bold text-brown">
-     Impostazioni
-    </h1>
-    <p className="mt-1 text-sm text-muted-foreground">Configurazione del gestionale</p>
-   </div>
+const impostazioni: SettingCard[] = [
+  { icon: Building2, title: "Configurazione dell'attività", description: "Personalizza dettagli azienda e gestisci le sedi." },
+  { icon: CalendarCog, title: "Pianificazione", description: "Orari di apertura, risorse prenotabili, regole di prenotazione." },
+  { icon: Wallet, title: "Vendite", description: "Metodi di pagamento, tasse, ricevute e commissioni." },
+  { icon: Users, title: "Clienti", description: "Fonti, tag e preferenze di raccolta dati." },
+  { icon: FileText, title: "Fatturazione", description: "Fatture elettroniche, saldo messaggi e sottoscrizioni." },
+  { icon: UserCog, title: "Team", description: "Permessi, compensi, ferie e giorni liberi." },
+  { icon: ClipboardList, title: "Moduli", description: "Template per consensi e questionari pre-trattamento." },
+  { icon: CreditCard, title: "Pagamenti", description: "POS, metodi di pagamento, policy di cancellazione." },
+];
 
-   {/* Gestione Personale */}
-   <div className="mb-6">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-     <h2 className="font-semibold text-brown text-lg">Gestione Personale</h2>
-     <Link
-      href="/impostazioni/staff/nuovo"
-      className="inline-flex items-center gap-1.5 rounded-lg bg-rose px-3 py-2 text-sm font-medium text-white hover:bg-rose-dark"
-     >
-      <Plus className="h-4 w-4" />
-      Aggiungi Operatrice
-     </Link>
-    </div>
+const presenza: SettingCard[] = [
+  { icon: Globe, title: "Profilo marketplace", description: "Presentati ai nuovi clienti sul marketplace Fior di Loto." },
+  { icon: MapPin, title: "Prenota con Google", description: "Ricevi prenotazioni da Google Search e Maps." },
+  { icon: Share2, title: "Prenota con Facebook/Instagram", description: "Integra le pagine social per prenotazioni dirette." },
+  { icon: ShoppingCart, title: "Negozio online", description: "Vendi prodotti e voucher direttamente dal tuo sito." },
+  { icon: Link2, title: "Generatore di link", description: "Crea link di prenotazione e QR code condivisibili." },
+];
 
-    {staffList.length === 0 ? (
-     <div className="rounded-xl border border-border bg-card p-8 text-center ">
-      <p className="text-sm text-muted-foreground">
-       Nessun membro dello staff trovato. Aggiungi la prima operatrice o esegui la migration del database.
-      </p>
-     </div>
-    ) : (
-     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {staffList.map((staff) => (
-       <div
-        key={staff.id}
-        className="rounded-xl border bg-card p-4 "
-        style={{ borderLeftColor: staff.colore, borderLeftWidth: 4 }}
-       >
-        <div className="flex items-center gap-3 mb-3">
-         <div
-          className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden"
-          style={{ backgroundColor: staff.colore }}
-         >
-          {staff.avatar_url ? (
-           <Image src={staff.avatar_url} alt={staff.nome} width={40} height={40} className="h-full w-full object-cover" />
-          ) : staff.nome[0]}
-         </div>
-         <div className="min-w-0">
-          <p className="font-semibold text-brown truncate">{staff.nome} {staff.cognome || ""}</p>
-          <p className="text-xs text-muted-foreground capitalize">{staff.ruolo}</p>
-         </div>
-         <div className="ml-auto shrink-0">
-          <span
-           className={`rounded-full px-2 py-0.5 text-xs ${
-            staff.attiva
-             ? "bg-green-100 text-green-700"
-             : "bg-muted text-muted-foreground"
-           }`}
+const marketingCards: SettingCard[] = [
+  { icon: Send, title: "Marketing di massa", description: "Invia email e SMS promozionali al tuo pubblico." },
+  { icon: Bot, title: "Messaggi automatici", description: "Reminder, auguri e post-trattamento automatici." },
+  { icon: Tag, title: "Offerte", description: "Codici sconto, offerte flash e promozioni dedicate." },
+  { icon: MessageSquare, title: "Messaggi inviati", description: "Storico delle comunicazioni con le clienti." },
+  { icon: Star, title: "Valutazioni e recensioni", description: "Raccogli feedback e rispondi alle recensioni." },
+];
+
+const altro: SettingCard[] = [
+  { icon: Plug, title: "Componenti aggiuntivi", description: "AI, insights, data connector, plugin premium." },
+  { icon: Wrench, title: "Integrazioni", description: "Connetti strumenti terzi (Meta, WhatsApp, Google)." },
+];
+
+function SettingCardGrid({ items }: { items: SettingCard[] }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Card
+            key={item.title}
+            className="cursor-pointer transition-colors hover:border-foreground/20"
           >
-           {staff.attiva ? "Attiva" : "Inattiva"}
-          </span>
-         </div>
-        </div>
-        <p className="text-xs text-muted-foreground mb-1">
-         ⏰ {staff.orario_inizio?.slice(0, 5)} – {staff.orario_fine?.slice(0, 5)}
-        </p>
-        {Number(staff.obiettivo_mensile) > 0 && (
-         <p className="text-xs text-muted-foreground mb-2">
-          🎯 Obiettivo: €{Number(staff.obiettivo_mensile).toFixed(0)}
-         </p>
-        )}
-        <div className="mt-3">
-         <Link
-          href={`/impostazioni/staff/${staff.id}`}
-          className="text-xs font-medium text-rose hover:underline"
-         >
-          Modifica →
-         </Link>
-        </div>
-       </div>
-      ))}
-     </div>
-    )}
-   </div>
-
-   {/* Informazioni Centro */}
-   <div className="mb-6 rounded-xl border border-border bg-card p-6 ">
-    <h2 className="mb-4 font-semibold text-brown">Informazioni Centro</h2>
-    <div className="space-y-3 text-sm text-muted-foreground">
-     <div>
-      <span className="font-medium text-brown">Nome:</span> Fior di Loto
-     </div>
-     <div>
-      <span className="font-medium text-brown">Sede:</span> Campobasso, CB
-     </div>
-     <div>
-      <span className="font-medium text-brown">Metodo:</span> Metodo Rinascita
-     </div>
+            <CardContent className="p-5">
+              <Icon className="h-6 w-6 text-primary" />
+              <h3 className="mt-3 font-semibold">{item.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
-   </div>
+  );
+}
 
-   {/* Obiettivi Team */}
-   <ObiettiviTeam staffList={staffList} />
+export default function V2ImpostazioniPage() {
+  const [tab, setTab] = useState("impostazioni");
 
-   {/* Export / Backup */}
-   <ExportSection />
-  </div>
- );
+  return (
+    <>
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Impostazioni dello spazio di lavoro</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Gestisci tutte le preferenze di Fior di Loto Centro Estetico e Benessere.
+        </p>
+      </header>
+
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="impostazioni">Impostazioni</TabsTrigger>
+          <TabsTrigger value="presenza">Presenza online</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
+          <TabsTrigger value="altro">Altro</TabsTrigger>
+        </TabsList>
+        <TabsContent value="impostazioni">
+          <SettingCardGrid items={impostazioni} />
+        </TabsContent>
+        <TabsContent value="presenza">
+          <SettingCardGrid items={presenza} />
+        </TabsContent>
+        <TabsContent value="marketing">
+          <SettingCardGrid items={marketingCards} />
+        </TabsContent>
+        <TabsContent value="altro">
+          <SettingCardGrid items={altro} />
+        </TabsContent>
+      </Tabs>
+    </>
+  );
 }
