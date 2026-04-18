@@ -17,14 +17,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface NavItem {
+export interface IconNavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  exact?: boolean;
 }
 
-const navigation: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+const defaultNavigation: IconNavItem[] = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/agenda", label: "Calendario", icon: Calendar },
   { href: "/vendite", label: "Vendite", icon: ShoppingBag },
   { href: "/clienti", label: "Clienti", icon: Users },
@@ -36,7 +37,25 @@ const navigation: NavItem[] = [
   { href: "/impostazioni", label: "Impostazioni", icon: Settings },
 ];
 
-export function IconSidebar({ className }: { className?: string }) {
+export const v2Navigation: IconNavItem[] = [
+  { href: "/v2-preview", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/v2-preview/agenda", label: "Calendario", icon: Calendar },
+  { href: "/v2-preview/vendite", label: "Vendite", icon: ShoppingBag },
+  { href: "/v2-preview/clienti", label: "Clienti", icon: Users },
+  { href: "/v2-preview/catalogo", label: "Catalogo", icon: Tag },
+  { href: "/v2-preview/team", label: "Team", icon: UserCircle2 },
+  { href: "/v2-preview/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/v2-preview/reports", label: "Report", icon: BarChart3 },
+  { href: "/components-preview", label: "Componenti", icon: Puzzle },
+  { href: "/v2-preview/impostazioni", label: "Impostazioni", icon: Settings },
+];
+
+interface IconSidebarProps {
+  items?: IconNavItem[];
+  className?: string;
+}
+
+export function IconSidebar({ items = defaultNavigation, className }: IconSidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -48,11 +67,10 @@ export function IconSidebar({ className }: { className?: string }) {
       aria-label="Navigazione principale"
     >
       <nav className="flex-1 space-y-1 px-2">
-        {navigation.map((item) => {
-          const active =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname === item.href || pathname.startsWith(item.href + "/");
+        {items.map((item) => {
+          const active = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (
             <Link

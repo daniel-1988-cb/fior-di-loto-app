@@ -8,9 +8,21 @@ interface TopbarProps {
   logo?: React.ReactNode;
   className?: string;
   onSearchClick?: () => void;
+  brandHref?: string;
+  reportsHref?: string;
+  marketingHref?: string;
+  agendaHref?: string;
 }
 
-export function Topbar({ logo, className, onSearchClick }: TopbarProps) {
+export function Topbar({
+  logo,
+  className,
+  onSearchClick,
+  brandHref = "/",
+  reportsHref = "/reports",
+  marketingHref = "/marketing",
+  agendaHref = "/agenda",
+}: TopbarProps) {
   return (
     <header
       className={cn(
@@ -20,7 +32,7 @@ export function Topbar({ logo, className, onSearchClick }: TopbarProps) {
     >
       <div className="flex items-center gap-3">
         {logo ?? (
-          <Link href="/" className="font-display text-xl tracking-tight">
+          <Link href={brandHref} className="font-display text-xl tracking-tight">
             Fior di Loto
           </Link>
         )}
@@ -30,16 +42,16 @@ export function Topbar({ logo, className, onSearchClick }: TopbarProps) {
         <IconButton label="Cerca" onClick={onSearchClick}>
           <Search className="h-4 w-4" />
         </IconButton>
-        <IconButton label="Analytics rapidi" href="/reports">
+        <IconButton label="Analytics rapidi" href={reportsHref}>
           <BarChart3 className="h-4 w-4" />
         </IconButton>
-        <IconButton label="Marketing boost" href="/marketing">
+        <IconButton label="Marketing boost" href={marketingHref}>
           <Rocket className="h-4 w-4" />
         </IconButton>
         <IconButton label="Notifiche">
           <Bell className="h-4 w-4" />
         </IconButton>
-        <IconButton label="Agenda oggi" href="/agenda">
+        <IconButton label="Agenda oggi" href={agendaHref}>
           <CalendarDays className="h-4 w-4" />
         </IconButton>
         <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
