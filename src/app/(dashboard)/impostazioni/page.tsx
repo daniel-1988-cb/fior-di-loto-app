@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Plug,
   Wrench,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,14 +36,38 @@ interface SettingCard {
 }
 
 const impostazioni: SettingCard[] = [
-  { icon: Building2, title: "Configurazione dell'attività", description: "Personalizza dettagli azienda e gestisci le sedi." },
-  { icon: CalendarCog, title: "Pianificazione", description: "Orari di apertura, risorse prenotabili, regole di prenotazione." },
-  { icon: Wallet, title: "Vendite", description: "Metodi di pagamento, tasse, ricevute e commissioni." },
-  { icon: Users, title: "Clienti", description: "Fonti, tag e preferenze di raccolta dati." },
+  {
+    icon: Building2,
+    title: "Configurazione attività",
+    description: "Anagrafica, contatti, dati fiscali e brand.",
+    href: "/impostazioni/azienda",
+  },
+  {
+    icon: CalendarCog,
+    title: "Orari di apertura",
+    description: "Orari standard del centro per giorno della settimana.",
+    href: "/impostazioni/orari",
+  },
+  {
+    icon: CreditCard,
+    title: "Pagamenti e fiscalità",
+    description: "IVA, valuta, metodi di pagamento e policy.",
+    href: "/impostazioni/pagamenti",
+  },
+  {
+    icon: MessageSquare,
+    title: "Template messaggi",
+    description: "Modelli WhatsApp, email, SMS, push con variabili.",
+    href: "/impostazioni/template-messaggi",
+  },
+  {
+    icon: Users,
+    title: "Clienti",
+    description: "Fonti, tag e preferenze di raccolta dati.",
+  },
   { icon: FileText, title: "Fatturazione", description: "Fatture elettroniche, saldo messaggi e sottoscrizioni." },
   { icon: UserCog, title: "Team", description: "Permessi, compensi, ferie e giorni liberi." },
   { icon: ClipboardList, title: "Moduli", description: "Template per consensi e questionari pre-trattamento." },
-  { icon: CreditCard, title: "Pagamenti", description: "POS, metodi di pagamento, policy di cancellazione." },
 ];
 
 const presenza: SettingCard[] = [
@@ -67,6 +92,12 @@ const altro: SettingCard[] = [
     title: "Assistente AI",
     description: "Carica documenti, gestisci visibilità e rivedi i log delle query.",
     href: "/impostazioni/assistente",
+  },
+  {
+    icon: Award,
+    title: "Programma fedeltà",
+    description: "Configura punti, premi, soglie tier e bonus.",
+    href: "/impostazioni/fidelizzazione",
   },
   { icon: Plug, title: "Componenti aggiuntivi", description: "AI, insights, data connector, plugin premium." },
   { icon: Wrench, title: "Integrazioni", description: "Connetti strumenti terzi (Meta, WhatsApp, Google)." },
