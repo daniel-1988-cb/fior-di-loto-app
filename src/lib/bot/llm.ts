@@ -25,8 +25,9 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
     contents,
     config: {
       systemInstruction: MARIALUCIA_SYSTEM_PROMPT,
-      maxOutputTokens: opts.maxTokens ?? 400,
+      maxOutputTokens: opts.maxTokens ?? 600,
       temperature: 0.8,
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
 
