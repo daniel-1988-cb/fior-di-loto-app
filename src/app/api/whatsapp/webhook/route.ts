@@ -4,12 +4,16 @@ import {
   verifyWebhook,
   verifySignature,
   parseInbound,
+  sendMessage,
   sendWithHumanDelay,
 } from "@/lib/bot/whatsapp-meta";
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/claude";
 
 export const runtime = "nodejs";
+
+const OPT_OUT_ACK =
+  "Ok, non ti scriverò più. Se cambi idea, basta che mi scrivi e ti riattivo.";
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get("hub.mode") ?? "";
@@ -51,6 +55,7 @@ async function processPayload(rawBody: string): Promise<void> {
     // This avoids a lookup+insert TOCTOU window where two concurrent
     // webhooks on the same number could otherwise create 2 rows.
     let clientId: string;
+    let waOptIn = true;
 
     const { data: inserted, error: insertErr } = await supabase
       .from("clients")
@@ -63,15 +68,16 @@ async function processPayload(rawBody: string): Promise<void> {
         wa_last_seen: new Date().toISOString(),
         wa_opt_in: true,
       })
-      .select("id")
+      .select("id, wa_opt_in")
       .single();
 
     if (inserted) {
       clientId = inserted.id;
+      waOptIn = inserted.wa_opt_in;
     } else {
       const { data: existing } = await supabase
         .from("clients")
-        .select("id")
+        .select("id, wa_opt_in")
         .eq("telefono", phoneWithPlus)
         .single();
       if (!existing) {
@@ -82,6 +88,7 @@ async function processPayload(rawBody: string): Promise<void> {
         continue;
       }
       clientId = existing.id;
+      waOptIn = existing.wa_opt_in;
       await supabase
         .from("clients")
         .update({ wa_last_seen: new Date().toISOString() })
@@ -105,7 +112,22 @@ async function processPayload(rawBody: string): Promise<void> {
     const intent = detectIntent(msg.text);
 
     if (intent === "opt_out") {
+      // Sticky opt-out + hardcoded ack (no Claude).
       await supabase.from("clients").update({ wa_opt_in: false }).eq("id", clientId);
+      try {
+        const ackId = await sendMessage(msg.fromPhone, OPT_OUT_ACK, {
+          phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID!,
+          accessToken: process.env.META_WA_ACCESS_TOKEN!,
+        });
+        await supabase.from("wa_conversations").insert({
+          client_id: clientId,
+          role: "assistant",
+          content: OPT_OUT_ACK,
+          meta_message_id: ackId,
+        });
+      } catch (e) {
+        console.error("[wa webhook] opt-out ack failed", e);
+      }
       continue;
     }
 
@@ -114,6 +136,13 @@ async function processPayload(rawBody: string): Promise<void> {
         .from("wa_threads")
         .update({ status: "escalated" })
         .eq("client_id", clientId);
+      continue;
+    }
+
+    // Sticky opt-out: if a previous message flipped wa_opt_in to false,
+    // we still log the inbound (above) but must not generate a reply.
+    if (!waOptIn) {
+      console.warn("[wa webhook] client opt-out, skipping AI reply", clientId);
       continue;
     }
 
