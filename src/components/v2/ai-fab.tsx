@@ -58,7 +58,7 @@ export function AiFab() {
       const msg =
         err instanceof Error
           ? err.message
-          : "Errore imprevisto. L'assistente AI potrebbe non essere configurato (ANTHROPIC_API_KEY).";
+          : "Errore imprevisto. L'assistente AI potrebbe non essere configurato (GEMINI_API_KEY).";
       setMessages((m) => [
         ...m,
         { role: "assistant", text: msg, ts: Date.now() },

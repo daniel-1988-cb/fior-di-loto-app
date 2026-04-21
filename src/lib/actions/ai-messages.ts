@@ -1,6 +1,6 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID } from "@/lib/security/validate";
 
@@ -103,18 +103,24 @@ Istruzioni:
 - NON includere URL o link
 - Scrivi SOLO il messaggio, niente altro`;
 
-  const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY non configurata. Aggiungila in .env.local e nelle variabili Vercel.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const message = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: {
+      maxOutputTokens: 1500,
+      temperature: 0.7,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   });
 
-  const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 400,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const testo =
-    message.content[0].type === "text" ? message.content[0].text.trim() : "";
+  const testo = (message.text ?? "").trim();
 
   return { messaggio: testo, cliente: client };
 }

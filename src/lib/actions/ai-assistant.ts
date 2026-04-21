@@ -1,6 +1,6 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeString, truncate, isValidUUID } from "@/lib/security/validate";
@@ -101,9 +101,9 @@ export async function deleteDocument(id: string) {
 export async function askAssistant(domanda: string) {
   if (!domanda?.trim()) throw new Error("Domanda obbligatoria");
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY non configurata. Aggiungila in .env.local e nelle variabili Vercel.");
+    throw new Error("GEMINI_API_KEY non configurata. Aggiungila in .env.local e nelle variabili Vercel.");
   }
 
   const user = await getCurrentUser();
@@ -148,17 +148,20 @@ ISTRUZIONI:
 - Non inventare protocolli o dosaggi — la sicurezza è prioritaria
 - Usa un tono professionale ma accessibile`;
 
-  const anthropic = new Anthropic({ apiKey });
+  const client = new GoogleGenAI({ apiKey });
 
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 600,
-    system: systemPrompt,
-    messages: [{ role: "user", content: cleanQuestion }],
+  const response = await client.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: cleanQuestion }] }],
+    config: {
+      systemInstruction: systemPrompt,
+      maxOutputTokens: 1500,
+      temperature: 0.7,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   });
 
-  const risposta =
-    response.content[0].type === "text" ? response.content[0].text.trim() : "";
+  const risposta = (response.text ?? "").trim();
 
   // Log the query (graceful if table doesn't exist yet)
   await supabase.from("ai_query_logs").insert({
