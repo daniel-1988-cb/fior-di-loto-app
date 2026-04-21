@@ -248,3 +248,13 @@ export const waMessageBuffer = pgTable("wa_message_buffer", {
   receivedAt: timestamp("received_at").defaultNow().notNull(),
   processedAt: timestamp("processed_at"),
 });
+
+export const waBotDocuments = pgTable("wa_bot_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  titolo: varchar("titolo", { length: 200 }).notNull(),
+  contenuto: text("contenuto").notNull(),
+  attivo: boolean("attivo").notNull().default(true),
+  ordine: integer("ordine").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

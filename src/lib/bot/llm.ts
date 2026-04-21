@@ -9,11 +9,22 @@ export type GenerateReplyOpts = {
   model?: string;
   maxTokens?: number;
   audioInput?: { data: Buffer; mimeType: string };
+  documents?: Array<{ titolo: string; contenuto: string }>;
 };
 
 export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
   const client = new GoogleGenAI({ apiKey: opts.apiKey });
   const recent = opts.history.slice(-50);
+
+  const docsBlock =
+    opts.documents && opts.documents.length > 0
+      ? "\n\n---\n\nDOCUMENTI DI RIFERIMENTO AUTOREVOLI (usa queste informazioni quando pertinenti, non inventare):\n\n" +
+        opts.documents
+          .map((d, i) => `## Documento ${i + 1}: ${d.titolo}\n${d.contenuto}`)
+          .join("\n\n")
+      : "";
+
+  const systemInstruction = MARIALUCIA_SYSTEM_PROMPT + docsBlock;
 
   // Gemini expects role: "user" | "model"
   const contents: Array<{
@@ -51,7 +62,7 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
     model: opts.model ?? "gemini-2.5-flash",
     contents,
     config: {
-      systemInstruction: MARIALUCIA_SYSTEM_PROMPT,
+      systemInstruction,
       maxOutputTokens: opts.maxTokens ?? 600,
       temperature: 0.8,
       thinkingConfig: { thinkingBudget: 0 },

@@ -1,6 +1,8 @@
 import { MARIALUCIA_SYSTEM_PROMPT } from "@/lib/bot/marialucia-system-prompt";
+import { listBotDocuments } from "@/lib/actions/wa-bot-documents";
+import { BotDocumentsManager } from "@/components/whatsapp/bot-documents-manager";
 
-export default function BotSettingsPage() {
+export default async function BotSettingsPage() {
  const envReady = {
   verifyToken: !!process.env.META_WA_VERIFY_TOKEN,
   appSecret: !!process.env.META_WA_APP_SECRET,
@@ -9,6 +11,7 @@ export default function BotSettingsPage() {
   geminiKey: !!process.env.GEMINI_API_KEY,
  };
  const allReady = Object.values(envReady).every(Boolean);
+ const docs = await listBotDocuments();
 
  return (
   <div className="space-y-6">
@@ -38,6 +41,14 @@ export default function BotSettingsPage() {
      Editing del prompt fuori scope first cut — modifica tramite commit su{" "}
      <code className="text-xs">src/lib/bot/marialucia-system-prompt.ts</code>
     </p>
+   </section>
+
+   <section className="rounded-lg border border-border bg-card p-5">
+    <h2 className="mb-3 font-semibold text-brown">Base di conoscenza</h2>
+    <p className="mb-4 text-xs text-muted-foreground">
+     Documenti che Marialucia usa come riferimento per rispondere (FAQ, listino, policy).
+    </p>
+    <BotDocumentsManager initialDocs={docs} />
    </section>
   </div>
  );
