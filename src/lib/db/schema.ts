@@ -47,6 +47,9 @@ export const clients = pgTable("clients", {
   totaleSpeso: decimal("totale_speso", { precision: 10, scale: 2 }).default("0"),
   totaleVisite: integer("totale_visite").default(0),
   ultimaVisita: timestamp("ultima_visita"),
+  waOptIn: boolean("wa_opt_in").notNull().default(false),
+  waLastSeen: timestamp("wa_last_seen"),
+  waPhoneVerified: boolean("wa_phone_verified").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -198,4 +201,50 @@ export const socialPosts = pgTable("social_posts", {
   keyword: varchar("keyword", { length: 50 }), // keyword per lead gen (es. RINASCITA, DETOX)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ============================================
+// BOT WHATSAPP (Marialucia)
+// ============================================
+
+export const waThreads = pgTable("wa_threads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" })
+    .unique(),
+  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, archived, escalated
+  assignedTo: uuid("assigned_to").references(() => users.id),
+  unreadCount: integer("unread_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const waConversations = pgTable("wa_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 20 }).notNull(), // user, assistant, system
+  content: text("content").notNull(),
+  metaMessageId: varchar("meta_message_id", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const waTemplatesMeta = pgTable("wa_templates_meta", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  metaTemplateName: varchar("meta_template_name", { length: 100 }).notNull().unique(),
+  category: varchar("category", { length: 30 }).notNull(), // marketing, utility, authentication
+  language: varchar("language", { length: 10 }).notNull().default("it"),
+  body: text("body").notNull(),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const waMessageBuffer = pgTable("wa_message_buffer", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  phone: varchar("phone", { length: 20 }).notNull(),
+  content: text("content").notNull(),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
 });
