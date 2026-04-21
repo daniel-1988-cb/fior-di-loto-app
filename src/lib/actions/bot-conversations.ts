@@ -12,6 +12,13 @@ export type ThreadListItem = {
  lastPreview: string | null;
 };
 
+// wa_threads.status valid values:
+//  - "active"         → bot automatico attivo (default)
+//  - "human_takeover" → operatore gestisce manualmente, bot sospeso
+//  - "archived"       → conversazione archiviata
+//  - "escalated"      → flaggata per escalation umana da intent detector
+// Lo schema resta varchar(20) (vedi src/lib/db/schema.ts), nessuna migration.
+
 export async function getBotThreads(): Promise<ThreadListItem[]> {
  const supabase = await createClient();
  const { data: threads } = await supabase
@@ -67,5 +74,50 @@ export async function getBotConversation(clientId: string) {
   .select("id, nome, cognome, telefono, segmento")
   .eq("id", clientId)
   .single();
- return { client, messages: messages ?? [] };
+ const { data: thread } = await supabase
+  .from("wa_threads")
+  .select("status, last_message_at")
+  .eq("client_id", clientId)
+  .single();
+ return { client, messages: messages ?? [], thread };
+}
+
+export async function setThreadMode(
+ clientId: string,
+ mode: "active" | "human_takeover" | "archived",
+): Promise<{ ok: boolean; error?: string }> {
+ const supabase = await createClient();
+ const { error } = await supabase
+  .from("wa_threads")
+  .update({ status: mode })
+  .eq("client_id", clientId);
+ if (error) return { ok: false, error: error.message };
+ return { ok: true };
+}
+
+export async function sendManualReply(
+ clientId: string,
+ text: string,
+): Promise<{ ok: boolean; error?: string }> {
+ const token = process.env.BOT_SEND_BEARER_TOKEN;
+ const url = process.env.NEXT_PUBLIC_APP_URL ?? "https://fior-di-loto-app.vercel.app";
+ if (!token) return { ok: false, error: "BOT_SEND_BEARER_TOKEN not configured" };
+ try {
+  const res = await fetch(`${url}/api/whatsapp/send`, {
+   method: "POST",
+   headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+   },
+   body: JSON.stringify({ clientId, text }),
+   cache: "no-store",
+  });
+  if (!res.ok) {
+   const e = (await res.json().catch(() => ({}))) as { error?: string };
+   return { ok: false, error: e.error ?? `HTTP ${res.status}` };
+  }
+  return { ok: true };
+ } catch (e) {
+  return { ok: false, error: e instanceof Error ? e.message : "send failed" };
+ }
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/bot/whatsapp-meta";
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/llm";
+import { getActiveBotDocuments } from "@/lib/actions/wa-bot-documents";
 
 export const runtime = "nodejs";
 
@@ -126,12 +127,32 @@ async function processPayload(rawBody: string): Promise<void> {
       meta_message_id: msg.metaMessageId,
     });
 
-    await supabase
+    // Thread upsert: creiamo il record se manca, ma NON forziamo lo status
+    // a "active" — altrimenti un takeover operatore verrebbe sbloccato ad
+    // ogni messaggio in arrivo. Quindi status viene settato solo in insert
+    // tramite onConflict → ignoreDuplicates non è supportato, quindi:
+    // - se il thread esiste: aggiorniamo solo last_message_at
+    // - se non esiste: lo creiamo con status "active" (default)
+    const { data: existingThread } = await supabase
       .from("wa_threads")
-      .upsert(
-        { client_id: clientId, last_message_at: new Date().toISOString(), status: "active" },
-        { onConflict: "client_id" },
-      );
+      .select("client_id, status")
+      .eq("client_id", clientId)
+      .maybeSingle();
+
+    if (existingThread) {
+      await supabase
+        .from("wa_threads")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("client_id", clientId);
+    } else {
+      await supabase
+        .from("wa_threads")
+        .insert({
+          client_id: clientId,
+          last_message_at: new Date().toISOString(),
+          status: "active",
+        });
+    }
 
     // Intent detection only applies to text messages; audio is handed
     // straight to Gemini (no opt-out / escalate keywords in a vocale are
@@ -174,6 +195,20 @@ async function processPayload(rawBody: string): Promise<void> {
       continue;
     }
 
+    // Takeover operatore: se l'operatore ha preso il controllo del thread,
+    // il bot non deve rispondere. Il messaggio in ingresso è già stato
+    // salvato (sopra) e sarà visibile nel gestionale.
+    // NB: questo check viene DOPO opt_out ed escalate, perché sono azioni
+    // legate alla volontà del cliente e devono restare funzionanti anche
+    // in modalità takeover.
+    if (existingThread?.status === "human_takeover") {
+      console.log(
+        "[wa webhook] thread in human takeover, skipping AI reply",
+        clientId,
+      );
+      continue;
+    }
+
     const { data: history } = await supabase
       .from("wa_conversations")
       .select("role, content")
@@ -181,12 +216,14 @@ async function processPayload(rawBody: string): Promise<void> {
       .order("created_at", { ascending: true })
       .limit(50);
 
+    const docs = await getActiveBotDocuments();
     const rawReply = await generateReply({
       history: (history ?? []).map((h) => ({
         role: h.role as "user" | "assistant",
         content: h.content,
       })),
       apiKey: process.env.GEMINI_API_KEY!,
+      documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
       ...(audioInput ? { audioInput } : {}),
     });
     if (!rawReply) continue;
