@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   verifyWebhook,
@@ -33,7 +33,10 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Invalid signature", { status: 401 });
   }
 
-  queueMicrotask(() => processPayload(rawBody).catch((e) => console.error("[wa webhook]", e)));
+  // Next 16 `after()` keeps the serverless function alive until the
+  // callback finishes, so the async processing won't get truncated the
+  // way it could with queueMicrotask once the response is returned.
+  after(() => processPayload(rawBody).catch((e) => console.error("[wa webhook]", e)));
   return new NextResponse("OK", { status: 200 });
 }
 
