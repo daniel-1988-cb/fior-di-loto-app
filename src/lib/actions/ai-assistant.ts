@@ -150,18 +150,28 @@ ISTRUZIONI:
 
   const client = new GoogleGenAI({ apiKey });
 
-  const response = await client.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [{ role: "user", parts: [{ text: cleanQuestion }] }],
-    config: {
-      systemInstruction: systemPrompt,
-      maxOutputTokens: 1500,
-      temperature: 0.7,
-      thinkingConfig: { thinkingBudget: 0 },
-    },
-  });
-
-  const risposta = (response.text ?? "").trim();
+  let risposta = "";
+  try {
+    const response = await client.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: cleanQuestion }] }],
+      config: {
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 1500,
+        temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+    risposta = (response.text ?? "").trim();
+    if (!risposta) {
+      console.warn("[ai-assistant] Gemini returned empty text. Full response:", JSON.stringify(response, null, 2));
+      throw new Error("Gemini ha restituito una risposta vuota. Riprova.");
+    }
+  } catch (e) {
+    const details = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    console.error("[ai-assistant] Gemini error details:", details, "question:", cleanQuestion.slice(0, 100));
+    throw new Error(`Errore chiamata AI: ${details}`);
+  }
 
   // Log the query (graceful if table doesn't exist yet)
   await supabase.from("ai_query_logs").insert({
