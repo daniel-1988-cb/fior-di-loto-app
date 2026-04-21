@@ -19,6 +19,7 @@ import {
 import { getClient, getClientInteractions, getClientAppointments } from "@/lib/actions/clients";
 import { formatPhone, formatDate, formatCurrency } from "@/lib/utils";
 import { AddInteractionForm } from "@/components/clienti/add-interaction-form";
+import { BotSendButton } from "@/components/clienti/bot-send-button";
 
 function getTipoColor(tipo: string) {
  switch (tipo) {
@@ -124,6 +125,7 @@ export default async function ClienteDetailPage({
         WhatsApp
        </a>
       )}
+      {client.telefono && <BotSendButton clientId={client.id} />}
       <Link
        href={`/clienti/${client.id}/modifica`}
        className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-brown hover:bg-cream-dark"
