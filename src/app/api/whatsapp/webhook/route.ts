@@ -46,38 +46,46 @@ async function processPayload(rawBody: string): Promise<void> {
   for (const msg of messages) {
     const phoneWithPlus = "+" + msg.fromPhone;
 
-    const { data: existingClient } = await supabase
-      .from("clients")
-      .select("id, nome, wa_opt_in")
-      .eq("telefono", phoneWithPlus)
-      .maybeSingle();
-
+    // Race-safe upsert: try insert first; on duplicate (unique index on
+    // clients.telefono), fall back to SELECT + touch of wa_last_seen.
+    // This avoids a lookup+insert TOCTOU window where two concurrent
+    // webhooks on the same number could otherwise create 2 rows.
     let clientId: string;
-    if (existingClient) {
-      clientId = existingClient.id;
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from("clients")
+      .insert({
+        nome: "Nuovo",
+        cognome: "Contatto WA",
+        telefono: phoneWithPlus,
+        segmento: "lead",
+        fonte: "whatsapp",
+        wa_last_seen: new Date().toISOString(),
+        wa_opt_in: true,
+      })
+      .select("id")
+      .single();
+
+    if (inserted) {
+      clientId = inserted.id;
+    } else {
+      const { data: existing } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("telefono", phoneWithPlus)
+        .single();
+      if (!existing) {
+        console.error(
+          "[wa webhook] client lookup failed after insert error",
+          insertErr,
+        );
+        continue;
+      }
+      clientId = existing.id;
       await supabase
         .from("clients")
         .update({ wa_last_seen: new Date().toISOString() })
         .eq("id", clientId);
-    } else {
-      const { data: newClient, error } = await supabase
-        .from("clients")
-        .insert({
-          nome: "Nuovo",
-          cognome: "Contatto WA",
-          telefono: phoneWithPlus,
-          segmento: "lead",
-          fonte: "whatsapp",
-          wa_last_seen: new Date().toISOString(),
-          wa_opt_in: true,
-        })
-        .select("id")
-        .single();
-      if (error || !newClient) {
-        console.error("[wa webhook] insert client failed", error);
-        continue;
-      }
-      clientId = newClient.id;
     }
 
     await supabase.from("wa_conversations").insert({
