@@ -6,7 +6,7 @@ export default function BotSettingsPage() {
   appSecret: !!process.env.META_WA_APP_SECRET,
   accessToken: !!process.env.META_WA_ACCESS_TOKEN,
   phoneNumberId: !!process.env.META_WA_PHONE_NUMBER_ID,
-  anthropicKey: !!process.env.ANTHROPIC_API_KEY,
+  geminiKey: !!process.env.GEMINI_API_KEY,
  };
  const allReady = Object.values(envReady).every(Boolean);
 

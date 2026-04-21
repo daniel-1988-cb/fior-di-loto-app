@@ -8,7 +8,7 @@ import {
   sendWithHumanDelay,
 } from "@/lib/bot/whatsapp-meta";
 import { detectIntent } from "@/lib/bot/intent";
-import { generateReply } from "@/lib/bot/claude";
+import { generateReply } from "@/lib/bot/llm";
 
 export const runtime = "nodejs";
 
@@ -161,7 +161,7 @@ async function processPayload(rawBody: string): Promise<void> {
         role: h.role as "user" | "assistant",
         content: h.content,
       })),
-      apiKey: process.env.ANTHROPIC_API_KEY!,
+      apiKey: process.env.GEMINI_API_KEY!,
     });
     if (!reply) continue;
 
