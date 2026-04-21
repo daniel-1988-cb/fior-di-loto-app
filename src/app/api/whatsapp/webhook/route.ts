@@ -6,6 +6,7 @@ import {
   parseInbound,
   sendMessage,
   sendWithHumanDelay,
+  downloadMedia,
 } from "@/lib/bot/whatsapp-meta";
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/llm";
@@ -14,6 +15,10 @@ export const runtime = "nodejs";
 
 const OPT_OUT_ACK =
   "Ok, non ti scriverò più. Se cambi idea, basta che mi scrivi e ti riattivo.";
+
+const AUDIO_UNCLEAR_REPLY =
+  "ciao 🙏 non ho sentito bene il tuo vocale, mi scrivi per favore?";
+const AUDIO_PLACEHOLDER = "[🎤 audio]";
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get("hub.mode") ?? "";
@@ -98,10 +103,26 @@ async function processPayload(rawBody: string): Promise<void> {
         .eq("id", clientId);
     }
 
+    // Pre-download the audio binary (if any) once, so it's available both
+    // for logging the inbound turn and for the Gemini call below.
+    let audioInput: { data: Buffer; mimeType: string } | null = null;
+    if (msg.kind === "audio" && msg.audioId) {
+      try {
+        audioInput = await downloadMedia(msg.audioId, {
+          accessToken: process.env.META_WA_ACCESS_TOKEN!,
+        });
+      } catch (e) {
+        console.error("[wa webhook] audio download failed", e);
+      }
+    }
+
+    const inboundContent =
+      msg.kind === "audio" ? AUDIO_PLACEHOLDER : (msg.text ?? "");
+
     await supabase.from("wa_conversations").insert({
       client_id: clientId,
       role: "user",
-      content: msg.text,
+      content: inboundContent,
       meta_message_id: msg.metaMessageId,
     });
 
@@ -112,7 +133,11 @@ async function processPayload(rawBody: string): Promise<void> {
         { onConflict: "client_id" },
       );
 
-    const intent = detectIntent(msg.text);
+    // Intent detection only applies to text messages; audio is handed
+    // straight to Gemini (no opt-out / escalate keywords in a vocale are
+    // acted on programmatically — Marialucia will reply naturally).
+    const intent =
+      msg.kind === "text" ? detectIntent(msg.text ?? "") : "generic";
 
     if (intent === "opt_out") {
       // Sticky opt-out + hardcoded ack (no Claude).
@@ -156,14 +181,22 @@ async function processPayload(rawBody: string): Promise<void> {
       .order("created_at", { ascending: true })
       .limit(50);
 
-    const reply = await generateReply({
+    const rawReply = await generateReply({
       history: (history ?? []).map((h) => ({
         role: h.role as "user" | "assistant",
         content: h.content,
       })),
       apiKey: process.env.GEMINI_API_KEY!,
+      ...(audioInput ? { audioInput } : {}),
     });
-    if (!reply) continue;
+    if (!rawReply) continue;
+
+    // If the audio was unclear, Gemini returns the AUDIO_UNCLEAR sentinel
+    // (sometimes wrapped in whitespace/backticks). Swap for the hardcoded
+    // "please type" fallback.
+    const isUnclear =
+      msg.kind === "audio" && /AUDIO_UNCLEAR/i.test(rawReply);
+    const reply = isUnclear ? AUDIO_UNCLEAR_REPLY : rawReply;
 
     try {
       const metaId = await sendWithHumanDelay(msg.fromPhone, reply, {

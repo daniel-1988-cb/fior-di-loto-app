@@ -8,8 +8,10 @@ export type MetaMessageId = string;
 export type NormalizedMessage = {
   metaMessageId: string;
   fromPhone: string;
-  text: string;
   timestamp: number;
+  kind: "text" | "audio";
+  text?: string;
+  audioId?: string;
 };
 
 export function verifyWebhook(
@@ -42,6 +44,8 @@ export function parseInbound(payload: unknown): NormalizedMessage[] {
             from: string;
             timestamp: string;
             text?: { body: string };
+            audio?: { id: string; voice?: boolean };
+            voice?: { id: string };
             type?: string;
           }>;
         };
@@ -52,17 +56,64 @@ export function parseInbound(payload: unknown): NormalizedMessage[] {
   for (const entry of p.entry ?? []) {
     for (const change of entry.changes ?? []) {
       for (const msg of change.value?.messages ?? []) {
-        if (msg.type !== "text" || !msg.text) continue;
-        out.push({
-          metaMessageId: msg.id,
-          fromPhone: msg.from,
-          text: msg.text.body,
-          timestamp: Number(msg.timestamp),
-        });
+        if (msg.type === "text" && msg.text) {
+          out.push({
+            metaMessageId: msg.id,
+            fromPhone: msg.from,
+            timestamp: Number(msg.timestamp),
+            kind: "text",
+            text: msg.text.body,
+          });
+          continue;
+        }
+        // WhatsApp audio/voice: either type="audio" with audio.id (voice=true
+        // for push-to-talk vocali) or in rare payloads type="voice" with
+        // voice.id. Treat both as audio for Gemini.
+        const audioId =
+          msg.type === "audio" && msg.audio
+            ? msg.audio.id
+            : msg.type === "voice" && msg.voice
+              ? msg.voice.id
+              : undefined;
+        if (audioId) {
+          out.push({
+            metaMessageId: msg.id,
+            fromPhone: msg.from,
+            timestamp: Number(msg.timestamp),
+            kind: "audio",
+            audioId,
+          });
+        }
       }
     }
   }
   return out;
+}
+
+export async function downloadMedia(
+  mediaId: string,
+  opts: { accessToken: string },
+): Promise<{ data: Buffer; mimeType: string }> {
+  // Step 1: GET /{media-id} -> { url, mime_type, ... }
+  const metaRes = await fetch(`${GRAPH_BASE}/${mediaId}`, {
+    headers: { Authorization: `Bearer ${opts.accessToken}` },
+  });
+  if (!metaRes.ok) {
+    throw new Error(
+      `Meta media metadata error ${metaRes.status}: ${await metaRes.text()}`,
+    );
+  }
+  const meta = (await metaRes.json()) as { url: string; mime_type: string };
+
+  // Step 2: download from meta.url (CDN Meta, requires same Bearer)
+  const fileRes = await fetch(meta.url, {
+    headers: { Authorization: `Bearer ${opts.accessToken}` },
+  });
+  if (!fileRes.ok) {
+    throw new Error(`Meta media download error ${fileRes.status}`);
+  }
+  const arr = await fileRes.arrayBuffer();
+  return { data: Buffer.from(arr), mimeType: meta.mime_type };
 }
 
 export async function sendMessage(
