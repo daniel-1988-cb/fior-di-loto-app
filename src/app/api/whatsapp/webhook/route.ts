@@ -11,6 +11,10 @@ import {
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/llm";
 import { getActiveBotDocuments } from "@/lib/actions/wa-bot-documents";
+import {
+  getClientContextForBot,
+  buildClientContextPrompt,
+} from "@/lib/actions/bot-client-context";
 
 export const runtime = "nodejs";
 
@@ -217,6 +221,14 @@ async function processPayload(rawBody: string): Promise<void> {
       .limit(50);
 
     const docs = await getActiveBotDocuments();
+
+    // Enrichment: se il cliente è già nel DB (non è il placeholder
+    // "Nuovo Contatto WA"), carichiamo il suo contesto (profilo +
+    // appuntamenti futuri/passati + vouchers + programmi) e lo iniettiamo
+    // nel systemInstruction così Marialucia può personalizzare la risposta.
+    const clientCtx = await getClientContextForBot(clientId);
+    const clientContextText = await buildClientContextPrompt(clientCtx);
+
     const rawReply = await generateReply({
       history: (history ?? []).map((h) => ({
         role: h.role as "user" | "assistant",
@@ -224,6 +236,7 @@ async function processPayload(rawBody: string): Promise<void> {
       })),
       apiKey: process.env.GEMINI_API_KEY!,
       documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
+      clientContext: clientContextText,
       ...(audioInput ? { audioInput } : {}),
     });
     if (!rawReply) continue;

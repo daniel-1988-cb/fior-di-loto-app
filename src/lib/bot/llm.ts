@@ -10,6 +10,7 @@ export type GenerateReplyOpts = {
   maxTokens?: number;
   audioInput?: { data: Buffer; mimeType: string };
   documents?: Array<{ titolo: string; contenuto: string }>;
+  clientContext?: string;
 };
 
 export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
@@ -24,7 +25,11 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
           .join("\n\n")
       : "";
 
-  const systemInstruction = MARIALUCIA_SYSTEM_PROMPT + docsBlock;
+  const clientBlock = opts.clientContext
+    ? "\n\n---\n\n" + opts.clientContext
+    : "";
+
+  const systemInstruction = MARIALUCIA_SYSTEM_PROMPT + clientBlock + docsBlock;
 
   // Gemini expects role: "user" | "model"
   const contents: Array<{
