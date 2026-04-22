@@ -10,6 +10,7 @@ import {
 } from "@/lib/bot/whatsapp-meta";
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/llm";
+import { createBookingRequest, BOOKING_ACK_REPLY } from "@/lib/bot/booking";
 import { getActiveBotDocuments } from "@/lib/actions/wa-bot-documents";
 import {
   getClientContextForBot,
@@ -189,6 +190,30 @@ async function processPayload(rawBody: string): Promise<void> {
         .from("wa_threads")
         .update({ status: "escalated" })
         .eq("client_id", clientId);
+      continue;
+    }
+
+    if (intent === "booking_request") {
+      // Park the request for Laura to triage; don't bother Gemini.
+      try {
+        await createBookingRequest(supabase, clientId, msg.text ?? "");
+      } catch (e) {
+        console.error("[wa webhook] booking request insert failed", e);
+      }
+      try {
+        const ackId = await sendMessage(msg.fromPhone, BOOKING_ACK_REPLY, {
+          phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID!,
+          accessToken: process.env.META_WA_ACCESS_TOKEN!,
+        });
+        await supabase.from("wa_conversations").insert({
+          client_id: clientId,
+          role: "assistant",
+          content: BOOKING_ACK_REPLY,
+          meta_message_id: ackId,
+        });
+      } catch (e) {
+        console.error("[wa webhook] booking ack send failed", e);
+      }
       continue;
     }
 

@@ -5,14 +5,19 @@
 // Kept as a pure function taking a Supabase-like client so it's trivial to
 // mock in tests — we don't want the test suite to reach the real DB.
 
+// We intentionally model only the sliver of the Supabase client we actually
+// call. The real @supabase/supabase-js returns a PostgrestBuilder that is
+// thenable but not a native Promise, so we type `single()` as a PromiseLike.
+export type BookingInsertResult = {
+  data: { id: string } | null;
+  error: { message: string } | null;
+};
+
 export type BookingSupabaseClient = {
   from: (table: string) => {
     insert: (row: Record<string, unknown>) => {
       select: (cols: string) => {
-        single: () => Promise<{
-          data: { id: string } | null;
-          error: { message: string } | null;
-        }>;
+        single: () => PromiseLike<BookingInsertResult>;
       };
     };
   };

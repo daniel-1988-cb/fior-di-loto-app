@@ -120,6 +120,7 @@ export const appointments = pgTable("appointments", {
   oraFine: time("ora_fine").notNull(),
   stato: varchar("stato", { length: 20 }).notNull().default("confermato"), // confermato, completato, cancellato, no_show
   note: text("note"),
+  reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
