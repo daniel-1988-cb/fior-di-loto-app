@@ -279,3 +279,23 @@ export const waBotDocuments = pgTable("wa_bot_documents", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ============================================
+// BLOCKED SLOTS (fasce orarie bloccate)
+// ============================================
+// NB: staff.id è gestita via raw SQL migration (vedi 005_staff.sql); non
+// è modellata in Drizzle quindi qui non aggiungiamo la foreign key
+// tipizzata — il vincolo FK è comunque presente a livello DB.
+
+export const blockedSlots = pgTable("blocked_slots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id"),
+  data: date("data").notNull(),
+  oraInizio: time("ora_inizio").notNull(),
+  oraFine: time("ora_fine").notNull(),
+  tipo: varchar("tipo", { length: 30 }).notNull().default("personalizza"), // personalizza | formazione | ferie | pausa | altro
+  titolo: text("titolo"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
