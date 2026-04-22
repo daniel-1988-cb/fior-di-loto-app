@@ -32,6 +32,7 @@ type AppointmentData = {
  stato: string;
  data: string;
  ora_inizio: string;
+ pagato_at: string | null;
  clients: { id: string; nome: string; cognome: string; telefono: string | null } | null;
  services: { id: string; nome: string; durata: number; prezzo: number; categoria: string } | null;
 };
@@ -87,6 +88,7 @@ function CheckoutForm({ id }: { id: string }) {
  const [appointment, setAppointment] = useState<AppointmentData | null>(null);
  const [loading, setLoading] = useState(true);
  const [saving, setSaving] = useState(false);
+ const [completed, setCompleted] = useState(false);
 
  const [showSconto, setShowSconto] = useState(false);
  const [scontoTipo, setScontoTipo] = useState<"percentuale" | "importo">("percentuale");
@@ -119,16 +121,28 @@ function CheckoutForm({ id }: { id: string }) {
   load();
  }, [id]);
 
- // Se il cart è vuoto (arrivato al pagamento senza passare dal carrello),
- // redirect a /carrello dopo che cart + appuntamento sono stati caricati.
- // TODO (agent B): la pagina /carrello deve esistere — se non è pronta,
- // questo redirect produce 404. In quel caso commentare questo effect.
+ // Se l'appuntamento è già pagato, NON permettere re-pagamento.
+ // Torna in agenda al giorno giusto con alert.
  useEffect(() => {
-  if (!cartMounted || loading) return;
+  if (loading || !appointment) return;
+  if (appointment.pagato_at) {
+   alert("Questo appuntamento risulta già pagato. Transazione già effettuata.");
+   router.replace(`/agenda?date=${appointment.data}`);
+  }
+ }, [loading, appointment, router]);
+
+ // Se il cart è vuoto (arrivato al pagamento senza passare dal carrello),
+ // redirect a /carrello. Skippa se stiamo completando (completed=true) o
+ // se l'appuntamento è già pagato (gestito dall'effect sopra) — altrimenti
+ // dopo resetCart() post-checkout facciamo un redirect errato a /carrello
+ // invece che a /agenda.
+ useEffect(() => {
+  if (!cartMounted || loading || saving || completed) return;
+  if (appointment?.pagato_at) return;
   if (cart.items.length === 0) {
    router.replace(`/agenda/checkout/${id}/carrello`);
   }
- }, [cartMounted, loading, cart.items.length, id, router]);
+ }, [cartMounted, loading, saving, completed, appointment, cart.items.length, id, router]);
 
  // Prezzo base dal cart (subtotale IVA inclusa). Se il cart è vuoto (pre-redirect),
  // fallback al servizio dell'appuntamento per evitare flash di "€ 0,00".
@@ -219,17 +233,20 @@ function CheckoutForm({ id }: { id: string }) {
    if (appointment) await markAppointmentPaid(id);
    if (voucher) await redeemVoucher(voucher.id, id);
 
-   if (result.generatedVoucherCodes.length > 0) {
-    alert(
-     `Card regalo generate:\n${result.generatedVoucherCodes.join("\n")}\n\nComunica i codici al cliente.`,
-    );
-   }
+   // Flag che blocca il redirect a /carrello scatenato da resetCart().
+   setCompleted(true);
+
+   const giftCodesMsg =
+    result.generatedVoucherCodes.length > 0
+     ? `\n\nCard regalo generate:\n${result.generatedVoucherCodes.join("\n")}\nComunica i codici al cliente.`
+     : "";
+   alert(`Transazione effettuata ✓${giftCodesMsg}`);
 
    resetCart();
    const dest = appointment?.data
-    ? `/agenda?date=${appointment.data}`
+    ? `/agenda?date=${appointment.data}&paid=${id}`
     : "/agenda";
-   router.push(dest);
+   router.replace(dest);
   } catch (err) {
    console.error("Errore checkout:", err);
    alert("Errore durante il checkout. Riprova.");

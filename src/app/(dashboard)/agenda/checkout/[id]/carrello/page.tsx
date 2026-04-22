@@ -29,6 +29,7 @@ type AppointmentData = {
  stato: string;
  data: string;
  ora_inizio: string;
+ pagato_at?: string | null;
  staff_id?: string | null;
  client_id?: string | null;
  clients: { id: string; nome: string; cognome: string; telefono: string | null } | null;
@@ -84,12 +85,22 @@ function CarrelloPageInner({ id }: { id: string }) {
   };
  }, [id]);
 
+ // Se l'appuntamento è già pagato, non permettere l'accesso al carrello.
+ useEffect(() => {
+  if (loading || !appointment) return;
+  if (appointment.pagato_at) {
+   alert("Questo appuntamento risulta già pagato. Transazione già effettuata.");
+   router.replace(`/agenda?date=${appointment.data}`);
+  }
+ }, [loading, appointment, router]);
+
  // Pre-populate cart with appointment service exactly once, only after the
  // cart has mounted (i.e. localStorage has been read), so refresh doesn't dup.
  useEffect(() => {
   if (!mounted) return;
   if (prepopulated) return;
   if (!appointment) return;
+  if (appointment.pagato_at) return; // già pagato: skip pre-populate
   if (cart.items.length > 0) {
    setPrepopulated(true);
    return;

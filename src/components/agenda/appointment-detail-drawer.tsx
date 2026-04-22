@@ -215,13 +215,15 @@ export function AppointmentDetailDrawer({ appt, onClose }: Props) {
      <div className="grid grid-cols-2 gap-2">
       <Button
        variant="outline"
+       disabled={!!appt.pagatoAt}
        onClick={() => {
-        router.push(`/agenda/checkout/${appt.id}`);
+        if (appt.pagatoAt) return;
+        router.push(`/agenda/checkout/${appt.id}/carrello`);
         onClose();
        }}
       >
        <Pencil className="h-4 w-4" />
-       Checkout
+       {appt.pagatoAt ? "Già pagato" : "Checkout"}
       </Button>
       {appt.clientId && (
        <Link
