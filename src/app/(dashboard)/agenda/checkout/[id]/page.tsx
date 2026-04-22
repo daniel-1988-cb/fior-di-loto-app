@@ -23,6 +23,9 @@ import {
 import { getAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { createTransaction } from "@/lib/actions/transactions";
 import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
+import { useCart } from "@/lib/cart/storage";
+import { cartSubtotal, type SplitPaymentRow } from "@/lib/cart/types";
+import { SplitPaymentAllocator } from "@/components/agenda/checkout/split-payment-allocator";
 
 type AppointmentData = {
  id: string;
@@ -94,6 +97,14 @@ function CheckoutForm({ id }: { id: string }) {
  const [voucherError, setVoucherError] = useState("");
  const [voucherLoading, setVoucherLoading] = useState(false);
 
+ const clientId = appointment?.clients?.id ?? null;
+ const {
+  cart,
+  mounted: cartMounted,
+  setSplitPayments,
+  reset: resetCart,
+ } = useCart(id, clientId);
+
  useEffect(() => {
   async function load() {
    try {
@@ -108,7 +119,23 @@ function CheckoutForm({ id }: { id: string }) {
   load();
  }, [id]);
 
- const prezzoBase = Number(appointment?.services?.prezzo || 0);
+ // Se il cart è vuoto (arrivato al pagamento senza passare dal carrello),
+ // redirect a /carrello dopo che cart + appuntamento sono stati caricati.
+ // TODO (agent B): la pagina /carrello deve esistere — se non è pronta,
+ // questo redirect produce 404. In quel caso commentare questo effect.
+ useEffect(() => {
+  if (!cartMounted || loading) return;
+  if (cart.items.length === 0) {
+   router.replace(`/agenda/checkout/${id}/carrello`);
+  }
+ }, [cartMounted, loading, cart.items.length, id, router]);
+
+ // Prezzo base dal cart (subtotale IVA inclusa). Se il cart è vuoto (pre-redirect),
+ // fallback al servizio dell'appuntamento per evitare flash di "€ 0,00".
+ const prezzoBase =
+  cart.items.length > 0
+   ? cartSubtotal(cart)
+   : Number(appointment?.services?.prezzo || 0);
 
  function calcSconto(): number {
   const val = parseFloat(scontoValore) || 0;
@@ -129,6 +156,18 @@ function CheckoutForm({ id }: { id: string }) {
  // Scorporo IVA inversa: totale include IVA, quindi subtotale = totale / (1 + iva)
  const subtotale = totale / (1 + IVA_RATE);
  const imposta = totale - subtotale;
+
+ // Split validation: la somma delle righe deve combaciare col totale (± 0.005 €).
+ const splitRows: SplitPaymentRow[] = cart.splitPayments ?? [];
+ const splitSum = Math.round(
+  splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) * 100,
+ ) / 100;
+ const splitQuadra = splitRows.length > 0 && Math.abs(splitSum - totale) < 0.005;
+
+ const canSubmit =
+  !!metodoPagamento &&
+  totale > 0 &&
+  (metodoPagamento !== "split" || splitQuadra);
 
  async function handleApplyVoucher() {
   if (!voucherCode.trim()) return;
@@ -155,22 +194,63 @@ function CheckoutForm({ id }: { id: string }) {
  }
 
  async function handleCompleta() {
-  if (!appointment || !metodoPagamento) return;
+  if (!metodoPagamento) return;
+  if (metodoPagamento === "split" && !splitQuadra) return;
+  if (totale <= 0) return;
   setSaving(true);
   try {
-   await updateAppointmentStatus(id, "completato");
    const today = new Date().toISOString().slice(0, 10);
+   const dataPagamento = appointment?.data ?? today;
+
+   // TODO(agent A): sostituire con `createCartTransaction` quando disponibile
+   // in `src/lib/actions/transaction-items.ts`. Esempio payload finale:
+   //   await createCartTransaction({
+   //     cart,
+   //     scontoImporto: scontoManuale + scontoVoucher,
+   //     voucherId: voucher?.id,
+   //     metodoPagamento: metodoPagamento !== "split" ? metodoPagamento : undefined,
+   //     splitPayments: metodoPagamento === "split" ? splitRows : undefined,
+   //     data: dataPagamento,
+   //   });
+   // Nel frattempo fallback: creo una `transaction` aggregata sul primo
+   // item (sufficiente a non bloccare QA), i line-item residui saranno
+   // recuperati quando agent A pubblica la server action.
+   const firstItem = cart.items[0];
+   const descrizione = firstItem
+    ? cart.items.length > 1
+      ? `${firstItem.label} (+${cart.items.length - 1} altri)`
+      : firstItem.label
+    : appointment?.services?.nome || "Servizio";
+   const categoria = firstItem
+    ? firstItem.kind
+    : appointment?.services?.categoria || "servizi";
+
    await createTransaction({
-    clientId: appointment.clients?.id,
+    clientId: appointment?.clients?.id,
     tipo: "entrata",
-    categoria: appointment.services?.categoria || "servizi",
-    descrizione: appointment.services?.nome || "Servizio",
+    categoria,
+    descrizione,
     importo: totale > 0 ? totale : 0.01,
+    // Per split usiamo "split" come metodo: la ripartizione per riga
+    // verrà persistita da agent A. Per ora basta marcare il tipo.
     metodoPagamento,
-    data: today,
+    data: dataPagamento,
    });
+
+   if (appointment) await updateAppointmentStatus(id, "completato");
    if (voucher) await redeemVoucher(voucher.id, id);
-   router.push("/agenda");
+
+   // TODO(agent A): quando `createCartTransaction` ritorna
+   // `generatedVoucherCodes`, mostrare i codici all'operatore:
+   //   if (result.generatedVoucherCodes?.length) {
+   //     alert(`Card regalo generate: ${result.generatedVoucherCodes.join(", ")}. Comunicale al cliente.`);
+   //   }
+
+   resetCart();
+   const dest = appointment?.data
+    ? `/agenda?date=${appointment.data}`
+    : "/agenda";
+   router.push(dest);
   } catch (err) {
    console.error("Errore checkout:", err);
    alert("Errore durante il checkout. Riprova.");
@@ -180,11 +260,13 @@ function CheckoutForm({ id }: { id: string }) {
  }
 
  async function handleSalvaNonPagato() {
-  if (!appointment) return;
-  router.push(`/agenda?date=${appointment.data}`);
+  const dest = appointment?.data
+   ? `/agenda?date=${appointment.data}`
+   : "/agenda";
+  router.push(dest);
  }
 
- if (loading) {
+ if (loading || !cartMounted) {
   return (
    <div className="flex items-center justify-center p-12">
     <p className="text-sm text-muted-foreground">Caricamento...</p>
@@ -220,7 +302,10 @@ function CheckoutForm({ id }: { id: string }) {
      <X className="h-5 w-5" />
     </Link>
     <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-     <Link href="/agenda" className="hover:text-foreground">
+     <Link
+      href={`/agenda/checkout/${id}/carrello`}
+      className="hover:text-foreground"
+     >
       <span className="inline-flex items-center gap-1">
        <ArrowLeft className="h-4 w-4" />
        Carrello
@@ -261,6 +346,15 @@ function CheckoutForm({ id }: { id: string }) {
        );
       })}
      </div>
+
+     {/* Split payment allocator — visibile solo se metodo === split */}
+     {metodoPagamento === "split" && (
+      <SplitPaymentAllocator
+       totale={totale}
+       rows={splitRows}
+       onChange={setSplitPayments}
+      />
+     )}
 
      {/* Sconto + voucher collapsible */}
      <div className="mt-8 space-y-4">
@@ -361,21 +455,53 @@ function CheckoutForm({ id }: { id: string }) {
         </div>
        </div>
 
-       {/* Servizio */}
-       <div className="mb-6 border-l-2 border-rose/50 pl-4">
-        <div className="flex items-start justify-between gap-3">
-         <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">
-           {appointment.services?.nome ?? "Servizio"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-           {appointment.services?.durata ? `${appointment.services.durata}min` : ""} · Staff
-          </p>
+       {/* Lista item carrello */}
+       <div className="mb-6 space-y-3">
+        {cart.items.length === 0 ? (
+         <div className="border-l-2 border-rose/50 pl-4">
+          <div className="flex items-start justify-between gap-3">
+           <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+             {appointment.services?.nome ?? "Servizio"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+             {appointment.services?.durata
+              ? `${appointment.services.durata}min`
+              : ""}{" "}
+             · Staff
+            </p>
+           </div>
+           <p className="shrink-0 text-sm font-semibold text-foreground">
+            € {prezzoBase.toFixed(2)}
+           </p>
+          </div>
          </div>
-         <p className="shrink-0 text-sm font-semibold text-foreground">
-          € {prezzoBase.toFixed(2)}
-         </p>
-        </div>
+        ) : (
+         cart.items.map((item) => {
+          const lineTotal = item.unitPrice * item.quantity;
+          return (
+           <div
+            key={item.id}
+            className="border-l-2 border-rose/50 pl-4"
+           >
+            <div className="flex items-start justify-between gap-3">
+             <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">
+               {item.label}
+              </p>
+              <p className="text-xs text-muted-foreground">
+               {item.quantity > 1 ? `${item.quantity}× ` : ""}
+               {item.kind}
+              </p>
+             </div>
+             <p className="shrink-0 text-sm font-semibold text-foreground">
+              € {lineTotal.toFixed(2)}
+             </p>
+            </div>
+           </div>
+          );
+         })
+        )}
        </div>
 
        {/* Totali */}
@@ -416,7 +542,7 @@ function CheckoutForm({ id }: { id: string }) {
        <button
         type="button"
         onClick={handleCompleta}
-        disabled={saving || !metodoPagamento}
+        disabled={saving || !canSubmit}
         className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
        >
         <CheckCircle className="h-4 w-4" />
