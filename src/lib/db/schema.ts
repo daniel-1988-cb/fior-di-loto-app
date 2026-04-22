@@ -324,3 +324,23 @@ export const transactionItems = pgTable("transaction_items", {
   generatedVoucherId: uuid("generated_voucher_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ============================================
+// ABBONAMENTI (catalogo pacchetti ricorrenti)
+// ============================================
+// Template pacchetti vendibili: sedute totali, validità, servizi inclusi.
+// Istanze vendute ai clienti vengono registrate in transaction_items con
+// kind='abbonamento' (ref_id = subscriptions.id).
+
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 200 }).notNull(),
+  descrizione: text("descrizione"),
+  seduteTotali: integer("sedute_totali").notNull(),
+  validitaGiorni: integer("validita_giorni"),
+  prezzo: decimal("prezzo", { precision: 10, scale: 2 }).notNull(),
+  serviziInclusi: jsonb("servizi_inclusi").$type<string[]>().default([]),
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
