@@ -1,86 +1,110 @@
 export const dynamic = "force-dynamic";
 
-import { venditeSubNav } from "@/components/layout/v2-sidenav";
-import { Card, Badge } from "@/components/ui";
-import { createAdminClient } from "@/lib/supabase/admin";
+import Link from "next/link";
+import { Button } from "@/components/ui";
+import { ArrowUpRight } from "lucide-react";
+import { getAppuntamentiPagati, type AppuntamentoPagato } from "@/lib/actions/vendite";
+import { VenditeTable, type VenditeTableColumn } from "@/components/vendite/vendite-table";
 import { formatCurrency } from "@/lib/utils";
 
-export default async function V2VenditeAppuntamentiPage() {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("appointments")
-    .select("*, clients(nome, cognome), services(nome, prezzo)")
-    .order("data", { ascending: false })
-    .order("ora_inizio", { ascending: false })
-    .limit(200);
+interface PageProps {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}
 
-  const rows = data ?? [];
+function defaultRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  return { from: iso(start), to: iso(end) };
+}
+
+export default async function VenditeAppuntamentiPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const def = defaultRange();
+  const from = sp.from || def.from;
+  const to = sp.to || def.to;
+
+  const rows = await getAppuntamentiPagati({ dataFrom: from, dataTo: to });
+  const totale = rows.reduce((s, r) => s + r.importo, 0);
+
+  const columns: VenditeTableColumn<AppuntamentoPagato>[] = [
+    {
+      key: "data",
+      header: "Data",
+      cell: (r) => new Date(r.data).toLocaleDateString("it-IT"),
+    },
+    {
+      key: "ora",
+      header: "Ora",
+      cell: (r) => <span className="text-muted-foreground">{r.oraInizio}</span>,
+    },
+    {
+      key: "cliente",
+      header: "Cliente",
+      cell: (r) => <span className="font-medium">{r.clienteNome}</span>,
+    },
+    {
+      key: "servizio",
+      header: "Servizio",
+      cell: (r) => r.servizioNome,
+    },
+    {
+      key: "staff",
+      header: "Staff",
+      cell: (r) => (
+        <span className="text-muted-foreground">{r.staffNome ?? "—"}</span>
+      ),
+    },
+    {
+      key: "importo",
+      header: "Importo",
+      align: "right",
+      cell: (r) => (
+        <span className="font-semibold text-success">
+          {formatCurrency(r.importo)}
+        </span>
+      ),
+    },
+    {
+      key: "azioni",
+      header: "",
+      align: "right",
+      cell: (r) => (
+        <Link href={`/agenda?date=${r.data}`}>
+          <Button variant="outline" size="sm">
+            Vai a ricevuta
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Button>
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <>
       <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Appuntamenti</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Appuntamenti pagati</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tutti gli appuntamenti ordinati per data (ultimi 200).
+          {rows.length} appuntamenti incassati dal{" "}
+          {new Date(from).toLocaleDateString("it-IT")} al{" "}
+          {new Date(to).toLocaleDateString("it-IT")} · Totale{" "}
+          <span className="font-semibold text-foreground">
+            {formatCurrency(totale)}
+          </span>
+          .
         </p>
       </header>
 
-      <Card className="overflow-hidden">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Data</th>
-                <th className="px-4 py-3 text-left font-medium">Ora</th>
-                <th className="px-4 py-3 text-left font-medium">Cliente</th>
-                <th className="px-4 py-3 text-left font-medium">Servizio</th>
-                <th className="px-4 py-3 text-right font-medium">Prezzo</th>
-                <th className="px-4 py-3 text-center font-medium">Stato</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                    Nessun appuntamento registrato.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((a) => (
-                  <tr key={a.id} className="hover:bg-muted/40">
-                    <td className="px-4 py-3">{new Date(a.data).toLocaleDateString("it-IT")}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {a.ora_inizio.slice(0, 5)} - {a.ora_fine.slice(0, 5)}
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      {a.clients?.nome} {a.clients?.cognome}
-                    </td>
-                    <td className="px-4 py-3">{a.services?.nome}</td>
-                    <td className="px-4 py-3 text-right font-semibold">
-                      {a.services?.prezzo != null ? formatCurrency(a.services.prezzo) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge
-                        variant={
-                          a.stato === "confermato"
-                            ? "success"
-                            : a.stato === "completato"
-                            ? "primary"
-                            : a.stato === "cancellato"
-                            ? "danger"
-                            : "default"
-                        }
-                      >
-                        {a.stato}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <VenditeTable
+        columns={columns}
+        rows={rows}
+        rowKey={(r) => r.id}
+        emptyMessage="Nessun appuntamento pagato nel periodo selezionato."
+      />
     </>
   );
 }

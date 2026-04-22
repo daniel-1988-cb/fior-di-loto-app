@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import { venditeSubNav } from "@/components/layout/v2-sidenav";
 import { Card, CardContent, Badge } from "@/components/ui";
 import { getTransactions } from "@/lib/actions/transactions";
 import { formatCurrency } from "@/lib/utils";
@@ -24,7 +23,8 @@ export default async function V2PagamentiPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Pagamenti</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Metodi di pagamento utilizzati questo mese.
+          Metodi di pagamento utilizzati questo mese. Il breakdown completo con filtri
+          avanzati arriverà in Fase 5 Reports.
         </p>
       </header>
 

@@ -1,5 +1,4 @@
-import { venditeSubNav } from "@/components/layout/v2-sidenav";
-import { Card, CardContent, Button } from "@/components/ui";
+import { Card, CardContent } from "@/components/ui";
 import { Sparkles } from "lucide-react";
 
 export default function V2AbbonamentiVenditiPage() {
@@ -15,14 +14,12 @@ export default function V2AbbonamentiVenditiPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sparkles className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold">Abbonamenti in arrivo</h2>
+          <h2 className="mt-4 text-lg font-semibold">Disponibile in Fase 3</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Sarai in grado di vendere pacchetti con sedute incluse, rinnovi automatici e sconti
-            dedicati alle clienti fedeli.
+            La gestione degli abbonamenti (pacchetti sedute, rinnovi automatici,
+            scadenze) arriverà con la Fase 3 Clienti, dove l&apos;anagrafica sarà
+            estesa per tracciare sedute residue e prossima scadenza.
           </p>
-          <Button className="mt-6" variant="outline">
-            Configura
-          </Button>
         </CardContent>
       </Card>
     </>

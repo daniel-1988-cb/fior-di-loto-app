@@ -1,5 +1,4 @@
-import { venditeSubNav } from "@/components/layout/v2-sidenav";
-import { Card, CardContent, Button } from "@/components/ui";
+import { Card, CardContent } from "@/components/ui";
 import { Package } from "lucide-react";
 
 export default function V2OrdiniPage() {
@@ -7,7 +6,9 @@ export default function V2OrdiniPage() {
     <>
       <header className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Ordini di prodotti</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Vendite di prodotti in cassa e online.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Vendite di prodotti in cassa e online.
+        </p>
       </header>
 
       <Card>
@@ -15,14 +16,16 @@ export default function V2OrdiniPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Package className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold">Nessun ordine registrato</h2>
+          <h2 className="mt-4 text-lg font-semibold">Disponibile in Fase 2</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Gli ordini di prodotti verranno raggruppati qui quando abiliterai lo shop digitale
-            o registrerai vendite di prodotti in cassa.
+            Gli ordini di prodotti saranno disponibili quando la Fase 2 Catalogo porterà
+            il modulo prodotti/inventario in gestionale. Nel frattempo le vendite di
+            prodotti sono tracciate in{" "}
+            <a href="/vendite/lista" className="underline">
+              Lista transazioni
+            </a>
+            .
           </p>
-          <Button className="mt-6" variant="outline">
-            Configura shop
-          </Button>
         </CardContent>
       </Card>
     </>
