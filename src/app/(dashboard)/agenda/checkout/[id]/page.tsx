@@ -21,7 +21,7 @@ import {
  type LucideIcon,
 } from "lucide-react";
 import { getAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
-import { createTransaction } from "@/lib/actions/transactions";
+import { createCartTransaction } from "@/lib/actions/transaction-items";
 import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
 import { useCart } from "@/lib/cart/storage";
 import { cartSubtotal, type SplitPaymentRow } from "@/lib/cart/types";
@@ -202,49 +202,28 @@ function CheckoutForm({ id }: { id: string }) {
    const today = new Date().toISOString().slice(0, 10);
    const dataPagamento = appointment?.data ?? today;
 
-   // TODO(agent A): sostituire con `createCartTransaction` quando disponibile
-   // in `src/lib/actions/transaction-items.ts`. Esempio payload finale:
-   //   await createCartTransaction({
-   //     cart,
-   //     scontoImporto: scontoManuale + scontoVoucher,
-   //     voucherId: voucher?.id,
-   //     metodoPagamento: metodoPagamento !== "split" ? metodoPagamento : undefined,
-   //     splitPayments: metodoPagamento === "split" ? splitRows : undefined,
-   //     data: dataPagamento,
-   //   });
-   // Nel frattempo fallback: creo una `transaction` aggregata sul primo
-   // item (sufficiente a non bloccare QA), i line-item residui saranno
-   // recuperati quando agent A pubblica la server action.
-   const firstItem = cart.items[0];
-   const descrizione = firstItem
-    ? cart.items.length > 1
-      ? `${firstItem.label} (+${cart.items.length - 1} altri)`
-      : firstItem.label
-    : appointment?.services?.nome || "Servizio";
-   const categoria = firstItem
-    ? firstItem.kind
-    : appointment?.services?.categoria || "servizi";
-
-   await createTransaction({
-    clientId: appointment?.clients?.id,
-    tipo: "entrata",
-    categoria,
-    descrizione,
-    importo: totale > 0 ? totale : 0.01,
-    // Per split usiamo "split" come metodo: la ripartizione per riga
-    // verrà persistita da agent A. Per ora basta marcare il tipo.
-    metodoPagamento,
+   const result = await createCartTransaction({
+    cart,
+    scontoImporto: scontoManuale + scontoVoucher,
+    voucherId: voucher?.id,
+    metodoPagamento: metodoPagamento !== "split" ? metodoPagamento : undefined,
+    splitPayments: metodoPagamento === "split" ? splitRows : undefined,
     data: dataPagamento,
    });
+
+   if (!result.ok) {
+    alert(`Errore pagamento: ${result.error}`);
+    return;
+   }
 
    if (appointment) await updateAppointmentStatus(id, "completato");
    if (voucher) await redeemVoucher(voucher.id, id);
 
-   // TODO(agent A): quando `createCartTransaction` ritorna
-   // `generatedVoucherCodes`, mostrare i codici all'operatore:
-   //   if (result.generatedVoucherCodes?.length) {
-   //     alert(`Card regalo generate: ${result.generatedVoucherCodes.join(", ")}. Comunicale al cliente.`);
-   //   }
+   if (result.generatedVoucherCodes.length > 0) {
+    alert(
+     `Card regalo generate:\n${result.generatedVoucherCodes.join("\n")}\n\nComunica i codici al cliente.`,
+    );
+   }
 
    resetCart();
    const dest = appointment?.data
