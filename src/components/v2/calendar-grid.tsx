@@ -24,14 +24,32 @@ interface Appointment {
   services?: { nome: string; durata: number; prezzo?: number; categoria?: string } | null;
 }
 
+interface BlockedSlot {
+  id: string;
+  staffId: string | null;
+  oraInizio: string;
+  oraFine: string;
+  tipo: string;
+  titolo: string | null;
+}
+
 interface CalendarGridProps {
   staff: Staff[];
   appointments: Appointment[];
+  blockedSlots?: BlockedSlot[];
   startHour?: number;
   endHour?: number;
   slotMinutes?: number;
   date: string;
 }
+
+const TIPO_LABEL: Record<string, string> = {
+  personalizza: "Blocco",
+  formazione: "Formazione",
+  ferie: "Ferie",
+  pausa: "Pausa",
+  altro: "Altro",
+};
 
 function minutesFromTime(t: string) {
   const [h, m] = t.slice(0, 5).split(":").map(Number);
@@ -50,6 +68,7 @@ function hexToRgba(hex: string, alpha: number) {
 export function CalendarGrid({
   staff,
   appointments,
+  blockedSlots = [],
   startHour = 8,
   endHour = 21,
   slotMinutes = 30,
@@ -152,6 +171,10 @@ export function CalendarGrid({
         >
           {staff.map((s) => {
             const apts = byStaff.get(s.id) ?? [];
+            // Blocchi di questo staff + blocchi globali (staff_id = null)
+            const blocks = blockedSlots.filter(
+              (b) => b.staffId === s.id || b.staffId === null,
+            );
             return (
               <div
                 key={s.id}
@@ -187,6 +210,36 @@ export function CalendarGrid({
                       )}
                       style={{ top, height: 30 * pxPerMinute }}
                     />
+                  );
+                })}
+
+                {/* blocked slots (render sotto gli appuntamenti) */}
+                {blocks.map((b) => {
+                  const startM = minutesFromTime(b.oraInizio) - startHour * 60;
+                  const endM = minutesFromTime(b.oraFine) - startHour * 60;
+                  const top = Math.max(0, startM * pxPerMinute);
+                  const height = Math.max(24, (endM - startM) * pxPerMinute);
+                  const label = b.titolo || TIPO_LABEL[b.tipo] || "Blocco";
+                  return (
+                    <div
+                      key={`block-${b.id}-${s.id}`}
+                      className="absolute left-1 right-1 overflow-hidden rounded-md border border-border/80 text-left"
+                      style={{
+                        top,
+                        height,
+                        backgroundColor: "rgba(120,120,120,0.15)",
+                        backgroundImage:
+                          "repeating-linear-gradient(45deg, rgba(120,120,120,0.18) 0 6px, transparent 6px 12px)",
+                      }}
+                      title={`${b.oraInizio} - ${b.oraFine} · ${label}`}
+                    >
+                      <div className="flex items-center gap-1 px-2 pt-1 text-[10px] font-semibold text-muted-foreground">
+                        {b.oraInizio} - {b.oraFine}
+                      </div>
+                      <div className="truncate px-2 text-[11px] font-medium text-foreground">
+                        {label}
+                      </div>
+                    </div>
                   );
                 })}
 

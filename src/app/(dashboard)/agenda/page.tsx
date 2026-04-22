@@ -5,6 +5,7 @@ import { CalendarToolbar } from "@/components/v2/calendar-toolbar";
 import { AggiungiDropdownButton } from "@/components/agenda/aggiungi-dropdown-button";
 import { getAppointmentsMultiStaff } from "@/lib/actions/appointments";
 import { getStaff } from "@/lib/actions/staff";
+import { getBlockedSlotsByDate } from "@/lib/actions/blocked-slots";
 
 interface PageProps {
   searchParams: Promise<{ date?: string }>;
@@ -15,9 +16,10 @@ export default async function V2AgendaPage({ searchParams }: PageProps) {
   const today = new Date().toISOString().slice(0, 10);
   const date = sp.date ?? today;
 
-  const [staff, appointments] = await Promise.all([
+  const [staff, appointments, blockedSlots] = await Promise.all([
     getStaff(true),
     getAppointmentsMultiStaff(date),
+    getBlockedSlotsByDate(date),
   ]);
 
   return (
@@ -44,6 +46,14 @@ export default async function V2AgendaPage({ searchParams }: PageProps) {
           avatar_url: s.avatar_url,
         }))}
         appointments={appointments}
+        blockedSlots={blockedSlots.map((b) => ({
+          id: b.id,
+          staffId: b.staffId,
+          oraInizio: b.oraInizio,
+          oraFine: b.oraFine,
+          tipo: b.tipo,
+          titolo: b.titolo,
+        }))}
       />
     </>
   );
