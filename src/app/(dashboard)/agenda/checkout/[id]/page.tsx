@@ -3,9 +3,24 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Tag, CreditCard, CheckCircle } from "lucide-react";
-import { getAppointment } from "@/lib/actions/appointments";
-import { updateAppointmentStatus } from "@/lib/actions/appointments";
+import {
+ ArrowLeft,
+ X,
+ Tag,
+ Banknote,
+ QrCode,
+ Smartphone,
+ CreditCard,
+ Ticket,
+ SplitSquareHorizontal,
+ Receipt,
+ FileText,
+ Landmark,
+ HelpCircle,
+ CheckCircle,
+ type LucideIcon,
+} from "lucide-react";
+import { getAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
 import { createTransaction } from "@/lib/actions/transactions";
 import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
 
@@ -25,8 +40,44 @@ type VoucherData = {
  valore: number;
 };
 
-const inputClass =
- "w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-brown focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
+type MetodoId =
+ | "contanti"
+ | "carta"
+ | "bonifico"
+ | "satispay"
+ | "paypal"
+ | "buono"
+ | "qr"
+ | "self_service"
+ | "split"
+ | "assegno"
+ | "fattura"
+ | "finanziaria"
+ | "altro";
+
+type MetodoCard = {
+ id: MetodoId;
+ label: string;
+ icon: LucideIcon;
+ iconClass: string;
+};
+
+const METODI: MetodoCard[] = [
+ { id: "self_service", label: "Pagamento self service", icon: Smartphone, iconClass: "text-emerald-500" },
+ { id: "qr", label: "Codice QR", icon: QrCode, iconClass: "text-emerald-500" },
+ { id: "contanti", label: "Contanti", icon: Banknote, iconClass: "text-emerald-500" },
+ { id: "buono", label: "Buono", icon: Ticket, iconClass: "text-emerald-500" },
+ { id: "split", label: "Dividi il pagamento", icon: SplitSquareHorizontal, iconClass: "text-rose" },
+ { id: "carta", label: "Carta di Credito", icon: CreditCard, iconClass: "text-rose" },
+ { id: "paypal", label: "PayPal", icon: CreditCard, iconClass: "text-rose" },
+ { id: "bonifico", label: "Bonifico", icon: Landmark, iconClass: "text-rose" },
+ { id: "finanziaria", label: "Finanziaria", icon: Landmark, iconClass: "text-rose" },
+ { id: "assegno", label: "Assegno", icon: Receipt, iconClass: "text-rose" },
+ { id: "fattura", label: "Fattura - no scontrino", icon: FileText, iconClass: "text-rose" },
+ { id: "altro", label: "Altro", icon: HelpCircle, iconClass: "text-rose" },
+];
+
+const IVA_RATE = 0.22; // IVA 22%
 
 function CheckoutForm({ id }: { id: string }) {
  const router = useRouter();
@@ -34,9 +85,10 @@ function CheckoutForm({ id }: { id: string }) {
  const [loading, setLoading] = useState(true);
  const [saving, setSaving] = useState(false);
 
+ const [showSconto, setShowSconto] = useState(false);
  const [scontoTipo, setScontoTipo] = useState<"percentuale" | "importo">("percentuale");
  const [scontoValore, setScontoValore] = useState("");
- const [metodoPagamento, setMetodoPagamento] = useState("contanti");
+ const [metodoPagamento, setMetodoPagamento] = useState<MetodoId | null>(null);
  const [voucherCode, setVoucherCode] = useState("");
  const [voucher, setVoucher] = useState<VoucherData | null>(null);
  const [voucherError, setVoucherError] = useState("");
@@ -60,9 +112,7 @@ function CheckoutForm({ id }: { id: string }) {
 
  function calcSconto(): number {
   const val = parseFloat(scontoValore) || 0;
-  if (scontoTipo === "percentuale") {
-   return Math.min((prezzoBase * val) / 100, prezzoBase);
-  }
+  if (scontoTipo === "percentuale") return Math.min((prezzoBase * val) / 100, prezzoBase);
   return Math.min(val, prezzoBase);
  }
 
@@ -76,6 +126,9 @@ function CheckoutForm({ id }: { id: string }) {
  const scontoManuale = calcSconto();
  const scontoVoucher = calcVoucherSconto();
  const totale = Math.max(prezzoBase - scontoManuale - scontoVoucher, 0);
+ // Scorporo IVA inversa: totale include IVA, quindi subtotale = totale / (1 + iva)
+ const subtotale = totale / (1 + IVA_RATE);
+ const imposta = totale - subtotale;
 
  async function handleApplyVoucher() {
   if (!voucherCode.trim()) return;
@@ -86,15 +139,12 @@ function CheckoutForm({ id }: { id: string }) {
    if (!found) {
     setVoucherError("Voucher non trovato o già utilizzato.");
     setVoucher(null);
+   } else if (found.data_scadenza && new Date(found.data_scadenza) < new Date()) {
+    setVoucherError("Questo voucher è scaduto.");
+    setVoucher(null);
    } else {
-    // Check expiry
-    if (found.data_scadenza && new Date(found.data_scadenza) < new Date()) {
-     setVoucherError("Questo voucher è scaduto.");
-     setVoucher(null);
-    } else {
-     setVoucher(found as unknown as VoucherData);
-     setVoucherError("");
-    }
+    setVoucher(found as unknown as VoucherData);
+    setVoucherError("");
    }
   } catch (err) {
    console.error(err);
@@ -105,11 +155,10 @@ function CheckoutForm({ id }: { id: string }) {
  }
 
  async function handleCompleta() {
-  if (!appointment) return;
+  if (!appointment || !metodoPagamento) return;
   setSaving(true);
   try {
    await updateAppointmentStatus(id, "completato");
-
    const today = new Date().toISOString().slice(0, 10);
    await createTransaction({
     clientId: appointment.clients?.id,
@@ -117,14 +166,10 @@ function CheckoutForm({ id }: { id: string }) {
     categoria: appointment.services?.categoria || "servizi",
     descrizione: appointment.services?.nome || "Servizio",
     importo: totale > 0 ? totale : 0.01,
-    metodoPagamento: metodoPagamento,
+    metodoPagamento,
     data: today,
    });
-
-   if (voucher) {
-    await redeemVoucher(voucher.id, id);
-   }
-
+   if (voucher) await redeemVoucher(voucher.id, id);
    router.push("/agenda");
   } catch (err) {
    console.error("Errore checkout:", err);
@@ -132,6 +177,11 @@ function CheckoutForm({ id }: { id: string }) {
   } finally {
    setSaving(false);
   }
+ }
+
+ async function handleSalvaNonPagato() {
+  if (!appointment) return;
+  router.push(`/agenda?date=${appointment.data}`);
  }
 
  if (loading) {
@@ -154,202 +204,235 @@ function CheckoutForm({ id }: { id: string }) {
  }
 
  const clientName = appointment.clients
-  ? `${appointment.clients.nome} ${appointment.clients.cognome}`
+  ? `${appointment.clients.nome} ${appointment.clients.cognome}`.trim()
   : "Cliente sconosciuto";
+ const clientInitial = clientName.charAt(0).toUpperCase();
 
  return (
-  <div>
-   <div className="mb-6">
+  <div className="-m-4 min-h-screen bg-background sm:-m-6 lg:-m-8">
+   {/* Top bar: close + breadcrumb */}
+   <div className="flex items-center gap-4 border-b border-border bg-card px-6 py-4">
     <Link
      href="/agenda"
-     className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brown"
+     className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+     aria-label="Chiudi"
     >
-     <ArrowLeft className="h-4 w-4" />
-     Torna all&apos;agenda
+     <X className="h-5 w-5" />
     </Link>
-    <h1 className="text-3xl font-bold text-brown">
-     Checkout
-    </h1>
+    <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+     <Link href="/agenda" className="hover:text-foreground">
+      <span className="inline-flex items-center gap-1">
+       <ArrowLeft className="h-4 w-4" />
+       Carrello
+      </span>
+     </Link>
+     <span>›</span>
+     <span className="font-medium text-foreground">Pagamento</span>
+    </nav>
    </div>
 
-   <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-    {/* Riepilogo appuntamento */}
-    <div className="rounded-lg border border-border bg-card p-5">
-     <h2 className="mb-4 font-semibold text-brown">Riepilogo Appuntamento</h2>
-     <dl className="space-y-3 text-sm">
-      <div className="flex flex-wrap items-start justify-between gap-1">
-       <dt className="text-muted-foreground">Cliente</dt>
-       <dd className="font-medium text-brown text-right">{clientName}</dd>
-      </div>
-      <div className="flex flex-wrap items-start justify-between gap-1">
-       <dt className="text-muted-foreground">Servizio</dt>
-       <dd className="font-medium text-brown text-right">{appointment.services?.nome ?? "—"}</dd>
-      </div>
-      <div className="flex flex-wrap items-start justify-between gap-1">
-       <dt className="text-muted-foreground">Data</dt>
-       <dd className="font-medium text-brown text-right">
-        {new Date(appointment.data + "T00:00:00").toLocaleDateString("it-IT", {
-         weekday: "short",
-         day: "numeric",
-         month: "long",
-        })}
-       </dd>
-      </div>
-      <div className="flex flex-wrap items-start justify-between gap-1">
-       <dt className="text-muted-foreground">Ora</dt>
-       <dd className="font-medium text-brown">{appointment.ora_inizio.slice(0, 5)}</dd>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-1 border-t border-border pt-3">
-       <dt className="font-semibold text-brown">Prezzo base</dt>
-       <dd className="text-xl font-bold text-brown">€{prezzoBase.toFixed(2)}</dd>
-      </div>
-     </dl>
-    </div>
+   <div className="flex flex-col lg:flex-row lg:gap-0">
+    {/* Main: metodi + sconto + voucher */}
+    <div className="flex-1 px-4 py-6 sm:px-8 lg:px-12">
+     <h1 className="mb-6 text-3xl font-bold text-foreground">
+      Seleziona il metodo di pagamento
+     </h1>
 
-    {/* Pagamento */}
-    <div className="space-y-4">
-     {/* Sconto manuale */}
-     <div className="rounded-lg border border-border bg-card p-5">
-      <h2 className="mb-4 font-semibold text-brown">Sconto</h2>
-      <div className="flex gap-2 mb-3">
-       <button
-        type="button"
-        onClick={() => setScontoTipo("percentuale")}
-        className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
-         scontoTipo === "percentuale"
-          ? "border-rose bg-rose text-white"
-          : "border-border bg-card text-brown hover:bg-cream-dark"
-        }`}
-       >
-        %
-       </button>
-       <button
-        type="button"
-        onClick={() => setScontoTipo("importo")}
-        className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
-         scontoTipo === "importo"
-          ? "border-rose bg-rose text-white"
-          : "border-border bg-card text-brown hover:bg-cream-dark"
-        }`}
-       >
-        € Fisso
-       </button>
-      </div>
-      <input
-       type="number"
-       min="0"
-       step="0.01"
-       value={scontoValore}
-       onChange={(e) => setScontoValore(e.target.value)}
-       placeholder={scontoTipo === "percentuale" ? "Es. 10 per 10%" : "Es. 5.00"}
-       className={inputClass}
-      />
-      {scontoManuale > 0 && (
-       <p className="mt-2 text-sm text-green-600">
-        Sconto applicato: -€{scontoManuale.toFixed(2)}
-       </p>
-      )}
+     {/* 12 metodi grid 3x4 */}
+     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {METODI.map((m) => {
+       const Icon = m.icon;
+       const active = metodoPagamento === m.id;
+       return (
+        <button
+         key={m.id}
+         type="button"
+         onClick={() => setMetodoPagamento(m.id)}
+         aria-pressed={active}
+         className={`flex flex-col items-center justify-center gap-3 rounded-2xl border p-6 text-center transition-all ${
+          active
+           ? "border-rose bg-rose/5 ring-2 ring-rose/40"
+           : "border-border bg-card hover:border-muted-foreground"
+         }`}
+        >
+         <Icon className={`h-8 w-8 ${m.iconClass}`} />
+         <span className="text-sm font-medium text-foreground">{m.label}</span>
+        </button>
+       );
+      })}
      </div>
 
-     {/* Voucher */}
-     <div className="rounded-lg border border-border bg-card p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-semibold text-brown">
+     {/* Sconto + voucher collapsible */}
+     <div className="mt-8 space-y-4">
+      <button
+       type="button"
+       onClick={() => setShowSconto((v) => !v)}
+       className="flex items-center gap-2 text-sm font-medium text-rose hover:underline"
+      >
        <Tag className="h-4 w-4" />
-       Voucher
-      </h2>
-      <div className="flex gap-2">
-       <input
-        type="text"
-        value={voucherCode}
-        onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-        placeholder="Es. FDL-A3X9"
-        className={inputClass}
-       />
-       <button
-        type="button"
-        onClick={handleApplyVoucher}
-        disabled={voucherLoading || !voucherCode.trim()}
-        className="rounded-lg bg-rose px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-dark disabled:opacity-50"
-       >
-        {voucherLoading ? "..." : "Applica"}
-       </button>
-      </div>
-      {voucherError && (
-       <p className="mt-2 text-sm text-red-500">{voucherError}</p>
-      )}
-      {voucher && (
-       <div className="mt-3 rounded-lg bg-green-50 border border-green-200 p-3">
-        <p className="text-sm font-semibold text-green-700">
-         Voucher {voucher.codice} applicato
-        </p>
-        <p className="text-sm text-green-600">
-         Sconto: -€{scontoVoucher.toFixed(2)}
-        </p>
+       {showSconto ? "Nascondi sconto e voucher" : "Applica sconto o voucher"}
+      </button>
+
+      {showSconto && (
+       <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+        <div>
+         <label className="mb-2 block text-sm font-medium text-foreground">Sconto manuale</label>
+         <div className="mb-2 flex gap-2">
+          <button
+           type="button"
+           onClick={() => setScontoTipo("percentuale")}
+           className={`flex-1 rounded-lg border py-1.5 text-sm font-medium transition-colors ${
+            scontoTipo === "percentuale"
+             ? "border-rose bg-rose text-white"
+             : "border-border bg-card text-foreground hover:bg-muted"
+           }`}
+          >
+           %
+          </button>
+          <button
+           type="button"
+           onClick={() => setScontoTipo("importo")}
+           className={`flex-1 rounded-lg border py-1.5 text-sm font-medium transition-colors ${
+            scontoTipo === "importo"
+             ? "border-rose bg-rose text-white"
+             : "border-border bg-card text-foreground hover:bg-muted"
+           }`}
+          >
+           € Fisso
+          </button>
+         </div>
+         <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={scontoValore}
+          onChange={(e) => setScontoValore(e.target.value)}
+          placeholder={scontoTipo === "percentuale" ? "Es. 10 per 10%" : "Es. 5.00"}
+          className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
+         />
+        </div>
+        <div>
+         <label className="mb-2 block text-sm font-medium text-foreground">Codice voucher</label>
+         <div className="flex gap-2">
+          <input
+           type="text"
+           value={voucherCode}
+           onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+           placeholder="Es. FDL-A3X9"
+           className="flex-1 rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
+          />
+          <button
+           type="button"
+           onClick={handleApplyVoucher}
+           disabled={voucherLoading || !voucherCode.trim()}
+           className="rounded-lg bg-rose px-3 py-2 text-sm font-medium text-white hover:bg-rose/90 disabled:opacity-50"
+          >
+           {voucherLoading ? "..." : "Applica"}
+          </button>
+         </div>
+         {voucherError && <p className="mt-1.5 text-xs text-red-500">{voucherError}</p>}
+         {voucher && (
+          <p className="mt-1.5 text-xs text-emerald-600">
+           {voucher.codice} applicato (-€{scontoVoucher.toFixed(2)})
+          </p>
+         )}
+        </div>
        </div>
       )}
      </div>
+    </div>
 
-     {/* Metodo pagamento */}
-     <div className="rounded-lg border border-border bg-card p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-semibold text-brown">
-       <CreditCard className="h-4 w-4" />
-       Metodo di Pagamento
-      </h2>
-      <div className="grid grid-cols-2 gap-2">
-       {(["contanti", "carta", "bonifico", "satispay"] as const).map((metodo) => (
-        <button
-         key={metodo}
-         type="button"
-         onClick={() => setMetodoPagamento(metodo)}
-         className={`rounded-lg border py-2.5 text-sm font-medium capitalize transition-colors ${
-          metodoPagamento === metodo
-           ? "border-rose bg-rose text-white"
-           : "border-border bg-card text-brown hover:bg-cream-dark"
-         }`}
-        >
-         {metodo}
-        </button>
-       ))}
-      </div>
-     </div>
+    {/* Right sidebar: riepilogo carrello */}
+    <aside className="w-full shrink-0 border-t border-border bg-card lg:w-[360px] lg:border-l lg:border-t-0">
+     <div className="flex h-full flex-col">
+      <div className="flex-1 p-6">
+       {/* Cliente */}
+       <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+         <p className="truncate text-base font-semibold text-foreground">{clientName}</p>
+         {appointment.clients?.telefono && (
+          <p className="truncate text-xs text-muted-foreground">
+           {appointment.clients.telefono}
+          </p>
+         )}
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose/10 text-sm font-semibold text-rose">
+         {clientInitial}
+        </div>
+       </div>
 
-     {/* Totale e conferma */}
-     <div className="rounded-lg border border-border bg-card p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-       <span className="text-lg font-semibold text-brown">Totale da pagare</span>
-       <span className="text-2xl font-bold text-rose sm:text-3xl">€{totale.toFixed(2)}</span>
-      </div>
-      {(scontoManuale > 0 || scontoVoucher > 0) && (
-       <div className="mb-4 space-y-1 text-sm text-muted-foreground">
-        <div className="flex justify-between">
-         <span>Prezzo base</span>
-         <span>€{prezzoBase.toFixed(2)}</span>
+       {/* Servizio */}
+       <div className="mb-6 border-l-2 border-rose/50 pl-4">
+        <div className="flex items-start justify-between gap-3">
+         <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">
+           {appointment.services?.nome ?? "Servizio"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+           {appointment.services?.durata ? `${appointment.services.durata}min` : ""} · Staff
+          </p>
+         </div>
+         <p className="shrink-0 text-sm font-semibold text-foreground">
+          € {prezzoBase.toFixed(2)}
+         </p>
+        </div>
+       </div>
+
+       {/* Totali */}
+       <dl className="space-y-2 border-t border-border pt-4 text-sm">
+        <div className="flex justify-between text-muted-foreground">
+         <dt>Subtotale</dt>
+         <dd>€ {subtotale.toFixed(2)}</dd>
+        </div>
+        <div className="flex justify-between text-muted-foreground">
+         <dt>Imposta</dt>
+         <dd>€ {imposta.toFixed(2)}</dd>
         </div>
         {scontoManuale > 0 && (
-         <div className="flex justify-between text-green-600">
-          <span>Sconto manuale</span>
-          <span>-€{scontoManuale.toFixed(2)}</span>
+         <div className="flex justify-between text-emerald-600">
+          <dt>Sconto</dt>
+          <dd>-€ {scontoManuale.toFixed(2)}</dd>
          </div>
         )}
         {scontoVoucher > 0 && (
-         <div className="flex justify-between text-green-600">
-          <span>Voucher {voucher?.codice}</span>
-          <span>-€{scontoVoucher.toFixed(2)}</span>
+         <div className="flex justify-between text-emerald-600">
+          <dt>Voucher {voucher?.codice}</dt>
+          <dd>-€ {scontoVoucher.toFixed(2)}</dd>
          </div>
         )}
-       </div>
-      )}
-      <button
-       type="button"
-       onClick={handleCompleta}
-       disabled={saving}
-       className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-rose px-6 py-3 text-sm font-semibold text-white hover:bg-rose-dark disabled:opacity-50"
-      >
-       <CheckCircle className="h-4 w-4" />
-       {saving ? "Registrazione in corso..." : "Completa e Registra Pagamento"}
-      </button>
+        <div className="flex items-center justify-between border-t border-border pt-2 text-base font-bold text-foreground">
+         <dt>Totale</dt>
+         <dd>€ {totale.toFixed(2)}</dd>
+        </div>
+        <div className="flex justify-between text-sm font-semibold text-foreground">
+         <dt>Da pagare</dt>
+         <dd>€ {totale.toFixed(2)}</dd>
+        </div>
+       </dl>
+      </div>
+
+      {/* Bottom actions */}
+      <div className="border-t border-border p-4">
+       <button
+        type="button"
+        onClick={handleCompleta}
+        disabled={saving || !metodoPagamento}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+       >
+        <CheckCircle className="h-4 w-4" />
+        {saving ? "Registrazione..." : "Conferma pagamento"}
+       </button>
+       <button
+        type="button"
+        onClick={handleSalvaNonPagato}
+        disabled={saving}
+        className="mt-2 w-full rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+       >
+        Salva come non pagato
+       </button>
+      </div>
      </div>
-    </div>
+    </aside>
    </div>
   </div>
  );
@@ -358,7 +441,6 @@ function CheckoutForm({ id }: { id: string }) {
 export default function CheckoutPage() {
  const params = useParams();
  const id = params.id as string;
-
  return (
   <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Caricamento...</div>}>
    <CheckoutForm id={id} />

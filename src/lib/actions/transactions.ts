@@ -4,7 +4,21 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, isValidDate, sanitizeString, truncate } from "@/lib/security/validate";
 
 const VALID_TIPI = ["entrata", "uscita"] as const;
-const VALID_METODI = ["contanti", "carta", "bonifico", "satispay"] as const;
+const VALID_METODI = [
+  "contanti",
+  "carta",
+  "bonifico",
+  "satispay",
+  "paypal",
+  "buono",
+  "qr",
+  "self_service",
+  "split",
+  "assegno",
+  "fattura",
+  "finanziaria",
+  "altro",
+] as const;
 
 function isValidTipo(tipo: string): boolean {
   return (VALID_TIPI as readonly string[]).includes(tipo);
