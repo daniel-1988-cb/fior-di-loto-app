@@ -49,6 +49,12 @@ const impostazioni: SettingCard[] = [
     href: "/impostazioni/orari",
   },
   {
+    icon: Wrench,
+    title: "Azioni rapide agenda",
+    description: "Personalizza le azioni mostrate cliccando su uno slot o sul bottone Aggiungi.",
+    href: "/impostazioni/azioni-rapide",
+  },
+  {
     icon: CreditCard,
     title: "Pagamenti e fiscalità",
     description: "IVA, valuta, metodi di pagamento e policy.",
