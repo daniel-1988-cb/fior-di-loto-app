@@ -79,11 +79,18 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   {
     id: "slot_bloccato",
     label: "Aggiungi fascia oraria bloccata",
-    description: "Blocca uno spazio in agenda (pausa, ferie, formazione). In arrivo.",
+    description: "Blocca uno spazio in agenda (pausa, ferie, formazione).",
     icon: CalendarX,
-    implemented: false,
-    buildHref: () => null,
-    enabledByDefault: false,
+    implemented: true,
+    buildHref: ({ date, time, staffId }) => {
+      const params = new URLSearchParams();
+      if (date) params.set("data", date);
+      if (time) params.set("ora", time);
+      if (staffId) params.set("staffId", staffId);
+      const qs = params.toString();
+      return qs ? `/agenda/blocca?${qs}` : "/agenda/blocca";
+    },
+    enabledByDefault: true,
   },
   {
     id: "vendita",
