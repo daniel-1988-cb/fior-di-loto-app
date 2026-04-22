@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAppuntamentiDomaniForReminders } from "@/lib/actions/reminders";
 import {
   buildReminderJobs,
-  getAppuntamentiDomaniForReminders,
   renderWhatsAppReminderBody,
   type ReminderJob,
-} from "@/lib/actions/reminders";
+} from "@/lib/reminders/jobs";
 import { sendEmail } from "@/lib/actions/send-email";
 import { renderAppointmentReminder } from "@/lib/email/templates/appointment-reminder";
 import { sendMessage } from "@/lib/bot/whatsapp-meta";

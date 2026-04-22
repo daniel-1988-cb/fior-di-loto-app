@@ -3,7 +3,7 @@ import {
   buildReminderJobs,
   renderWhatsAppReminderBody,
   type AppuntamentoDomaniReminder,
-} from "@/lib/actions/reminders";
+} from "@/lib/reminders/jobs";
 import { renderAppointmentReminder } from "@/lib/email/templates/appointment-reminder";
 
 const row = (over: Partial<AppuntamentoDomaniReminder> = {}): AppuntamentoDomaniReminder => ({
