@@ -180,3 +180,26 @@ export async function updateAppointment(id: string, data: {
   if (error) throw error;
   return row;
 }
+
+export async function markAppointmentPaid(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isValidUUID(id)) return { ok: false, error: "ID non valido" };
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("appointments")
+    .update({ pagato_at: now, stato: "completato", updated_at: now })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function unmarkAppointmentPaid(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isValidUUID(id)) return { ok: false, error: "ID non valido" };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("appointments")
+    .update({ pagato_at: null, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

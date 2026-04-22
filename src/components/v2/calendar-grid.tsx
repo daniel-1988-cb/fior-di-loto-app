@@ -26,6 +26,7 @@ interface Appointment {
   ora_inizio: string;
   ora_fine: string;
   stato: string;
+  pagato_at?: string | null;
   note?: string | null;
   clients?: { nome: string; cognome: string; telefono?: string | null } | null;
   services?: { nome: string; durata: number; prezzo?: number; categoria?: string } | null;
@@ -108,6 +109,7 @@ export function CalendarGrid({
       oraInizio: a.ora_inizio.slice(0, 5),
       oraFine: a.ora_fine.slice(0, 5),
       stato: a.stato,
+      pagatoAt: a.pagato_at ?? null,
       note: a.note ?? null,
     });
   }
@@ -280,11 +282,13 @@ export function CalendarGrid({
                   const height = Math.max(30, (endM - startM) * pxPerMinute);
                   const color = s.colore ?? "#6B4EFF";
                   const cancelled = a.stato === "cancellato";
+                  const paid = !!a.pagato_at;
                   const tooltipText = [
                     `${a.ora_inizio.slice(0, 5)} - ${a.ora_fine.slice(0, 5)}`,
                     `${a.clients?.nome ?? ""} ${a.clients?.cognome ?? ""}`.trim() || "Cliente",
                     a.services?.nome ?? "",
                     a.services?.prezzo != null ? `€ ${Number(a.services.prezzo).toFixed(2)}` : "",
+                    paid ? "✓ Pagato" : "",
                     a.clients?.telefono ? `📞 ${a.clients.telefono}` : "",
                   ].filter(Boolean).join("\n");
                   return (
@@ -302,8 +306,12 @@ export function CalendarGrid({
                       style={{
                         top,
                         height,
-                        backgroundColor: hexToRgba(color, 0.22),
-                        borderColor: hexToRgba(color, 0.55),
+                        backgroundColor: paid
+                          ? "rgba(140,140,140,0.20)"
+                          : hexToRgba(color, 0.22),
+                        borderColor: paid
+                          ? "rgba(140,140,140,0.55)"
+                          : hexToRgba(color, 0.55),
                       }}
                       title={tooltipText}
                     >

@@ -41,6 +41,7 @@ export type AppointmentDrawerData = {
  oraInizio: string; // "HH:MM"
  oraFine: string; // "HH:MM"
  stato: string;
+ pagatoAt?: string | null;
  note: string | null;
 };
 
@@ -106,7 +107,7 @@ export function AppointmentDetailDrawer({ appt, onClose }: Props) {
    <div className="space-y-6">
     {/* Header blocco orario */}
     <div className="rounded-xl border border-border bg-card p-4">
-     <div className="flex items-start justify-between">
+     <div className="flex items-start justify-between gap-2">
       <div>
        <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <CalIcon className="h-4 w-4" />
@@ -117,7 +118,15 @@ export function AppointmentDetailDrawer({ appt, onClose }: Props) {
         {appt.oraInizio} — {appt.oraFine}
        </div>
       </div>
-      <Badge variant={statoInfo.variant}>{statoInfo.label}</Badge>
+      <div className="flex flex-col items-end gap-1">
+       <Badge variant={statoInfo.variant}>{statoInfo.label}</Badge>
+       {appt.pagatoAt && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+         <CheckCircle2 className="h-3 w-3" />
+         Pagato
+        </span>
+       )}
+      </div>
      </div>
     </div>
 

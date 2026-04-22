@@ -20,7 +20,7 @@ import {
  CheckCircle,
  type LucideIcon,
 } from "lucide-react";
-import { getAppointment, updateAppointmentStatus } from "@/lib/actions/appointments";
+import { getAppointment, markAppointmentPaid } from "@/lib/actions/appointments";
 import { createCartTransaction } from "@/lib/actions/transaction-items";
 import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
 import { useCart } from "@/lib/cart/storage";
@@ -216,7 +216,7 @@ function CheckoutForm({ id }: { id: string }) {
     return;
    }
 
-   if (appointment) await updateAppointmentStatus(id, "completato");
+   if (appointment) await markAppointmentPaid(id);
    if (voucher) await redeemVoucher(voucher.id, id);
 
    if (result.generatedVoucherCodes.length > 0) {
