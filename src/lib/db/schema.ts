@@ -299,3 +299,22 @@ export const blockedSlots = pgTable("blocked_slots", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ============================================
+// TRANSACTION ITEMS (line items carrello checkout)
+// ============================================
+
+export const transactionItems = pgTable("transaction_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  transactionId: uuid("transaction_id")
+    .notNull()
+    .references(() => transactions.id, { onDelete: "cascade" }),
+  kind: varchar("kind", { length: 20 }).notNull(),
+  refId: uuid("ref_id"),
+  label: text("label").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  staffId: uuid("staff_id"),
+  generatedVoucherId: uuid("generated_voucher_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
