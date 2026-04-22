@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   verifyWebhook,
   verifySignature,
@@ -238,54 +238,78 @@ async function processPayload(rawBody: string): Promise<void> {
       continue;
     }
 
-    const { data: history } = await supabase
-      .from("wa_conversations")
-      .select("role, content")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: true })
-      .limit(50);
-
-    const docs = await getActiveBotDocuments();
-
-    // Enrichment: se il cliente è già nel DB (non è il placeholder
-    // "Nuovo Contatto WA"), carichiamo il suo contesto (profilo +
-    // appuntamenti futuri/passati + vouchers + programmi) e lo iniettiamo
-    // nel systemInstruction così Marialucia può personalizzare la risposta.
-    const clientCtx = await getClientContextForBot(clientId);
-    const clientContextText = await buildClientContextPrompt(clientCtx);
-
-    const rawReply = await generateReply({
-      history: (history ?? []).map((h) => ({
-        role: h.role as "user" | "assistant",
-        content: h.content,
-      })),
-      apiKey: process.env.GEMINI_API_KEY!,
-      documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
-      clientContext: clientContextText,
-      ...(audioInput ? { audioInput } : {}),
+    await generateAndSendReply(supabase, {
+      clientId,
+      fromPhone: msg.fromPhone,
+      isAudio: msg.kind === "audio",
+      audioInput,
     });
-    if (!rawReply) continue;
+  }
+}
 
-    // If the audio was unclear, Gemini returns the AUDIO_UNCLEAR sentinel
-    // (sometimes wrapped in whitespace/backticks). Swap for the hardcoded
-    // "please type" fallback.
-    const isUnclear =
-      msg.kind === "audio" && /AUDIO_UNCLEAR/i.test(rawReply);
-    const reply = isUnclear ? AUDIO_UNCLEAR_REPLY : rawReply;
+type GenerateAndSendReplyArgs = {
+  clientId: string;
+  fromPhone: string;
+  isAudio: boolean;
+  audioInput: { data: Buffer; mimeType: string } | null;
+};
 
-    try {
-      const metaId = await sendWithHumanDelay(msg.fromPhone, reply, {
-        phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID!,
-        accessToken: process.env.META_WA_ACCESS_TOKEN!,
-      });
-      await supabase.from("wa_conversations").insert({
-        client_id: clientId,
-        role: "assistant",
-        content: reply,
-        meta_message_id: metaId,
-      });
-    } catch (e) {
-      console.error("[wa webhook] send failed", e);
-    }
+// Single place that reads history, runs Gemini, sends on WA, logs the reply.
+// Reused by the immediate path (buffer OFF, or audio / first msg of a thread)
+// and the buffered path (WA_BUFFER_ENABLED=true), which aggregates consecutive
+// text messages before calling this.
+async function generateAndSendReply(
+  supabase: SupabaseClient,
+  args: GenerateAndSendReplyArgs,
+): Promise<void> {
+  const { clientId, fromPhone, isAudio, audioInput } = args;
+
+  const { data: history } = await supabase
+    .from("wa_conversations")
+    .select("role, content")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: true })
+    .limit(50);
+
+  const docs = await getActiveBotDocuments();
+
+  // Enrichment: se il cliente è già nel DB (non è il placeholder
+  // "Nuovo Contatto WA"), carichiamo il suo contesto (profilo +
+  // appuntamenti futuri/passati + vouchers + programmi) e lo iniettiamo
+  // nel systemInstruction così Marialucia può personalizzare la risposta.
+  const clientCtx = await getClientContextForBot(clientId);
+  const clientContextText = await buildClientContextPrompt(clientCtx);
+
+  const rawReply = await generateReply({
+    history: (history ?? []).map((h) => ({
+      role: h.role as "user" | "assistant",
+      content: h.content,
+    })),
+    apiKey: process.env.GEMINI_API_KEY!,
+    documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
+    clientContext: clientContextText,
+    ...(audioInput ? { audioInput } : {}),
+  });
+  if (!rawReply) return;
+
+  // If the audio was unclear, Gemini returns the AUDIO_UNCLEAR sentinel
+  // (sometimes wrapped in whitespace/backticks). Swap for the hardcoded
+  // "please type" fallback.
+  const isUnclear = isAudio && /AUDIO_UNCLEAR/i.test(rawReply);
+  const reply = isUnclear ? AUDIO_UNCLEAR_REPLY : rawReply;
+
+  try {
+    const metaId = await sendWithHumanDelay(fromPhone, reply, {
+      phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID!,
+      accessToken: process.env.META_WA_ACCESS_TOKEN!,
+    });
+    await supabase.from("wa_conversations").insert({
+      client_id: clientId,
+      role: "assistant",
+      content: reply,
+      meta_message_id: metaId,
+    });
+  } catch (e) {
+    console.error("[wa webhook] send failed", e);
   }
 }
