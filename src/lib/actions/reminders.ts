@@ -22,16 +22,20 @@ export async function getAppuntamentiDomani(): Promise<AppuntamentoDomani[]> {
 
   const { data, error } = await supabase
     .from("appointments")
-    .select("id, ora, clients(nome, cognome, telefono), services(nome), staff(nome)")
+    .select("id, ora_inizio, clients(nome, cognome, telefono), services(nome), staff(nome)")
     .eq("data", dataStr)
     .neq("stato", "cancellato")
-    .order("ora", { ascending: true });
+    .order("ora_inizio", { ascending: true });
 
-  if (error || !data) return [];
+  if (error) {
+    console.error("[reminders] getAppuntamentiDomani query error:", error);
+    return [];
+  }
+  if (!data) return [];
 
   return data.map((a: any) => ({
     id: a.id,
-    ora: a.ora ? String(a.ora).slice(0, 5) : "",
+    ora: a.ora_inizio ? String(a.ora_inizio).slice(0, 5) : "",
     cliente_nome: a.clients?.nome || "",
     cliente_cognome: a.clients?.cognome || "",
     cliente_telefono: a.clients?.telefono || null,
