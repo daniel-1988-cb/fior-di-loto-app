@@ -13,7 +13,14 @@ export type GenerateReplyOpts = {
   clientContext?: string;
 };
 
-export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
+export type GenerateReplyResult = {
+  text: string;
+  finishReason: string | null;
+  safetyBlocked: boolean;
+  raw?: unknown;
+};
+
+export async function generateReply(opts: GenerateReplyOpts): Promise<GenerateReplyResult> {
   const client = new GoogleGenAI({ apiKey: opts.apiKey });
   const recent = opts.history.slice(-50);
 
@@ -74,5 +81,24 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<string> {
     },
   });
 
-  return res.text ?? "";
+  const rawAny = res as unknown as {
+    text?: string;
+    candidates?: Array<{
+      finishReason?: string;
+      safetyRatings?: Array<{ blocked?: boolean; probability?: string }>;
+    }>;
+  };
+  const candidate = rawAny.candidates?.[0];
+  const finishReason = candidate?.finishReason ?? null;
+  const safetyBlocked =
+    finishReason === "SAFETY" ||
+    finishReason === "RECITATION" ||
+    (candidate?.safetyRatings?.some((r) => r.blocked === true) ?? false);
+
+  return {
+    text: rawAny.text ?? "",
+    finishReason,
+    safetyBlocked,
+    raw: res,
+  };
 }

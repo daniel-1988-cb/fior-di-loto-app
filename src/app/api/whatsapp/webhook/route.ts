@@ -354,20 +354,45 @@ async function generateAndSendReply(
   const clientCtx = await getClientContextForBot(clientId);
   const clientContextText = await buildClientContextPrompt(clientCtx);
 
-  const rawReply = await generateReply({
-    history: historyForLlm,
-    apiKey: process.env.GEMINI_API_KEY!,
-    documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
-    clientContext: clientContextText,
-    ...(audioInput ? { audioInput } : {}),
-  });
-  if (!rawReply) return;
+  let gen: Awaited<ReturnType<typeof generateReply>> | null = null;
+  try {
+    gen = await generateReply({
+      history: historyForLlm,
+      apiKey: process.env.GEMINI_API_KEY!,
+      documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
+      clientContext: clientContextText,
+      ...(audioInput ? { audioInput } : {}),
+    });
+  } catch (e) {
+    console.error(
+      `[wa webhook] generateReply threw for client ${clientId}:`,
+      e instanceof Error ? e.message : e,
+    );
+  }
+
+  const rawReply = gen?.text?.trim() ?? "";
+
+  // Log the outcome so we can diagnose silent failures in Vercel logs. These
+  // conditions historically caused the bot to just not reply (safety filters
+  // on innocent Italian wellness terms, transient 500s from Gemini, quota,
+  // or model returning an empty string). We now always send *something*.
+  if (!rawReply) {
+    console.warn(
+      `[wa webhook] empty reply from Gemini for client ${clientId} — finishReason=${gen?.finishReason ?? "none"}, safetyBlocked=${gen?.safetyBlocked ?? "unknown"}`,
+    );
+  }
 
   // If the audio was unclear, Gemini returns the AUDIO_UNCLEAR sentinel
   // (sometimes wrapped in whitespace/backticks). Swap for the hardcoded
   // "please type" fallback.
-  const isUnclear = isAudio && /AUDIO_UNCLEAR/i.test(rawReply);
-  const reply = isUnclear ? AUDIO_UNCLEAR_REPLY : rawReply;
+  const isUnclear = isAudio && rawReply && /AUDIO_UNCLEAR/i.test(rawReply);
+  const FALLBACK_REPLY =
+    "Un attimo che controllo e ti rispondo a breve 🙏";
+  const reply = isUnclear
+    ? AUDIO_UNCLEAR_REPLY
+    : rawReply
+      ? rawReply
+      : FALLBACK_REPLY;
 
   try {
     const metaId = await sendWithHumanDelay(fromPhone, reply, {
