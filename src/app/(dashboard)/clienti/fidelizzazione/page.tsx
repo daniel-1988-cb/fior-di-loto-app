@@ -34,6 +34,8 @@ import {
   getTotalPointsIssued,
   getRewards,
 } from "@/lib/actions/loyalty";
+import { createAdminClient } from "@/lib/supabase/admin";
+import RedeemClient from "./redeem-client";
 
 const TIER_LABEL: Record<string, string> = {
   base: "Base",
@@ -50,6 +52,13 @@ const TIER_VARIANT: Record<string, "default" | "primary" | "success" | "warning"
 };
 
 export default async function V2FidelizzazionePage() {
+  const supabase = createAdminClient();
+  const monthStart = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1
+  ).toISOString();
+
   const [
     settings,
     topClients,
@@ -58,6 +67,8 @@ export default async function V2FidelizzazionePage() {
     activeMembers,
     totalIssued,
     rewards,
+    redemptionsMonthRes,
+    clientsWithPointsRes,
   ] = await Promise.all([
     getLoyaltySettings(),
     getTopLoyalClients(10),
@@ -66,7 +77,27 @@ export default async function V2FidelizzazionePage() {
     getActiveMembersCount(),
     getTotalPointsIssued(),
     getRewards(true),
+    supabase
+      .from("loyalty_transactions")
+      .select("*", { count: "exact", head: true })
+      .eq("tipo", "riscattati")
+      .gte("created_at", monthStart),
+    supabase
+      .from("clients")
+      .select("id, nome, cognome, punti, tier")
+      .gt("punti", 0)
+      .order("punti", { ascending: false })
+      .limit(200),
   ]);
+
+  const redemptionsThisMonth = redemptionsMonthRes.count ?? 0;
+  const clientsWithPoints = (clientsWithPointsRes.data ?? []) as Array<{
+    id: string;
+    nome: string | null;
+    cognome: string | null;
+    punti: number | null;
+    tier: string | null;
+  }>;
 
   const attivo = settings?.attivo ?? false;
   const totalTier =
@@ -113,7 +144,7 @@ export default async function V2FidelizzazionePage() {
       )}
 
       {/* KPI cards */}
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             Programma attivo
@@ -142,6 +173,15 @@ export default async function V2FidelizzazionePage() {
           <p className="mt-1 flex items-baseline gap-2 text-2xl font-bold">
             <Sparkles className="h-5 w-5 text-muted-foreground" />
             {totalIssued.toLocaleString("it-IT")}
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            Riscatti mese
+          </p>
+          <p className="mt-1 flex items-baseline gap-2 text-2xl font-bold">
+            <Gift className="h-5 w-5 text-muted-foreground" />
+            {redemptionsThisMonth.toLocaleString("it-IT")}
           </p>
         </Card>
         <Card className="p-5">
@@ -257,6 +297,19 @@ export default async function V2FidelizzazionePage() {
             })}
           </CardContent>
         </Card>
+      </section>
+
+      {/* Per-client redeem management */}
+      <section className="mb-6">
+        <RedeemClient
+          clients={clientsWithPoints}
+          rewards={rewards.map((r) => ({
+            id: r.id,
+            nome: r.nome,
+            costo_punti: r.costo_punti,
+            attivo: r.attivo,
+          }))}
+        />
       </section>
 
       {/* Recent redemptions */}
