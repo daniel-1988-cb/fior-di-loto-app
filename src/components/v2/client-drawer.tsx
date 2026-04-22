@@ -3,10 +3,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Drawer, Avatar, Badge, Button, Tabs, TabsList, TabsTrigger, TabsContent, Label } from "@/components/ui";
-import { Phone, Mail, Calendar as CalIcon, Pencil, Save, X } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  Calendar as CalIcon,
+  Save,
+  X,
+  AlertTriangle,
+  Ban,
+} from "lucide-react";
 import { formatCurrency, formatPhone } from "@/lib/utils";
-import { updateClient } from "@/lib/actions/clients";
+import { removeClientTag, updateClient } from "@/lib/actions/clients";
 import type { TableRow } from "@/types/database";
+import { ClientActivityMenu } from "./client-activity-menu";
 
 type Client = TableRow<"clients">;
 
@@ -65,9 +74,23 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
 
   const view = edited ?? client;
   const fullName = `${view.nome} ${view.cognome}`.trim();
+  const tags: string[] = Array.isArray(view.tags)
+    ? (view.tags as unknown[]).filter((t): t is string => typeof t === "string")
+    : [];
 
   function setField<K extends keyof Client>(key: K, value: Client[K]) {
     setEdited((prev) => ({ ...(prev ?? client!), [key]: value }) as Client);
+  }
+
+  async function handleRemoveTag(tag: string) {
+    if (!client) return;
+    if (!window.confirm(`Rimuovere il tag "${tag}"?`)) return;
+    const res = await removeClientTag(client.id, tag);
+    if (!res.ok) {
+      alert(res.error || "Errore rimozione tag");
+      return;
+    }
+    router.refresh();
   }
 
   async function handleSave() {
@@ -128,6 +151,20 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
             </div>
           </div>
         </div>
+
+        {/* Warning banners — visible across all tabs */}
+        {client.blocked && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm font-medium text-red-700 dark:text-red-400">
+            <Ban className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Cliente bloccato — non può essere aggiunto a nuovi appuntamenti.</span>
+          </div>
+        )}
+        {client.avviso_personale && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span className="whitespace-pre-wrap">{client.avviso_personale}</span>
+          </div>
+        )}
 
         <Tabs defaultValue="info">
           <TabsList>
@@ -231,6 +268,36 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
                   value={view.indirizzo ?? "—"}
                   className="sm:col-span-2"
                 />
+                <Field
+                  label="Allergie"
+                  value={view.allergie ?? "—"}
+                  className="sm:col-span-2"
+                />
+                <div className="sm:col-span-2">
+                  <Label>Patch test</Label>
+                  <p className="whitespace-pre-wrap text-sm">{view.patch_test ?? "—"}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>Tag</Label>
+                  {tags.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nessun tag</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => handleRemoveTag(t)}
+                          className="group inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+                          title="Rimuovi tag"
+                        >
+                          <span>{t}</span>
+                          <X className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </TabsContent>
@@ -319,19 +386,22 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
             </>
           ) : (
             <>
-              <Button
-                variant="outline"
+              <ClientActivityMenu
                 className="flex-1"
-                onClick={() => setEditMode(true)}
-              >
-                <Pencil className="h-4 w-4" /> Modifica
-              </Button>
+                client={client}
+                onUpdate={() => router.refresh()}
+                onEdit={() => setEditMode(true)}
+                onDeleted={onClose}
+              />
               <Button
                 className="flex-1"
                 onClick={() => {
+                  if (client.blocked) return;
                   router.push(`/agenda/nuovo?clientId=${client.id}`);
                   onClose();
                 }}
+                disabled={client.blocked}
+                title={client.blocked ? "Cliente bloccato" : undefined}
               >
                 <CalIcon className="h-4 w-4" /> Nuovo appuntamento
               </Button>
