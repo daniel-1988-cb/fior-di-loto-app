@@ -24,15 +24,17 @@ function NuovoAppuntamentoForm() {
  const paramData = searchParams.get("data");
  const paramOra = searchParams.get("ora");
  const paramStaffId = searchParams.get("staffId");
+ const paramClientId = searchParams.get("clientId");
+ const paramNote = searchParams.get("note");
 
  const [formData, setFormData] = useState({
-  clientId: "",
+  clientId: paramClientId || "",
   serviceId: "",
   staffId: paramStaffId || "",
   data: paramData || new Date().toISOString().slice(0, 10),
   oraInizio: paramOra || "09:00",
   oraFine: "",
-  note: "",
+  note: paramNote || "",
  });
 
  useEffect(() => {

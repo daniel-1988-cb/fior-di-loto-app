@@ -77,11 +77,13 @@ export function AppointmentRequestCard({ req }: Props) {
 
    <div className="mt-3 flex flex-wrap items-center gap-2">
     <Link
-     href={`/agenda?clientId=${req.clientId}`}
+     href={`/agenda/nuovo?clientId=${req.clientId}&note=${encodeURIComponent(
+      "Da richiesta WhatsApp: " + req.testoRichiesta.slice(0, 200),
+     )}`}
      className="inline-flex items-center gap-1 rounded-lg bg-rose px-3 py-1.5 text-xs font-medium text-white hover:bg-rose/90"
     >
      <ExternalLink className="h-3 w-3" />
-     Apri agenda
+     Nuovo appuntamento
     </Link>
     <button
      type="button"
