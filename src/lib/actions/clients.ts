@@ -146,6 +146,189 @@ export async function deleteClient(id: string) {
 }
 
 // ============================================
+// QUICK-ACTION FIELDS (client drawer "Attività" menu)
+// All return { ok, error? } so the UI can render inline toasts.
+// ============================================
+
+type ActionResult = { ok: true } | { ok: false; error: string };
+
+const AVVISO_MAX = 500;
+const ALLERGIE_MAX = 1000;
+const PATCH_TEST_MAX = 2000;
+const TAG_MAX = 40;
+const MAX_TAGS = 30;
+
+/** Coerce the JSONB `tags` column (which may be Json | null) to a string[]. */
+function coerceTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string" && v.length > 0);
+}
+
+function iso() {
+  return new Date().toISOString();
+}
+
+export async function addClientAvviso(clientId: string, text: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const safe = truncate(sanitizeString(text || ""), AVVISO_MAX).trim();
+  if (!safe) return { ok: false, error: "Avviso vuoto" };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ avviso_personale: safe, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function clearClientAvviso(clientId: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ avviso_personale: null, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function addClientAllergia(clientId: string, text: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const safe = truncate(sanitizeString(text || ""), 200).trim();
+  if (!safe) return { ok: false, error: "Allergia vuota" };
+  const supabase = createAdminClient();
+  const { data: current, error: readErr } = await supabase
+    .from("clients")
+    .select("allergie")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  const existing = (current?.allergie as string | null) ?? "";
+  // Dedupe (case-insensitive) against the existing semicolon list.
+  const known = existing
+    .split(/\s*;\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (known.some((k) => k.toLowerCase() === safe.toLowerCase())) {
+    return { ok: true }; // already present, no-op
+  }
+  const next = truncate(existing ? `${existing}; ${safe}` : safe, ALLERGIE_MAX);
+  const { error } = await supabase
+    .from("clients")
+    .update({ allergie: next, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function clearClientAllergie(clientId: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ allergie: null, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Append a patch-test line. `input` may be either free text (stored under
+ * today's date) or a pre-formatted "YYYY-MM-DD: note" string — we normalize
+ * either way to one line per test, oldest first, newest last.
+ */
+export async function addClientPatchTest(clientId: string, input: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const raw = sanitizeString(input || "").trim();
+  if (!raw) return { ok: false, error: "Testo patch test vuoto" };
+  const isoDate = new Date().toISOString().slice(0, 10);
+  // If the user didn't prefix with a date, prepend today.
+  const line = /^\d{4}-\d{2}-\d{2}\s*:/.test(raw) ? raw : `${isoDate}: ${raw}`;
+  const safeLine = truncate(line, 300);
+  const supabase = createAdminClient();
+  const { data: current, error: readErr } = await supabase
+    .from("clients")
+    .select("patch_test")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  const existing = (current?.patch_test as string | null) ?? "";
+  const next = truncate(existing ? `${existing}\n${safeLine}` : safeLine, PATCH_TEST_MAX);
+  const { error } = await supabase
+    .from("clients")
+    .update({ patch_test: next, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function clearClientPatchTest(clientId: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ patch_test: null, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function addClientTag(clientId: string, tag: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const safe = truncate(sanitizeString(tag || ""), TAG_MAX).trim();
+  if (!safe) return { ok: false, error: "Tag vuoto" };
+  const supabase = createAdminClient();
+  const { data: current, error: readErr } = await supabase
+    .from("clients")
+    .select("tags")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  const tags = coerceTags(current?.tags);
+  if (tags.some((t) => t.toLowerCase() === safe.toLowerCase())) return { ok: true };
+  if (tags.length >= MAX_TAGS) return { ok: false, error: `Massimo ${MAX_TAGS} tag` };
+  const next = [...tags, safe];
+  const { error } = await supabase
+    .from("clients")
+    .update({ tags: next, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function removeClientTag(clientId: string, tag: string): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const target = (tag || "").trim().toLowerCase();
+  if (!target) return { ok: false, error: "Tag vuoto" };
+  const supabase = createAdminClient();
+  const { data: current, error: readErr } = await supabase
+    .from("clients")
+    .select("tags")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  const tags = coerceTags(current?.tags);
+  const next = tags.filter((t) => t.toLowerCase() !== target);
+  const { error } = await supabase
+    .from("clients")
+    .update({ tags: next, updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function setClientBlocked(clientId: string, blocked: boolean): Promise<ActionResult> {
+  if (!isValidUUID(clientId)) return { ok: false, error: "ID cliente non valido" };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("clients")
+    .update({ blocked: Boolean(blocked), updated_at: iso() })
+    .eq("id", clientId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// ============================================
 // CLIENT INTERACTIONS WRITE
 // ============================================
 
