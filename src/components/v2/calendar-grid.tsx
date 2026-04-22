@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
 import { SlotQuickActionsPopover } from "@/components/agenda/slot-quick-actions-popover";
+import {
+  AppointmentDetailDrawer,
+  type AppointmentDrawerData,
+} from "@/components/agenda/appointment-detail-drawer";
 
 interface Staff {
   id: string;
@@ -15,13 +19,17 @@ interface Staff {
 
 interface Appointment {
   id: string;
+  client_id?: string | null;
   staff_id: string | null;
   operatrice_id: string | null;
+  data?: string;
   ora_inizio: string;
   ora_fine: string;
   stato: string;
+  note?: string | null;
   clients?: { nome: string; cognome: string; telefono?: string | null } | null;
   services?: { nome: string; durata: number; prezzo?: number; categoria?: string } | null;
+  staff?: { id: string; nome: string; colore?: string | null } | null;
 }
 
 interface BlockedSlot {
@@ -82,6 +90,27 @@ export function CalendarGrid({
     time: string;
     staffId: string;
   }>({ open: false, x: 0, y: 0, time: "", staffId: "" });
+  const [activeAppt, setActiveAppt] = useState<AppointmentDrawerData | null>(null);
+
+  function openApptDrawer(a: Appointment, s: Staff) {
+    setActiveAppt({
+      id: a.id,
+      clientId: a.client_id ?? null,
+      clientName: `${a.clients?.nome ?? ""} ${a.clients?.cognome ?? ""}`.trim() || "Cliente",
+      clientPhone: a.clients?.telefono ?? null,
+      serviceName: a.services?.nome ?? "Servizio",
+      servicePrice: a.services?.prezzo ?? null,
+      serviceDurata: a.services?.durata ?? null,
+      staffId: s.id,
+      staffName: s.nome,
+      staffColore: s.colore,
+      date: a.data ?? date,
+      oraInizio: a.ora_inizio.slice(0, 5),
+      oraFine: a.ora_fine.slice(0, 5),
+      stato: a.stato,
+      note: a.note ?? null,
+    });
+  }
 
   const isToday = date === new Date().toISOString().slice(0, 10);
 
@@ -251,12 +280,23 @@ export function CalendarGrid({
                   const height = Math.max(30, (endM - startM) * pxPerMinute);
                   const color = s.colore ?? "#6B4EFF";
                   const cancelled = a.stato === "cancellato";
+                  const tooltipText = [
+                    `${a.ora_inizio.slice(0, 5)} - ${a.ora_fine.slice(0, 5)}`,
+                    `${a.clients?.nome ?? ""} ${a.clients?.cognome ?? ""}`.trim() || "Cliente",
+                    a.services?.nome ?? "",
+                    a.services?.prezzo != null ? `€ ${Number(a.services.prezzo).toFixed(2)}` : "",
+                    a.clients?.telefono ? `📞 ${a.clients.telefono}` : "",
+                  ].filter(Boolean).join("\n");
                   return (
                     <button
                       key={a.id}
                       type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openApptDrawer(a, s);
+                      }}
                       className={cn(
-                        "absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-1 text-left transition-all hover:shadow-md",
+                        "absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-1 text-left transition-all hover:shadow-md hover:ring-2 hover:ring-rose/40",
                         cancelled && "opacity-60 line-through"
                       )}
                       style={{
@@ -265,9 +305,7 @@ export function CalendarGrid({
                         backgroundColor: hexToRgba(color, 0.22),
                         borderColor: hexToRgba(color, 0.55),
                       }}
-                      title={`${a.ora_inizio.slice(0, 5)} - ${a.ora_fine.slice(0, 5)} · ${
-                        a.clients?.nome ?? ""
-                      } ${a.clients?.cognome ?? ""} · ${a.services?.nome ?? ""}`}
+                      title={tooltipText}
                     >
                       <div className="flex items-center gap-1 text-[10px] font-semibold text-foreground">
                         {a.ora_inizio.slice(0, 5)} - {a.ora_fine.slice(0, 5)}
@@ -308,6 +346,11 @@ export function CalendarGrid({
         slotDate={date}
         slotStaffId={popover.staffId}
         onClose={() => setPopover((p) => ({ ...p, open: false }))}
+      />
+
+      <AppointmentDetailDrawer
+        appt={activeAppt}
+        onClose={() => setActiveAppt(null)}
       />
     </div>
   );
