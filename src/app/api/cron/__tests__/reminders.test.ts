@@ -70,10 +70,23 @@ describe("renderWhatsAppReminderBody", () => {
   it("contains the essentials in Italian", () => {
     const [job] = buildReminderJobs([row()]);
     const body = renderWhatsAppReminderBody(job);
-    expect(body).toContain("Maria Rossi");
+    expect(body).toContain("Maria");
     expect(body).toContain("Pressoterapia");
     expect(body).toContain("15:30");
     expect(body).toContain("Fior di Loto");
+  });
+
+  it("uses only the first name (warm WhatsApp tone)", () => {
+    const [job] = buildReminderJobs([row()]);
+    const body = renderWhatsAppReminderBody(job);
+    expect(body).toContain("Ciao Maria");
+    expect(body).not.toContain("Maria Rossi");
+  });
+
+  it("falls back to the full name when it's a single token", () => {
+    const [job] = buildReminderJobs([row({ cliente_cognome: "" })]);
+    const body = renderWhatsAppReminderBody(job);
+    expect(body).toContain("Ciao Maria");
   });
 });
 

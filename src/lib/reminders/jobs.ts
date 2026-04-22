@@ -80,12 +80,15 @@ export function buildReminderJobs(
 
 /**
  * Short 3-line WhatsApp reminder body. Kept here so it is unit-testable
- * and reusable if we later expose a manual "resend" action.
+ * and reusable if we later expose a manual "resend" action. Uses only
+ * the first name (before the first space) to keep the message warm and
+ * avoid "Mario Rossi" formality on WhatsApp.
  */
 export function renderWhatsAppReminderBody(job: ReminderJob): string {
+  const firstName = job.clientName.split(" ")[0] || job.clientName;
   return [
-    `Ciao ${job.clientName}, ti ricordiamo il tuo appuntamento di domani:`,
+    `Ciao ${firstName} 🌸 ti ricordo il tuo appuntamento di domani:`,
     `${job.dateHuman} alle ${job.time} — ${job.serviceName}.`,
-    `Ti aspettiamo da Fior di Loto!`,
+    `Ti aspetto da Fior di Loto!`,
   ].join("\n");
 }

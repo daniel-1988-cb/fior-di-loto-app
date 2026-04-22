@@ -11,8 +11,22 @@ import { renderAppointmentReminder } from "@/lib/email/templates/appointment-rem
 import { sendMessage } from "@/lib/bot/whatsapp-meta";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// 300s covers ~100 reminders with the default 2-4s jitter between WA sends.
+// Bump higher if the salon ever scales past ~75 appts/day.
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function jitterDelayMs(): number {
+  const min = Number(process.env.WA_REMINDER_DELAY_MIN_MS ?? 2000);
+  const max = Number(process.env.WA_REMINDER_DELAY_MAX_MS ?? 4000);
+  const lo = Number.isFinite(min) && min > 0 ? min : 2000;
+  const hi = Number.isFinite(max) && max > lo ? max : lo + 2000;
+  return lo + Math.random() * (hi - lo);
+}
 
 type ChannelError = {
   appointmentId: string;
@@ -86,6 +100,10 @@ export async function GET(req: NextRequest) {
             accessToken,
           });
           summary.sent_wa += 1;
+          // Throttle between WA sends to avoid Meta anti-spam heuristics on
+          // bulk business-initiated conversations. Jittered 2–4s by default,
+          // tuneable via WA_REMINDER_DELAY_MIN_MS / WA_REMINDER_DELAY_MAX_MS.
+          await sleep(jitterDelayMs());
         } catch (e) {
           const msg = e instanceof Error ? e.message : "wa send failed";
           console.error(
