@@ -4,6 +4,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "crons": [
-    { "path": "/api/cron/reminders", "schedule": "0 15 * * *" }
+    { "path": "/api/cron/reminders", "schedule": "0 15 * * *" },
+    { "path": "/api/cron/client-segments", "schedule": "0 3 * * *" }
   ]
 }
