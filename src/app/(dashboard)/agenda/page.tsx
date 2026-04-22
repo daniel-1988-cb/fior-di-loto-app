@@ -1,10 +1,8 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
-import { Button } from "@/components/ui";
-import { Plus } from "lucide-react";
 import { CalendarGrid } from "@/components/v2/calendar-grid";
 import { CalendarToolbar } from "@/components/v2/calendar-toolbar";
+import { AggiungiDropdownButton } from "@/components/agenda/aggiungi-dropdown-button";
 import { getAppointmentsMultiStaff } from "@/lib/actions/appointments";
 import { getStaff } from "@/lib/actions/staff";
 
@@ -31,11 +29,7 @@ export default async function V2AgendaPage({ searchParams }: PageProps) {
             {staff.length} membri del team · {appointments.length} appuntamenti
           </p>
         </div>
-        <Link href={`/agenda/nuovo?data=${date}`}>
-          <Button>
-            <Plus className="h-4 w-4" /> Aggiungi
-          </Button>
-        </Link>
+        <AggiungiDropdownButton currentDate={date} />
       </header>
 
       <CalendarToolbar currentDate={date} />
