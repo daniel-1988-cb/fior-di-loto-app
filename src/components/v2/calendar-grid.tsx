@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
 import { SlotQuickActionsPopover } from "@/components/agenda/slot-quick-actions-popover";
@@ -8,6 +9,7 @@ import {
   AppointmentDetailDrawer,
   type AppointmentDrawerData,
 } from "@/components/agenda/appointment-detail-drawer";
+import { CheckoutModal } from "@/components/agenda/checkout/checkout-modal";
 
 interface Staff {
   id: string;
@@ -83,6 +85,7 @@ export function CalendarGrid({
   slotMinutes = 30,
   date,
 }: CalendarGridProps) {
+  const router = useRouter();
   const [nowMin, setNowMin] = useState<number | null>(null);
   const [popover, setPopover] = useState<{
     open: boolean;
@@ -92,6 +95,7 @@ export function CalendarGrid({
     staffId: string;
   }>({ open: false, x: 0, y: 0, time: "", staffId: "" });
   const [activeAppt, setActiveAppt] = useState<AppointmentDrawerData | null>(null);
+  const [checkoutApptId, setCheckoutApptId] = useState<string | null>(null);
 
   function openApptDrawer(a: Appointment, s: Staff) {
     setActiveAppt({
@@ -359,6 +363,14 @@ export function CalendarGrid({
       <AppointmentDetailDrawer
         appt={activeAppt}
         onClose={() => setActiveAppt(null)}
+        onOpenCheckout={(id) => setCheckoutApptId(id)}
+      />
+
+      <CheckoutModal
+        open={!!checkoutApptId}
+        appointmentId={checkoutApptId}
+        onClose={() => setCheckoutApptId(null)}
+        onCompleted={() => router.refresh()}
       />
     </div>
   );

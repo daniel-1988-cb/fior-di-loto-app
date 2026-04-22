@@ -48,6 +48,12 @@ export type AppointmentDrawerData = {
 type Props = {
  appt: AppointmentDrawerData | null;
  onClose: () => void;
+ /**
+  * Se presente, il bottone "Checkout" aprirà un popup/modal nel parent
+  * invece di navigare a /agenda/checkout/:id/carrello. Il drawer chiude
+  * automaticamente dopo aver invocato la callback.
+  */
+ onOpenCheckout?: (appointmentId: string) => void;
 };
 
 const STATO_LABEL: Record<string, { label: string; variant: "default" | "success" | "primary" | "danger" }> = {
@@ -57,7 +63,7 @@ const STATO_LABEL: Record<string, { label: string; variant: "default" | "success
  no_show: { label: "No-show", variant: "danger" },
 };
 
-export function AppointmentDetailDrawer({ appt, onClose }: Props) {
+export function AppointmentDetailDrawer({ appt, onClose, onOpenCheckout }: Props) {
  const router = useRouter();
  const [pending, startTransition] = useTransition();
 
@@ -218,6 +224,13 @@ export function AppointmentDetailDrawer({ appt, onClose }: Props) {
        disabled={!!appt.pagatoAt}
        onClick={() => {
         if (appt.pagatoAt) return;
+        if (onOpenCheckout) {
+         // Nuovo flow: popup/modal sopra l'agenda, niente navigazione.
+         onOpenCheckout(appt.id);
+         onClose();
+         return;
+        }
+        // Fallback (es. pagina /clienti): comportamento storico full-page.
         router.push(`/agenda/checkout/${appt.id}/carrello`);
         onClose();
        }}
