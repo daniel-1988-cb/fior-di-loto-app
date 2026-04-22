@@ -253,6 +253,7 @@ export const waBotDocuments = pgTable("wa_bot_documents", {
   id: uuid("id").primaryKey().defaultRandom(),
   titolo: varchar("titolo", { length: 200 }).notNull(),
   contenuto: text("contenuto").notNull(),
+  categoria: varchar("categoria", { length: 50 }).notNull().default("generale"),
   attivo: boolean("attivo").notNull().default(true),
   ordine: integer("ordine").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

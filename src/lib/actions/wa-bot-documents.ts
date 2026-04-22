@@ -1,11 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeCategoria } from "@/lib/bot/categorie";
 
 export type WaBotDoc = {
   id: string;
   titolo: string;
   contenuto: string;
+  categoria: string;
   attivo: boolean;
   ordine: number;
   created_at: string;
@@ -15,7 +17,8 @@ export async function listBotDocuments(): Promise<WaBotDoc[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("wa_bot_documents")
-    .select("id, titolo, contenuto, attivo, ordine, created_at")
+    .select("id, titolo, contenuto, categoria, attivo, ordine, created_at")
+    .order("categoria", { ascending: true })
     .order("ordine", { ascending: true });
   return (data ?? []) as WaBotDoc[];
 }
@@ -24,14 +27,20 @@ export async function getActiveBotDocuments(): Promise<WaBotDoc[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("wa_bot_documents")
-    .select("id, titolo, contenuto, attivo, ordine, created_at")
+    .select("id, titolo, contenuto, categoria, attivo, ordine, created_at")
     .eq("attivo", true)
     .order("ordine", { ascending: true });
   return (data ?? []) as WaBotDoc[];
 }
 
 export async function createBotDocument(
-  input: { titolo: string; contenuto: string; attivo?: boolean; ordine?: number },
+  input: {
+    titolo: string;
+    contenuto: string;
+    categoria?: string;
+    attivo?: boolean;
+    ordine?: number;
+  },
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -39,6 +48,7 @@ export async function createBotDocument(
     .insert({
       titolo: input.titolo,
       contenuto: input.contenuto,
+      categoria: normalizeCategoria(input.categoria),
       attivo: input.attivo ?? true,
       ordine: input.ordine ?? 0,
     })
@@ -50,12 +60,22 @@ export async function createBotDocument(
 
 export async function updateBotDocument(
   id: string,
-  patch: { titolo?: string; contenuto?: string; attivo?: boolean; ordine?: number },
+  patch: {
+    titolo?: string;
+    contenuto?: string;
+    categoria?: string;
+    attivo?: boolean;
+    ordine?: number;
+  },
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
+  const nextPatch: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
+  if (patch.categoria !== undefined) {
+    nextPatch.categoria = normalizeCategoria(patch.categoria);
+  }
   const { error } = await supabase
     .from("wa_bot_documents")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update(nextPatch)
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
