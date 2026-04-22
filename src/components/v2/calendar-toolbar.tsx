@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui";
+import { DatePickerPopover } from "@/components/agenda/date-picker-popover";
 
 export function CalendarToolbar({ currentDate }: { currentDate: string }) {
   const router = useRouter();
@@ -42,10 +43,11 @@ export function CalendarToolbar({ currentDate }: { currentDate: string }) {
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
-      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium">
-        <Calendar className="h-4 w-4 text-muted-foreground" />
-        {label}
-      </span>
+      <DatePickerPopover
+        currentDate={currentDate}
+        onSelect={navTo}
+        triggerLabel={label}
+      />
       <button
         type="button"
         onClick={() => go(1)}
