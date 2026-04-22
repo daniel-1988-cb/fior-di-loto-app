@@ -1,84 +1,122 @@
 export const dynamic = "force-dynamic";
 
-import { venditeSubNav } from "@/components/layout/v2-sidenav";
-import { Card, Badge, Button } from "@/components/ui";
-import { Plus } from "lucide-react";
-import { getVouchers } from "@/lib/actions/vouchers";
+import { Badge } from "@/components/ui";
+import { getVoucherList, type VoucherListItem } from "@/lib/actions/vendite";
+import { VenditeTable, type VenditeTableColumn } from "@/components/vendite/vendite-table";
+import { VoucherToolbar } from "@/components/vendite/voucher-toolbar";
 import { formatCurrency } from "@/lib/utils";
 
-export default async function V2VouchersPage() {
-  const rows = await getVouchers();
+interface PageProps {
+  searchParams: Promise<{ stato?: string }>;
+}
+
+const VALID_STATI = ["attivo", "usato", "scaduto", "all"] as const;
+
+export default async function VenditeVoucherPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const stato = (VALID_STATI as readonly string[]).includes(sp.stato || "")
+    ? (sp.stato as (typeof VALID_STATI)[number])
+    : "attivo";
+
+  const rows = await getVoucherList({ stato });
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const statoLabel = (v: VoucherListItem) => {
+    if (v.usato) return { label: "Usato", variant: "default" as const };
+    if (v.dataScadenza && v.dataScadenza < today)
+      return { label: "Scaduto", variant: "warning" as const };
+    return { label: "Attivo", variant: "success" as const };
+  };
+
+  const columns: VenditeTableColumn<VoucherListItem>[] = [
+    {
+      key: "codice",
+      header: "Codice",
+      cell: (v) => (
+        <span className="font-mono text-xs">{v.codice}</span>
+      ),
+    },
+    {
+      key: "tipo",
+      header: "Tipo",
+      cell: (v) => <Badge variant="outline">{v.tipo}</Badge>,
+    },
+    {
+      key: "valore",
+      header: "Valore",
+      align: "right",
+      cell: (v) => (
+        <span className="font-semibold">{formatCurrency(v.valore)}</span>
+      ),
+    },
+    {
+      key: "cliente",
+      header: "Cliente",
+      cell: (v) => v.clienteNome ?? "—",
+    },
+    {
+      key: "emissione",
+      header: "Emesso",
+      cell: (v) => new Date(v.dataEmissione).toLocaleDateString("it-IT"),
+    },
+    {
+      key: "scadenza",
+      header: "Scadenza",
+      cell: (v) => (
+        <span className="text-muted-foreground">
+          {v.dataScadenza
+            ? new Date(v.dataScadenza).toLocaleDateString("it-IT")
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "stato",
+      header: "Stato",
+      align: "center",
+      cell: (v) => {
+        const s = statoLabel(v);
+        return <Badge variant={s.variant}>{s.label}</Badge>;
+      },
+    },
+  ];
 
   return (
     <>
-      <header className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Buoni venduti</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{rows.length} buoni registrati.</p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4" /> Aggiungi
-        </Button>
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Voucher emessi</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {rows.length} voucher ({statoDescription(stato)}).
+        </p>
       </header>
 
-      <Card className="overflow-hidden">
-        <div className="w-full overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Codice</th>
-                <th className="px-4 py-3 text-left font-medium">Tipo</th>
-                <th className="px-4 py-3 text-left font-medium">Acquistato da</th>
-                <th className="px-4 py-3 text-left font-medium">Destinatario</th>
-                <th className="px-4 py-3 text-left font-medium">Scadenza</th>
-                <th className="px-4 py-3 text-right font-medium">Valore</th>
-                <th className="px-4 py-3 text-center font-medium">Stato</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    Nessun buono registrato.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((v) => (
-                  <tr key={v.id} className="hover:bg-muted/40">
-                    <td className="px-4 py-3 font-mono text-xs">{v.codice}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline">{v.tipo}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      {v.acquistato_da
-                        ? `${v.acquistato_da.nome} ${v.acquistato_da.cognome}`
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {v.destinatario
-                        ? `${v.destinatario.nome} ${v.destinatario.cognome}`
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {v.data_scadenza
-                        ? new Date(v.data_scadenza).toLocaleDateString("it-IT")
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold">
-                      {formatCurrency(v.valore)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge variant={v.usato ? "default" : "success"}>
-                        {v.usato ? "Utilizzato" : "Valido"}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <VoucherToolbar initialStato={stato} />
+
+      <VenditeTable
+        columns={columns}
+        rows={rows}
+        rowKey={(v) => v.id}
+        emptyMessage="Nessun voucher in questo stato."
+        onRowClickAttrs={(v) => ({
+          "data-voucher-codice": v.codice,
+          role: "button",
+          tabIndex: "0",
+        })}
+      />
     </>
   );
+}
+
+function statoDescription(s: string): string {
+  switch (s) {
+    case "attivo":
+      return "attivi";
+    case "usato":
+      return "usati";
+    case "scaduto":
+      return "scaduti";
+    default:
+      return "tutti";
+  }
 }

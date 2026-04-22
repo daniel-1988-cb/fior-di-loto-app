@@ -68,10 +68,13 @@ export function VenditeTable<T>({
             ) : (
               rows.map((row) => {
                 const extra = onRowClickAttrs?.(row) ?? {};
+                const interactive = onRowClickAttrs != null;
                 return (
                   <tr
                     key={rowKey(row)}
-                    className="hover:bg-muted/40"
+                    className={`hover:bg-muted/40 ${
+                      interactive ? "cursor-pointer" : ""
+                    }`}
                     {...extra}
                   >
                     {columns.map((c) => (
