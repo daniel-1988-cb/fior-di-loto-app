@@ -207,7 +207,7 @@ export function DatePickerPopover({
         <div
           role="dialog"
           aria-label="Seleziona data"
-          className="absolute left-1/2 top-full z-50 mt-2 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-border bg-card p-4 text-foreground shadow-lg"
+          className="absolute left-0 top-full z-50 mt-2 w-[min(640px,calc(100vw-3rem))] max-w-[calc(100vw-3rem)] rounded-xl border border-border bg-card p-4 text-foreground shadow-lg"
         >
           {/* Header con chevron prev/next */}
           <div className="mb-3 flex items-center justify-between">
