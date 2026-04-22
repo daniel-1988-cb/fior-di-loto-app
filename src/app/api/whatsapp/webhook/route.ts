@@ -11,6 +11,7 @@ import {
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/llm";
 import { createBookingRequest, BOOKING_ACK_REPLY } from "@/lib/bot/booking";
+import { aggregateClaimedRows } from "@/lib/bot/message-buffer";
 import { getActiveBotDocuments } from "@/lib/actions/wa-bot-documents";
 import {
   getClientContextForBot,
@@ -18,6 +19,9 @@ import {
 } from "@/lib/actions/bot-client-context";
 
 export const runtime = "nodejs";
+// `after()` extends the serverless invocation, but we still want headroom
+// for the buffered path: 4s sleep + Gemini call (2-5s) + WA send.
+export const maxDuration = 30;
 
 const OPT_OUT_ACK =
   "Ok, non ti scriverò più. Se cambi idea, basta che mi scrivi e ti riattivo.";
@@ -238,6 +242,54 @@ async function processPayload(rawBody: string): Promise<void> {
       continue;
     }
 
+    const bufferEnabled = process.env.WA_BUFFER_ENABLED === "true";
+    const canBuffer = bufferEnabled && msg.kind === "text" && (msg.text ?? "").length > 0;
+
+    if (canBuffer) {
+      // Insert into the buffer, then schedule a deferred claim+reply.
+      // Multiple messages from the same phone within the window will all
+      // hit the same claim: only one after() callback actually processes
+      // (atomic UPDATE ... WHERE processed_at IS NULL), the rest no-op.
+      await supabase.from("wa_message_buffer").insert({
+        phone: phoneWithPlus,
+        content: msg.text ?? "",
+      });
+
+      after(async () => {
+        try {
+          await new Promise((r) => setTimeout(r, 4000));
+          const { data: claimed, error } = await supabase
+            .from("wa_message_buffer")
+            .update({ processed_at: new Date().toISOString() })
+            .eq("phone", phoneWithPlus)
+            .is("processed_at", null)
+            .select("content, received_at");
+          if (error) {
+            console.error("[wa webhook] buffer claim failed", error);
+            return;
+          }
+          if (!claimed || claimed.length === 0) return; // another handler won the race
+          const aggregated = aggregateClaimedRows(
+            claimed.map((r) => ({
+              content: r.content as string,
+              receivedAt: r.received_at as string,
+            })),
+          );
+          if (!aggregated) return;
+          await generateAndSendReply(supabase, {
+            clientId,
+            fromPhone: msg.fromPhone,
+            isAudio: false,
+            audioInput: null,
+            overrideLastUserText: aggregated,
+          });
+        } catch (e) {
+          console.error("[wa webhook] buffered handler failed", e);
+        }
+      });
+      continue;
+    }
+
     await generateAndSendReply(supabase, {
       clientId,
       fromPhone: msg.fromPhone,
@@ -252,6 +304,12 @@ type GenerateAndSendReplyArgs = {
   fromPhone: string;
   isAudio: boolean;
   audioInput: { data: Buffer; mimeType: string } | null;
+  /**
+   * When set, the trailing consecutive `user` turns in the history are
+   * collapsed into a single synthetic turn with this text. Used by the
+   * 4s buffer path so Gemini sees "one utterance" instead of N fragments.
+   */
+  overrideLastUserText?: string;
 };
 
 // Single place that reads history, runs Gemini, sends on WA, logs the reply.
@@ -262,7 +320,7 @@ async function generateAndSendReply(
   supabase: SupabaseClient,
   args: GenerateAndSendReplyArgs,
 ): Promise<void> {
-  const { clientId, fromPhone, isAudio, audioInput } = args;
+  const { clientId, fromPhone, isAudio, audioInput, overrideLastUserText } = args;
 
   const { data: history } = await supabase
     .from("wa_conversations")
@@ -270,6 +328,22 @@ async function generateAndSendReply(
     .eq("client_id", clientId)
     .order("created_at", { ascending: true })
     .limit(50);
+
+  // If the buffer path gave us an aggregated text, replace the trailing
+  // consecutive `user` rows (which are the just-inserted fragments) with
+  // a single synthetic user turn — so Gemini sees one utterance.
+  const historyForLlm = (history ?? []).map((h) => ({
+    role: h.role as "user" | "assistant",
+    content: h.content as string,
+  }));
+  if (overrideLastUserText && historyForLlm.length > 0) {
+    let i = historyForLlm.length;
+    while (i > 0 && historyForLlm[i - 1].role === "user") i--;
+    historyForLlm.splice(i, historyForLlm.length - i, {
+      role: "user",
+      content: overrideLastUserText,
+    });
+  }
 
   const docs = await getActiveBotDocuments();
 
@@ -281,10 +355,7 @@ async function generateAndSendReply(
   const clientContextText = await buildClientContextPrompt(clientCtx);
 
   const rawReply = await generateReply({
-    history: (history ?? []).map((h) => ({
-      role: h.role as "user" | "assistant",
-      content: h.content,
-    })),
+    history: historyForLlm,
     apiKey: process.env.GEMINI_API_KEY!,
     documents: docs.map((d) => ({ titolo: d.titolo, contenuto: d.contenuto })),
     clientContext: clientContextText,
