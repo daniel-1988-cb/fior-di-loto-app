@@ -1,8 +1,7 @@
 export const dynamic = "force-dynamic";
 
-import { catalogoSubNav } from "@/components/layout/v2-sidenav";
 import { Card, CardContent, Badge } from "@/components/ui";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, Info } from "lucide-react";
 import { getProducts } from "@/lib/actions/products";
 import { formatCurrency } from "@/lib/utils";
 
@@ -44,6 +43,17 @@ export default async function V2InventarioPage() {
           <p className="mt-1 text-2xl font-bold text-danger">{outOfStock.length}</p>
         </Card>
       </section>
+
+      <Card className="mb-4 border-primary/20 bg-primary/5">
+        <CardContent className="pt-6 flex items-start gap-3 text-sm">
+          <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+          <p className="text-muted-foreground">
+            In arrivo (Fase 2.5): aggregato movimenti giacenza (entrate da
+            ordini fornitore, uscite da vendite) con storico e filtri per
+            periodo.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-6">

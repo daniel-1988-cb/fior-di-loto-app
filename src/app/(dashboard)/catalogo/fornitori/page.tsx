@@ -1,5 +1,4 @@
-import { catalogoSubNav } from "@/components/layout/v2-sidenav";
-import { Card, CardContent, Button } from "@/components/ui";
+import { Card, CardContent, Badge } from "@/components/ui";
 import { Store } from "lucide-react";
 
 export default function V2FornitoriPage() {
@@ -17,13 +16,19 @@ export default function V2FornitoriPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Store className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold">Nessun fornitore</h2>
+          <h2 className="mt-4 text-lg font-semibold">In arrivo</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Aggiungi i fornitori con cui lavori per tenere traccia degli ordini e delle condizioni.
+            Anagrafica fornitori (nome, p.iva, contatti, prodotti forniti,
+            condizioni pagamento) sarà implementata nella Fase 2.5 con la
+            migration{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+              suppliers
+            </code>{" "}
+            e i link con prodotti/ordini.
           </p>
-          <Button className="mt-6" variant="outline">
-            Aggiungi fornitore
-          </Button>
+          <Badge variant="outline" className="mt-4">
+            Fase 2.5
+          </Badge>
         </CardContent>
       </Card>
     </>
