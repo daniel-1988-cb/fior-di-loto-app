@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
+import { SlotQuickActionsPopover } from "@/components/agenda/slot-quick-actions-popover";
 
 interface Staff {
   id: string;
@@ -56,6 +56,13 @@ export function CalendarGrid({
   date,
 }: CalendarGridProps) {
   const [nowMin, setNowMin] = useState<number | null>(null);
+  const [popover, setPopover] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    time: string;
+    staffId: string;
+  }>({ open: false, x: 0, y: 0, time: "", staffId: "" });
 
   const isToday = date === new Date().toISOString().slice(0, 10);
 
@@ -159,12 +166,21 @@ export function CalendarGrid({
                   const mm = (minute % 60).toString().padStart(2, "0");
                   const ora = `${hh}:${mm}`;
                   return (
-                    <Link
+                    <button
+                      type="button"
                       key={`slot-${minute}`}
-                      href={`/agenda/nuovo?data=${date}&ora=${ora}&staffId=${s.id}`}
-                      aria-label={`Crea appuntamento ${ora} con ${s.nome}`}
+                      aria-label={`Azioni rapide slot ${ora} con ${s.nome}`}
+                      onClick={(e) => {
+                        setPopover({
+                          open: true,
+                          x: e.clientX,
+                          y: e.clientY,
+                          time: ora,
+                          staffId: s.id,
+                        });
+                      }}
                       className={cn(
-                        "absolute left-0 right-0 block transition-colors hover:bg-primary/5",
+                        "absolute left-0 right-0 block cursor-pointer transition-colors hover:bg-primary/5",
                         half
                           ? "border-b border-dashed border-border/40"
                           : "border-b border-border/60"
@@ -230,6 +246,16 @@ export function CalendarGrid({
           )}
         </div>
       </div>
+
+      <SlotQuickActionsPopover
+        open={popover.open}
+        x={popover.x}
+        y={popover.y}
+        slotTime={popover.time}
+        slotDate={date}
+        slotStaffId={popover.staffId}
+        onClose={() => setPopover((p) => ({ ...p, open: false }))}
+      />
     </div>
   );
 }
