@@ -455,3 +455,168 @@ export async function getClientAppointments(clientId: string) {
   if (error) throw error;
   return data || [];
 }
+
+// ============================================
+// CLIENT PROFILE SUMMARY (counts + totals for profile page)
+// ============================================
+
+export type ClientProfileSummary = {
+  appuntamentiTotali: number;
+  appuntamentiAnnullati: number;
+  appuntamentiNoShow: number;
+  venditeCount: number;
+  venditeTotale: number;
+  articoliCount: number;
+};
+
+/**
+ * Aggregate counts/totals used by the client profile page sidebar + Panoramica.
+ * All queries run in parallel via Promise.all.
+ */
+export async function getClientProfileSummary(clientId: string): Promise<ClientProfileSummary> {
+  const empty: ClientProfileSummary = {
+    appuntamentiTotali: 0,
+    appuntamentiAnnullati: 0,
+    appuntamentiNoShow: 0,
+    venditeCount: 0,
+    venditeTotale: 0,
+    articoliCount: 0,
+  };
+  if (!isValidUUID(clientId)) return empty;
+  const supabase = createAdminClient();
+
+  const [
+    apptTotali,
+    apptAnnullati,
+    apptNoShow,
+    venditeRows,
+    articoliRows,
+  ] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", clientId),
+    supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .eq("stato", "cancellato"),
+    supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .eq("stato", "no_show"),
+    supabase
+      .from("transactions")
+      .select("id, importo")
+      .eq("client_id", clientId)
+      .eq("tipo", "entrata"),
+    supabase
+      .from("transaction_items")
+      .select("id, transactions!inner(client_id)")
+      .eq("kind", "prodotto")
+      .eq("transactions.client_id", clientId),
+  ]);
+
+  if (apptTotali.error) throw apptTotali.error;
+  if (apptAnnullati.error) throw apptAnnullati.error;
+  if (apptNoShow.error) throw apptNoShow.error;
+  if (venditeRows.error) throw venditeRows.error;
+  if (articoliRows.error) throw articoliRows.error;
+
+  const venditeCount = (venditeRows.data || []).length;
+  const venditeTotale = (venditeRows.data || []).reduce(
+    (sum, r) => sum + Number((r as { importo: number }).importo || 0),
+    0,
+  );
+  const articoliCount = (articoliRows.data || []).length;
+
+  return {
+    appuntamentiTotali: apptTotali.count ?? 0,
+    appuntamentiAnnullati: apptAnnullati.count ?? 0,
+    appuntamentiNoShow: apptNoShow.count ?? 0,
+    venditeCount,
+    venditeTotale,
+    articoliCount,
+  };
+}
+
+/**
+ * Transactions for the Vendite tab. Entrata only, desc by date.
+ */
+export async function getClientTransactions(clientId: string) {
+  if (!isValidUUID(clientId)) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, data, descrizione, importo, metodo_pagamento, categoria, created_at")
+    .eq("client_id", clientId)
+    .eq("tipo", "entrata")
+    .order("data", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Aggregated product lines for the Articoli tab.
+ * Reads transaction_items with kind='prodotto' joined on transactions
+ * then groups by ref_id (fallback label) so repeat purchases sum up.
+ */
+export async function getClientProducts(clientId: string) {
+  if (!isValidUUID(clientId)) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("transaction_items")
+    .select("id, label, quantity, unit_price, ref_id, transactions!inner(client_id, data)")
+    .eq("kind", "prodotto")
+    .eq("transactions.client_id", clientId);
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    label: string;
+    quantity: number;
+    unit_price: number;
+    ref_id: string | null;
+    transactions:
+      | { client_id: string; data: string }
+      | { client_id: string; data: string }[]
+      | null;
+  };
+
+  const rows = (data || []) as unknown as Row[];
+  const agg = new Map<
+    string,
+    { label: string; quantity: number; totalSpent: number; lastDate: string | null; refId: string | null }
+  >();
+  for (const r of rows) {
+    const key = (r.ref_id || r.label || "unknown").toString();
+    const tx = Array.isArray(r.transactions) ? r.transactions[0] : r.transactions;
+    const dateStr = tx?.data || null;
+    const qty = Number(r.quantity) || 0;
+    const spent = qty * (Number(r.unit_price) || 0);
+    const prev = agg.get(key);
+    if (prev) {
+      prev.quantity += qty;
+      prev.totalSpent += spent;
+      if (dateStr && (!prev.lastDate || dateStr > prev.lastDate)) prev.lastDate = dateStr;
+    } else {
+      agg.set(key, {
+        label: r.label,
+        quantity: qty,
+        totalSpent: spent,
+        lastDate: dateStr,
+        refId: r.ref_id,
+      });
+    }
+  }
+
+  return Array.from(agg.values()).sort((a, b) => {
+    if (!a.lastDate && !b.lastDate) return 0;
+    if (!a.lastDate) return 1;
+    if (!b.lastDate) return -1;
+    return b.lastDate.localeCompare(a.lastDate);
+  });
+}
