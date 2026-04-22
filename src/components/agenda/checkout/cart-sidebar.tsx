@@ -39,7 +39,7 @@ export function CartSidebar({
  const canProceed = cart.items.length > 0;
 
  return (
-  <aside className="w-full shrink-0 border-t border-border bg-card lg:sticky lg:top-0 lg:h-screen lg:w-[360px] lg:border-l lg:border-t-0">
+  <aside className="w-full shrink-0 border-t border-border bg-card lg:h-full lg:w-[360px] lg:border-l lg:border-t-0">
    <div className="flex h-full flex-col">
     {/* Cliente */}
     <div className="border-b border-border px-6 py-5">
