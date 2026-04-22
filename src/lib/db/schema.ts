@@ -50,6 +50,11 @@ export const clients = pgTable("clients", {
   waOptIn: boolean("wa_opt_in").notNull().default(false),
   waLastSeen: timestamp("wa_last_seen"),
   waPhoneVerified: boolean("wa_phone_verified").notNull().default(false),
+  // Quick-action profile fields (client drawer "Attività" menu)
+  avvisoPersonale: text("avviso_personale"),
+  allergie: text("allergie"),
+  patchTest: text("patch_test"),
+  blocked: boolean("blocked").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

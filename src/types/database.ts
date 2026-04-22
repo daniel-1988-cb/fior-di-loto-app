@@ -76,6 +76,9 @@ export type Database = {
       };
       clients: {
         Row: {
+          allergie: string | null;
+          avviso_personale: string | null;
+          blocked: boolean;
           cognome: string;
           created_at: string;
           data_nascita: string | null;
@@ -85,6 +88,7 @@ export type Database = {
           indirizzo: string | null;
           nome: string;
           note: string | null;
+          patch_test: string | null;
           segmento: string;
           tags: Json | null;
           telefono: string | null;
