@@ -344,3 +344,33 @@ export const subscriptions = pgTable("subscriptions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ============================================
+// STAFF TURNI (planner settimanale)
+// ============================================
+// NB: staff è gestita via raw SQL migration (vedi 005_staff.sql) quindi
+// non è modellata in Drizzle — il vincolo FK resta comunque a livello DB.
+
+export const staffTurni = pgTable("staff_turni", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id").notNull(),
+  data: date("data").notNull(),
+  oraInizio: time("ora_inizio").notNull(),
+  oraFine: time("ora_fine").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ============================================
+// STAFF PRESENZE (clock in/out)
+// ============================================
+
+export const staffPresenze = pgTable("staff_presenze", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  staffId: uuid("staff_id").notNull(),
+  data: date("data").notNull(),
+  clockIn: timestamp("clock_in", { withTimezone: true }).defaultNow().notNull(),
+  clockOut: timestamp("clock_out", { withTimezone: true }),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
