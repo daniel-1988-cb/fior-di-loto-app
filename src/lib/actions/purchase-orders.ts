@@ -2,18 +2,14 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, isValidDate, sanitizeString, truncate } from "@/lib/security/validate";
+import { VALID_STATI_PO, type PoStato } from "@/lib/constants/purchase-orders";
 
 // ============================================
 // TYPES
 // ============================================
 
-export const VALID_STATI = [
-  "in_attesa",
-  "in_transito",
-  "ricevuto",
-  "cancellato",
-] as const;
-export type PoStato = (typeof VALID_STATI)[number];
+// Re-export types for convenience (types are allowed in "use server" files)
+export type { PoStato };
 
 export type PurchaseOrderItem = {
   id: string;
@@ -78,7 +74,7 @@ function rowToPo(row: PoRow): PurchaseOrder {
     dataOrdine: row.data_ordine,
     dataConsegnaAttesa: row.data_consegna_attesa,
     dataConsegnaEffettiva: row.data_consegna_effettiva,
-    stato: (VALID_STATI as readonly string[]).includes(row.stato)
+    stato: (VALID_STATI_PO as readonly string[]).includes(row.stato)
       ? (row.stato as PoStato)
       : "in_attesa",
     importoTotale:
@@ -126,7 +122,7 @@ export async function getPurchaseOrders(
     .select("*, suppliers(nome)")
     .order("data_ordine", { ascending: false });
 
-  if (opts.stato && (VALID_STATI as readonly string[]).includes(opts.stato)) {
+  if (opts.stato && (VALID_STATI_PO as readonly string[]).includes(opts.stato)) {
     query = query.eq("stato", opts.stato);
   }
   if (opts.supplierId && isValidUUID(opts.supplierId)) {
@@ -235,7 +231,7 @@ export async function createPurchaseOrder(
     throw new Error("Data consegna attesa non valida");
   }
   const stato: PoStato =
-    input.stato && (VALID_STATI as readonly string[]).includes(input.stato)
+    input.stato && (VALID_STATI_PO as readonly string[]).includes(input.stato)
       ? input.stato
       : "in_attesa";
   const items = validateItems(input.items);
@@ -319,7 +315,7 @@ export async function updatePurchaseOrder(
     updates.note = input.note ? truncate(sanitizeString(input.note), 2000) : null;
   }
   if (input.stato !== undefined) {
-    if (!(VALID_STATI as readonly string[]).includes(input.stato)) {
+    if (!(VALID_STATI_PO as readonly string[]).includes(input.stato)) {
       throw new Error("Stato non valido");
     }
     updates.stato = input.stato;
