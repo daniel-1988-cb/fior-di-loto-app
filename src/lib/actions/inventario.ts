@@ -103,19 +103,24 @@ export async function getInventoryStats(): Promise<InventoryStats> {
 // MOVEMENTS (entrate + uscite cronologiche)
 // ============================================
 
+type PoInfo = {
+  data_consegna_effettiva: string | null;
+  data_ordine: string;
+  numero_ordine: string | null;
+  stato: string;
+};
+
 type PoiMovementRow = {
   id: string;
   product_id: string | null;
   nome_prodotto: string;
   quantita_ricevuta: number;
   purchase_order_id: string;
-  purchase_orders: {
-    data_consegna_effettiva: string | null;
-    data_ordine: string;
-    numero_ordine: string | null;
-    stato: string;
-  } | null;
+  // Supabase restituisce l'embedded relation come array (anche per 1-1)
+  purchase_orders: PoInfo | PoInfo[] | null;
 };
+
+type TxInfo = { data: string };
 
 type TxItemMovementRow = {
   id: string;
@@ -123,10 +128,13 @@ type TxItemMovementRow = {
   label: string;
   quantity: number;
   transaction_id: string;
-  transactions: {
-    data: string;
-  } | null;
+  transactions: TxInfo | TxInfo[] | null;
 };
+
+function pickOne<T>(v: T | T[] | null | undefined): T | null {
+  if (!v) return null;
+  return Array.isArray(v) ? v[0] ?? null : v;
+}
 
 export async function getInventoryMovements(
   productId?: string,
@@ -154,27 +162,23 @@ export async function getInventoryMovements(
   const { data: entrateData, error: entrateErr } = await entrateQ;
   if (entrateErr) throw entrateErr;
 
-  const entrate: InventoryMovement[] = ((entrateData as PoiMovementRow[] | null) || []).map(
-    (r) => {
-      const data =
-        r.purchase_orders?.data_consegna_effettiva ??
-        r.purchase_orders?.data_ordine ??
-        "";
-      const ref =
-        r.purchase_orders?.numero_ordine ??
-        `Ordine ${r.purchase_order_id.slice(0, 8)}`;
-      return {
-        id: `po-${r.id}`,
-        productId: r.product_id,
-        productNome: r.nome_prodotto,
-        data,
-        qty: r.quantita_ricevuta,
-        tipo: "entrata",
-        riferimento: `Ordine ${ref}`,
-        refId: r.purchase_order_id,
-      };
-    }
-  );
+  const entrate: InventoryMovement[] = (
+    (entrateData as unknown as PoiMovementRow[] | null) || []
+  ).map((r) => {
+    const po = pickOne(r.purchase_orders);
+    const data = po?.data_consegna_effettiva ?? po?.data_ordine ?? "";
+    const ref = po?.numero_ordine ?? r.purchase_order_id.slice(0, 8);
+    return {
+      id: `po-${r.id}`,
+      productId: r.product_id,
+      productNome: r.nome_prodotto,
+      data,
+      qty: r.quantita_ricevuta,
+      tipo: "entrata",
+      riferimento: `Ordine ${ref}`,
+      refId: r.purchase_order_id,
+    };
+  });
 
   // USCITE: transaction_items con kind='prodotto'. La data viene dalla
   // transaction collegata. Filtriamo per refId == product se specificato.
@@ -188,18 +192,21 @@ export async function getInventoryMovements(
   const { data: usciteData, error: usciteErr } = await usciteQ;
   if (usciteErr) throw usciteErr;
 
-  const uscite: InventoryMovement[] = ((usciteData as TxItemMovementRow[] | null) || []).map(
-    (r) => ({
+  const uscite: InventoryMovement[] = (
+    (usciteData as unknown as TxItemMovementRow[] | null) || []
+  ).map((r) => {
+    const tx = pickOne(r.transactions);
+    return {
       id: `tx-${r.id}`,
       productId: r.ref_id,
       productNome: r.label,
-      data: r.transactions?.data ?? "",
+      data: tx?.data ?? "",
       qty: -Math.abs(r.quantity),
       tipo: "uscita",
       riferimento: `Vendita #${r.transaction_id.slice(0, 8)}`,
       refId: r.transaction_id,
-    })
-  );
+    };
+  });
 
   let all = [...entrate, ...uscite];
 
