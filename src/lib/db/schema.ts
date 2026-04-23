@@ -103,6 +103,7 @@ export const products = pgTable("products", {
   prezzo: decimal("prezzo", { precision: 10, scale: 2 }).notNull(),
   giacenza: integer("giacenza").notNull().default(0),
   sogliaAlert: integer("soglia_alert").default(5), // avviso scorte basse
+  imageUrl: text("image_url"),
   attivo: boolean("attivo").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -372,5 +373,53 @@ export const staffPresenze = pgTable("staff_presenze", {
   clockIn: timestamp("clock_in", { withTimezone: true }).defaultNow().notNull(),
   clockOut: timestamp("clock_out", { withTimezone: true }),
   note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ============================================
+// FORNITORI & ORDINI DI STOCK (Fase 2.5)
+// ============================================
+
+export const suppliers = pgTable("suppliers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: varchar("nome", { length: 200 }).notNull(),
+  partitaIva: varchar("partita_iva", { length: 20 }),
+  codiceFiscale: varchar("codice_fiscale", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  telefono: varchar("telefono", { length: 50 }),
+  indirizzo: text("indirizzo"),
+  referente: text("referente"),
+  note: text("note"),
+  attivo: boolean("attivo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  supplierId: uuid("supplier_id")
+    .notNull()
+    .references(() => suppliers.id, { onDelete: "restrict" }),
+  numeroOrdine: varchar("numero_ordine", { length: 50 }),
+  dataOrdine: date("data_ordine").notNull(),
+  dataConsegnaAttesa: date("data_consegna_attesa"),
+  dataConsegnaEffettiva: date("data_consegna_effettiva"),
+  stato: varchar("stato", { length: 20 }).notNull().default("in_attesa"), // in_attesa | in_transito | ricevuto | cancellato
+  importoTotale: decimal("importo_totale", { precision: 10, scale: 2 }).notNull().default("0"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseOrderId: uuid("purchase_order_id")
+    .notNull()
+    .references(() => purchaseOrders.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+  nomeProdotto: text("nome_prodotto").notNull(), // snapshot at time of order
+  quantita: integer("quantita").notNull(),
+  costoUnitario: decimal("costo_unitario", { precision: 10, scale: 2 }).notNull(),
+  quantitaRicevuta: integer("quantita_ricevuta").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
