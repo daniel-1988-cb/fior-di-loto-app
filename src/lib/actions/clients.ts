@@ -39,6 +39,43 @@ export async function getClient(id: string) {
   return data;
 }
 
+export type ClientSearchResult = {
+  id: string;
+  nome: string;
+  cognome: string;
+  telefono: string | null;
+  email: string | null;
+  segmento: string;
+};
+
+/**
+ * Lightweight search per il combobox "scegli cliente" — ritorna max 20 righe
+ * con solo le colonne necessarie, usa GIN trigram indexes su nome/cognome/
+ * telefono/email (migration 20260423000050). Se `q` è vuoto ritorna gli ultimi
+ * clienti modificati (comodo in UX: apro il picker → vedo chi ho visto di recente).
+ */
+export async function searchClientsQuick(q?: string, limit = 20): Promise<ClientSearchResult[]> {
+  const supabase = createAdminClient();
+  const safeQ = q ? truncate(sanitizeString(q), 80).trim() : "";
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+
+  let query = supabase
+    .from("clients")
+    .select("id, nome, cognome, telefono, email, segmento")
+    .order("updated_at", { ascending: false })
+    .limit(safeLimit);
+
+  if (safeQ) {
+    query = query.or(
+      `nome.ilike.%${safeQ}%,cognome.ilike.%${safeQ}%,telefono.ilike.%${safeQ}%,email.ilike.%${safeQ}%`,
+    );
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as ClientSearchResult[];
+}
+
 export async function getClientInteractions(clientId: string) {
   if (!isValidUUID(clientId)) return [];
   const supabase = createAdminClient();

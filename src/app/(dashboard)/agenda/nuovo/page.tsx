@@ -5,18 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createAppointment } from "@/lib/actions/appointments";
-import { getClients } from "@/lib/actions/messages";
 import { getServices } from "@/lib/actions/services";
 import { getStaff, Staff } from "@/lib/actions/staff";
+import { ClientSearchCombobox } from "@/components/clienti/client-search-combobox";
 
-type ClientOption = { id: string; nome: string; cognome: string; telefono: string | null };
 type ServiceOption = { id: string; nome: string; categoria: string; durata: number; prezzo: number };
 
 function NuovoAppuntamentoForm() {
  const router = useRouter();
  const searchParams = useSearchParams();
  const [loading, setLoading] = useState(false);
- const [clients, setClients] = useState<ClientOption[]>([]);
  const [services, setServices] = useState<ServiceOption[]>([]);
  const [staffList, setStaffList] = useState<Staff[]>([]);
 
@@ -39,12 +37,10 @@ function NuovoAppuntamentoForm() {
 
  useEffect(() => {
   async function loadData() {
-   const [clientList, serviceList, staffData] = await Promise.all([
-    getClients(),
+   const [serviceList, staffData] = await Promise.all([
     getServices(),
     getStaff(true),
    ]);
-   setClients(clientList as unknown as ClientOption[]);
    setServices(serviceList as unknown as ServiceOption[]);
    setStaffList(staffData);
   }
@@ -135,15 +131,14 @@ function NuovoAppuntamentoForm() {
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Cliente *</label>
-       <select name="clientId" value={formData.clientId} onChange={handleChange} required className={inputClass}>
-        <option value="">Seleziona cliente...</option>
-        {clients.map((c) => (
-         <option key={c.id} value={c.id}>
-          {c.nome} {c.cognome}
-          {c.telefono ? ` — ${c.telefono}` : ""}
-         </option>
-        ))}
-       </select>
+       <ClientSearchCombobox
+        name="clientId"
+        required
+        value={formData.clientId || null}
+        onChange={(id) =>
+         setFormData((prev) => ({ ...prev, clientId: id ?? "" }))
+        }
+       />
       </div>
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Servizio *</label>
