@@ -45,6 +45,50 @@ self.addEventListener("activate", (event) => {
  );
 });
 
+// Push notification handler
+self.addEventListener("push", (event) => {
+ let data = { title: "Fior di Loto", body: "Nuova notifica", url: "/agenda" };
+ try {
+  if (event.data) {
+   const parsed = event.data.json();
+   data = { ...data, ...parsed };
+  }
+ } catch {
+  /* fallback to default */
+ }
+ event.waitUntil(
+  self.registration.showNotification(data.title, {
+   body: data.body,
+   icon: "/icon-192.svg",
+   badge: "/icon-192.svg",
+   tag: data.tag,
+   data: { url: data.url || "/agenda" },
+   // iOS richiede requireInteraction=false
+  }),
+ );
+});
+
+// Click su notifica → apri l'app al path specificato
+self.addEventListener("notificationclick", (event) => {
+ event.notification.close();
+ const url = event.notification.data?.url || "/agenda";
+ event.waitUntil(
+  self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+   // Se esiste già una tab aperta, focus + navigate
+   for (const client of list) {
+    if ("focus" in client) {
+     client.focus();
+     if ("navigate" in client) {
+      client.navigate(url);
+     }
+     return;
+    }
+   }
+   if (self.clients.openWindow) return self.clients.openWindow(url);
+  }),
+ );
+});
+
 self.addEventListener("fetch", (event) => {
  const { request } = event;
 

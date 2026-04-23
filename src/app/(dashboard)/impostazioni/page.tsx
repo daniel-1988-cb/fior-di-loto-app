@@ -25,6 +25,7 @@ import {
   Plug,
   Wrench,
   Award,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +54,12 @@ const impostazioni: SettingCard[] = [
     title: "Azioni rapide agenda",
     description: "Personalizza le azioni mostrate cliccando su uno slot o sul bottone Aggiungi.",
     href: "/impostazioni/azioni-rapide",
+  },
+  {
+    icon: Bell,
+    title: "Notifiche push",
+    description: "Attiva le notifiche sul telefono quando il bot riceve nuove richieste.",
+    href: "/impostazioni/notifiche",
   },
   {
     icon: CreditCard,
