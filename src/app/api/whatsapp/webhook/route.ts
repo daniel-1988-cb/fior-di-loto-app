@@ -66,51 +66,82 @@ async function processPayload(rawBody: string): Promise<void> {
   );
 
   for (const msg of messages) {
-    const phoneWithPlus = "+" + msg.fromPhone;
+    const phoneWithPlus = "+" + msg.fromPhone; // es. "+393880637725"
+    const digitsOnly = msg.fromPhone.replace(/\D/g, ""); // "393880637725"
+    const withoutCountryCode = digitsOnly.startsWith("39")
+      ? digitsOnly.slice(2) // "3880637725" (formato storico DB)
+      : digitsOnly;
 
-    // Race-safe upsert: try insert first; on duplicate (unique index on
-    // clients.telefono), fall back to SELECT + touch of wa_last_seen.
-    // This avoids a lookup+insert TOCTOU window where two concurrent
-    // webhooks on the same number could otherwise create 2 rows.
+    // Lookup FIRST (prima di insert) cercando il numero in TUTTE le varianti
+    // di formato usate storicamente nel DB:
+    //  - "+393880637725" (formato webhook con prefisso)
+    //  - "393880637725"  (solo digits)
+    //  - "3880637725"    (legacy: senza prefisso — format usato dal gestionale per
+    //                    i clienti inseriti manualmente da Laura)
+    // Evita di creare duplicate placeholder "Nuovo Contatto WA" per clienti
+    // già in DB con numero in formato diverso.
+    const phoneVariants = Array.from(
+      new Set(
+        [phoneWithPlus, digitsOnly, withoutCountryCode].filter(Boolean),
+      ),
+    );
+
     let clientId: string;
     let waOptIn = true;
 
-    const { data: inserted, error: insertErr } = await supabase
+    const { data: existingReal } = await supabase
       .from("clients")
-      .insert({
-        nome: "Nuovo",
-        cognome: "Contatto WA",
-        telefono: phoneWithPlus,
-        segmento: "lead",
-        fonte: "whatsapp",
-        wa_last_seen: new Date().toISOString(),
-        wa_opt_in: true,
-      })
-      .select("id, wa_opt_in")
-      .single();
+      .select("id, wa_opt_in, nome")
+      .in("telefono", phoneVariants)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
-    if (inserted) {
-      clientId = inserted.id;
-      waOptIn = inserted.wa_opt_in;
-    } else {
-      const { data: existing } = await supabase
-        .from("clients")
-        .select("id, wa_opt_in")
-        .eq("telefono", phoneWithPlus)
-        .single();
-      if (!existing) {
-        console.error(
-          "[wa webhook] client lookup failed after insert error",
-          insertErr,
-        );
-        continue;
-      }
-      clientId = existing.id;
-      waOptIn = existing.wa_opt_in;
+    if (existingReal) {
+      clientId = existingReal.id;
+      waOptIn = existingReal.wa_opt_in ?? true;
+      // Touch wa_last_seen ma NON toccare nome/cognome se già valorizzati
+      // (il cliente potrebbe essere già stato inserito da Laura con anagrafica).
       await supabase
         .from("clients")
         .update({ wa_last_seen: new Date().toISOString() })
         .eq("id", clientId);
+    } else {
+      // Nessun record esistente per il numero → crea placeholder.
+      const { data: inserted, error: insertErr } = await supabase
+        .from("clients")
+        .insert({
+          nome: "Nuovo",
+          cognome: "Contatto WA",
+          telefono: phoneWithPlus,
+          segmento: "lead",
+          fonte: "whatsapp",
+          wa_last_seen: new Date().toISOString(),
+          wa_opt_in: true,
+        })
+        .select("id, wa_opt_in")
+        .single();
+
+      if (!inserted) {
+        // Race: un altro webhook concorrente ha inserito tra SELECT e INSERT.
+        const { data: raced } = await supabase
+          .from("clients")
+          .select("id, wa_opt_in")
+          .eq("telefono", phoneWithPlus)
+          .maybeSingle();
+        if (!raced) {
+          console.error(
+            "[wa webhook] client lookup failed after insert error",
+            insertErr,
+          );
+          continue;
+        }
+        clientId = raced.id;
+        waOptIn = raced.wa_opt_in ?? true;
+      } else {
+        clientId = inserted.id;
+        waOptIn = inserted.wa_opt_in;
+      }
     }
 
     // Pre-download the audio binary (if any) once, so it's available both
