@@ -370,8 +370,47 @@ export async function getAppointmentsNeedingReviewRequest(): Promise<
   };
 
   const rows = data as unknown as Row[];
+
+  // Filtra SOLO primo appuntamento completato del cliente. Non spammiamo
+  // recensioni ai clienti abitudinari — solo alla prima esperienza. Query
+  // aggregata: per ogni client_id nel batch, conta gli appuntamenti completati
+  // con data <= yesterday. Se > 1, ha già completato almeno un altro appt
+  // in passato → skippa.
+  const clientIds = Array.from(new Set(rows.map((r) => r.client_id)));
+  const pastCompletedByClient = new Map<string, number>();
+  if (clientIds.length > 0) {
+    const { data: pastAppts } = await supabase
+      .from("appointments")
+      .select("client_id")
+      .in("client_id", clientIds)
+      .eq("stato", "completato")
+      .lt("data", dataStr);
+    for (const row of (pastAppts ?? []) as Array<{ client_id: string }>) {
+      pastCompletedByClient.set(
+        row.client_id,
+        (pastCompletedByClient.get(row.client_id) ?? 0) + 1,
+      );
+    }
+  }
+
+  // Inoltre skippa clienti che hanno GIÀ inviato/ricevuto una review_request
+  // in precedenza per QUALSIASI appuntamento — difesa extra oltre alla logica
+  // "primo trattamento" (es. se il primo appt era pre-migration senza flag
+  // completato corretto, non rimandiamo la richiesta).
+  const { data: existingReqByClient } = await supabase
+    .from("review_requests")
+    .select("client_id")
+    .in("client_id", clientIds);
+  const reviewedClients = new Set(
+    ((existingReqByClient as Array<{ client_id: string }> | null) ?? []).map(
+      (r) => r.client_id,
+    ),
+  );
+
   return rows
-    .filter((row) => !existingSet.has(row.id))
+    .filter((row) => !existingSet.has(row.id)) // appt senza review_request
+    .filter((row) => (pastCompletedByClient.get(row.client_id) ?? 0) === 0) // primo completato del cliente
+    .filter((row) => !reviewedClients.has(row.client_id)) // cliente mai ricevuto prima una richiesta
     .map((row) => {
       const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
       return { row, client };
