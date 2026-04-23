@@ -423,3 +423,44 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   quantitaRicevuta: integer("quantita_ricevuta").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ============================================
+// RECENSIONI POST-VISITA (automazione Google reviews)
+// ============================================
+// Dopo ogni appuntamento completato il cron manda un messaggio WA con link
+// tracciato /api/r/<token> → /recensione/<token>. Il cliente lascia rating
+// interno (1-5) + testo; se rating >=4 e business.google_review_url presente
+// viene offerta la recensione pubblica su Google Maps.
+
+export const reviewRequests = pgTable("review_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  appointmentId: uuid("appointment_id").references(() => appointments.id, {
+    onDelete: "set null",
+  }),
+  token: varchar("token", { length: 32 }).notNull().unique(),
+  canale: varchar("canale", { length: 20 }).notNull().default("whatsapp"),
+  sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+  clickedAt: timestamp("clicked_at", { withTimezone: true }),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  rating: integer("rating"),
+  feedbackText: text("feedback_text"),
+  redirectedGoogle: boolean("redirected_google").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const clientReviews = pgTable("client_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  reviewRequestId: uuid("review_request_id").references(() => reviewRequests.id, {
+    onDelete: "set null",
+  }),
+  rating: integer("rating").notNull(),
+  testo: text("testo"),
+  publishedGoogle: boolean("published_google").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
