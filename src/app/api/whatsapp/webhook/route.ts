@@ -432,8 +432,36 @@ async function generateAndSendReply(
   // or model returning an empty string). We now always send *something*.
   if (!rawReply) {
     console.warn(
-      `[wa webhook] empty reply from Gemini for client ${clientId} — finishReason=${gen?.finishReason ?? "none"}, safetyBlocked=${gen?.safetyBlocked ?? "unknown"}`,
+      `[wa webhook] empty reply from Gemini for client ${clientId} — finishReason=${gen?.finishReason ?? "none"}, safetyBlocked=${gen?.safetyBlocked ?? "unknown"}, errorKind=${gen?.errorKind ?? "none"}, errorMessage=${gen?.errorMessage ?? "none"}`,
     );
+
+    // Errori CRITICI (key invalida / quota) → alert + auto-escalate thread.
+    // Questo evita che il bot risponda "Un attimo che controllo" in loop
+    // ai clienti senza che nessuno se ne accorga.
+    const criticalKinds = new Set<string>(["api_key_invalid", "quota_exceeded"]);
+    if (gen?.errorKind && criticalKinds.has(gen.errorKind)) {
+      // Escalate il thread: il bot smette di rispondere finché un operatore
+      // non lo riattiva da /whatsapp/conversazioni.
+      await supabase
+        .from("wa_threads")
+        .update({ status: "escalated" })
+        .eq("client_id", clientId);
+      // Push a Laura con dettaglio errore (best-effort, non blocca).
+      try {
+        const { sendPushToAll } = await import("@/lib/actions/push");
+        await sendPushToAll({
+          title: "⚠️ Bot Marialucia offline",
+          body:
+            gen.errorKind === "api_key_invalid"
+              ? "GEMINI_API_KEY invalida — rigenera su aistudio.google.com"
+              : "Quota Gemini esaurita — controlla limiti free tier",
+          url: "/whatsapp/conversazioni",
+          tag: "bot-critical-error",
+        });
+      } catch (e) {
+        console.error("[wa webhook] push alert failed", e);
+      }
+    }
   }
 
   // If the audio was unclear, Gemini returns the AUDIO_UNCLEAR sentinel
