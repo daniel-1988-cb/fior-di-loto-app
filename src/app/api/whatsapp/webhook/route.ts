@@ -370,7 +370,15 @@ async function generateAndSendReply(
     );
   }
 
-  const rawReply = gen?.text?.trim() ?? "";
+  // Post-process: Gemini a volte ritorna multi-paragraph anche quando il
+  // prompt lo vieta. Collassa >=2 a-capo → 1 e rimuovi spazi in eccesso
+  // su inizio/fine e prima di punteggiatura.
+  const rawReply = (gen?.text ?? "")
+    .replace(/\r/g, "")
+    .replace(/\n{2,}/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .trim();
 
   // Log the outcome so we can diagnose silent failures in Vercel logs. These
   // conditions historically caused the bot to just not reply (safety filters

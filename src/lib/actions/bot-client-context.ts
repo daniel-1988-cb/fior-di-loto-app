@@ -25,10 +25,10 @@ export async function getClientContextForBot(
   const supabase = createAdminClient();
 
   // 1. Profilo — schema reale (niente `punti`/`tier` nella tabella clients)
-  const { data: client } = await supabase
+  let { data: client } = await supabase
     .from("clients")
     .select(
-      "id, nome, cognome, segmento, data_nascita, totale_visite, totale_speso, tags, note, ultima_visita, fonte",
+      "id, nome, cognome, segmento, data_nascita, totale_visite, totale_speso, tags, note, ultima_visita, fonte, telefono",
     )
     .eq("id", clientId)
     .maybeSingle();
@@ -36,10 +36,47 @@ export async function getClientContextForBot(
   if (!client) return { isExisting: false };
 
   // È un nuovo lead appena creato dal webhook? Il webhook usa questi
-  // default. Se il profilo non è mai stato arricchito, niente contesto.
+  // default. Prima di dichiarare `!isExisting`, fai un ultimo tentativo:
+  // cerca un cliente reale con lo STESSO numero di telefono in varianti
+  // (con/senza +39, con/senza spazi). Se lo trovi, usa quello invece
+  // del placeholder — così chi era già cliente ma non aveva mai scritto
+  // al bot viene riconosciuto e il contesto viene iniettato.
   const isPlaceholder =
     client.nome === "Nuovo" && client.cognome === "Contatto WA";
-  if (isPlaceholder) return { isExisting: false };
+  if (isPlaceholder) {
+    const phone = client.telefono ?? "";
+    const digits = phone.replace(/\D/g, "");
+    // Variants: +39XXX, 39XXX, XXX (senza prefisso), spaced
+    const variants = Array.from(
+      new Set(
+        [
+          phone,
+          digits,
+          digits.startsWith("39") ? digits.slice(2) : `39${digits}`,
+          `+${digits}`,
+          `+${digits.startsWith("39") ? digits : `39${digits}`}`,
+        ].filter(Boolean),
+      ),
+    );
+    if (variants.length > 0) {
+      const { data: realMatches } = await supabase
+        .from("clients")
+        .select(
+          "id, nome, cognome, segmento, data_nascita, totale_visite, totale_speso, tags, note, ultima_visita, fonte, telefono",
+        )
+        .in("telefono", variants)
+        .neq("id", clientId)
+        .not("nome", "eq", "Nuovo")
+        .limit(1);
+      if (realMatches && realMatches.length > 0) {
+        client = realMatches[0];
+      } else {
+        return { isExisting: false };
+      }
+    } else {
+      return { isExisting: false };
+    }
+  }
 
   const eta = client.data_nascita
     ? Math.floor(
@@ -77,11 +114,16 @@ export async function getClientContextForBot(
   const profile = profileLines.join("\n");
 
   // 2. Appuntamenti futuri (top 3, solo stati "vivi")
+  // NB: usiamo `client.id` (il real match post-fallback) invece del
+  // `clientId` originale — se abbiamo trovato un cliente reale dopo
+  // il placeholder, gli appuntamenti sono sul suo id, non su quello
+  // del placeholder appena creato.
+  const realClientId = client.id as string;
   const today = new Date().toISOString().slice(0, 10);
   const { data: apptUpcoming } = await supabase
     .from("appointments")
     .select("data, ora_inizio, ora_fine, stato, services!inner(nome, categoria)")
-    .eq("client_id", clientId)
+    .eq("client_id", realClientId)
     .gte("data", today)
     .in("stato", ["confermato"])
     .order("data", { ascending: true })
@@ -106,7 +148,7 @@ export async function getClientContextForBot(
   const { data: apptPast } = await supabase
     .from("appointments")
     .select("data, ora_inizio, services!inner(nome)")
-    .eq("client_id", clientId)
+    .eq("client_id", realClientId)
     .eq("stato", "completato")
     .lt("data", today)
     .order("data", { ascending: false })
@@ -163,7 +205,7 @@ export async function getClientContextForBot(
     const { data: p } = await supabase
       .from("client_programs")
       .select("program_id, sedute_totali, sedute_usate, treatment_programs(nome)")
-      .eq("client_id", clientId);
+      .eq("client_id", realClientId);
     if (p && p.length > 0) {
       const rendered = p
         .map((x) => {
