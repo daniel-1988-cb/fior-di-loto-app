@@ -1,5 +1,5 @@
-import { marketingSubNav } from "@/components/layout/v2-sidenav";
-import { Card, CardContent, Button, Badge } from "@/components/ui";
+import Link from "next/link";
+import { Card, Button, Badge } from "@/components/ui";
 import { Star } from "lucide-react";
 
 export default function V2RecensioniPage() {
@@ -8,7 +8,7 @@ export default function V2RecensioniPage() {
       <header className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Valutazioni e recensioni</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Raccogli feedback e migliora il tuo rating pubblico.
+          Richieste feedback e integrazione Google Business.
         </p>
       </header>
 
@@ -16,37 +16,44 @@ export default function V2RecensioniPage() {
         <Card className="p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Valutazione</p>
           <p className="mt-1 text-3xl font-bold flex items-center gap-1">
-            0.0 <Star className="h-5 w-5 fill-warning text-warning" />
+            — <Star className="h-5 w-5 fill-warning text-warning" />
           </p>
-          <p className="text-xs text-muted-foreground">Nessuna recensione</p>
+          <p className="text-xs text-muted-foreground">Connetti Google per importare</p>
         </Card>
         <Card className="p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Recensioni</p>
-          <p className="mt-1 text-3xl font-bold">0</p>
+          <p className="mt-1 text-3xl font-bold">—</p>
         </Card>
         <Card className="p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Da richiedere</p>
-          <p className="mt-1 text-3xl font-bold">0</p>
+          <p className="mt-1 text-3xl font-bold">—</p>
         </Card>
       </section>
 
-      <Card>
-        <CardContent className="py-12 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Star className="h-6 w-6" />
-          </div>
-          <h2 className="mt-4 text-lg font-semibold">Connetti Google</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Collega il profilo Google Business per importare le recensioni e richiedere nuovi
-            feedback automaticamente dopo ogni appuntamento.
-          </p>
-          <div className="mt-5 flex items-center justify-center gap-2">
-            <Button>Connetti Google</Button>
-            <Button variant="outline">
-              <Badge variant="primary" className="mr-1">NEW</Badge> Richiesta SMS
+      <Card className="py-12 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Star className="h-6 w-6" />
+        </div>
+        <h2 className="mt-4 text-lg font-semibold">In arrivo</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          Il modulo recensioni arriverà in una release successiva: invio automatico
+          della richiesta review dopo ogni visita completata e import del rating Google.
+          Nel frattempo puoi ricontattare manualmente chi è passato di recente.
+        </p>
+        <div className="mt-5 flex items-center justify-center gap-2">
+          <Link href="/clienti?segmento=lotina">
+            <Button>
+              <Badge variant="primary" className="mr-1">TODO</Badge>
+              Invia richiesta a clienti dell'ultimo mese
             </Button>
-          </div>
-        </CardContent>
+          </Link>
+          <Link href="/marketing/campagne/nuova">
+            <Button variant="outline">Crea campagna review</Button>
+          </Link>
+        </div>
+        <p className="mx-auto mt-3 max-w-md text-xs text-muted-foreground">
+          Il pulsante TODO non è ancora cablato — usa le campagne manuali per adesso.
+        </p>
       </Card>
     </>
   );
