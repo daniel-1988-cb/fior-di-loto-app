@@ -8,6 +8,7 @@ import {
   CatalogoListView,
   type CatalogoItem,
 } from "@/components/catalogo/catalogo-list-view";
+import { UploadProductImage } from "@/components/catalogo/upload-product-image";
 import {
   createProduct,
   updateProduct,
@@ -22,6 +23,7 @@ type Product = {
   prezzo: number;
   giacenza: number;
   soglia_alert: number | null;
+  image_url: string | null;
   attivo: boolean;
 };
 
@@ -262,10 +264,17 @@ export function ProdottiClient({ products }: { products: Product[] }) {
       {editing && (
         <FormModal
           isNew={editing === "new"}
+          editingId={editing === "new" ? null : editing}
+          initialImageUrl={
+            editing !== "new"
+              ? (products.find((p) => p.id === editing)?.image_url ?? null)
+              : null
+          }
           form={form}
           setForm={setForm}
           onClose={close}
           onSubmit={submit}
+          onImageChange={() => router.refresh()}
           error={error}
           pending={isPending}
         />
@@ -276,18 +285,24 @@ export function ProdottiClient({ products }: { products: Product[] }) {
 
 function FormModal({
   isNew,
+  editingId,
+  initialImageUrl,
   form,
   setForm,
   onClose,
   onSubmit,
+  onImageChange,
   error,
   pending,
 }: {
   isNew: boolean;
+  editingId: string | null;
+  initialImageUrl: string | null;
   form: FormState;
   setForm: (f: FormState) => void;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  onImageChange: () => void;
   error: string | null;
   pending: boolean;
 }) {
@@ -306,6 +321,17 @@ function FormModal({
           </h2>
 
           <div className="space-y-4">
+            {!isNew && editingId && (
+              <div>
+                <Label>Immagine prodotto</Label>
+                <UploadProductImage
+                  productId={editingId}
+                  initialUrl={initialImageUrl}
+                  onChange={onImageChange}
+                />
+              </div>
+            )}
+
             <div>
               <Label htmlFor="prod-nome">Nome *</Label>
               <Input

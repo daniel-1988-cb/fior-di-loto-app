@@ -11,6 +11,7 @@ type Product = {
   prezzo: number;
   giacenza: number;
   soglia_alert: number | null;
+  image_url: string | null;
   attivo: boolean;
 };
 
@@ -19,7 +20,7 @@ export default async function V2ProdottiPage() {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("products")
-    .select("id, nome, categoria, descrizione, prezzo, giacenza, soglia_alert, attivo")
+    .select("id, nome, categoria, descrizione, prezzo, giacenza, soglia_alert, image_url, attivo")
     .order("categoria", { ascending: true })
     .order("nome", { ascending: true });
 

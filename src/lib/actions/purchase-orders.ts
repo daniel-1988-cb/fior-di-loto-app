@@ -8,9 +8,6 @@ import { VALID_STATI_PO, type PoStato } from "@/lib/constants/purchase-orders";
 // TYPES
 // ============================================
 
-// Re-export types for convenience (types are allowed in "use server" files)
-export type { PoStato };
-
 export type PurchaseOrderItem = {
   id: string;
   purchaseOrderId: string;
