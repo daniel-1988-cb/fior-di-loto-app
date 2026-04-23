@@ -3,24 +3,17 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
 import { VALID_CHANNELS, type Canale } from "@/lib/constants/messages";
+import {
+  VALID_TRIGGERS,
+  type TriggerTipo,
+  type TriggerConfig,
+} from "@/lib/constants/marketing-automations";
 import { sendMessage } from "@/lib/bot/whatsapp-meta";
 import { sendEmail } from "@/lib/actions/send-email";
 
 // ============================================
 // TYPES
 // ============================================
-
-export const VALID_TRIGGERS = [
-  "inattivita_giorni",
-  "nuovo_cliente",
-  "compleanno",
-  "post_visita",
-] as const;
-export type TriggerTipo = (typeof VALID_TRIGGERS)[number];
-
-export type TriggerConfig = {
-  giorni?: number; // inattivita_giorni, post_visita
-};
 
 export type Automation = {
   id: string;

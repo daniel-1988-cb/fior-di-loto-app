@@ -30,8 +30,8 @@ import {
   deleteCampaign,
   sendCampaignNow,
   type Campaign,
-  type CampaignStato,
 } from "@/lib/actions/campaigns";
+import { type CampaignStato } from "@/lib/constants/campaigns";
 
 const SEGMENT_LABELS: Record<string, string> = {
   "": "Tutti i clienti",

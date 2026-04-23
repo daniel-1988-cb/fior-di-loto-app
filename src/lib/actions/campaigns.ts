@@ -3,21 +3,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, sanitizeString, truncate, isValidSegmento } from "@/lib/security/validate";
 import { VALID_CHANNELS, type Canale } from "@/lib/constants/messages";
+import { VALID_STATI, type CampaignStato } from "@/lib/constants/campaigns";
 import { sendMessage } from "@/lib/bot/whatsapp-meta";
 import { sendEmail } from "@/lib/actions/send-email";
 
 // ============================================
 // TYPES
 // ============================================
-
-export const VALID_STATI = [
-  "bozza",
-  "programmata",
-  "in_invio",
-  "inviata",
-  "errore",
-] as const;
-export type CampaignStato = (typeof VALID_STATI)[number];
 
 export type Campaign = {
   id: string;

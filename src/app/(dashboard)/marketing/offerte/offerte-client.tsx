@@ -18,8 +18,8 @@ import {
   deleteOffer,
   toggleOfferAttivo,
   type Offer,
-  type TipoSconto,
 } from "@/lib/actions/offers";
+import { type TipoSconto } from "@/lib/constants/offers";
 
 const SEGMENTI = ["lead", "nuova", "lotina", "inattiva", "vip"] as const;
 

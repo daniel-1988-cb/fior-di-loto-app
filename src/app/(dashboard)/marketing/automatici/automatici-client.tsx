@@ -18,8 +18,8 @@ import {
   deleteAutomation,
   toggleAutomationAttivo,
   type Automation,
-  type TriggerTipo,
 } from "@/lib/actions/marketing-automations";
+import { type TriggerTipo } from "@/lib/constants/marketing-automations";
 
 const TRIGGER_LABELS: Record<TriggerTipo, { label: string; icon: React.ComponentType<{ className?: string }>; desc: string; hasDays: boolean; daysLabel: string }> = {
   inattivita_giorni: {

@@ -8,13 +8,11 @@ import {
   isValidSegmento,
   isValidDate,
 } from "@/lib/security/validate";
+import { VALID_TIPI_SCONTO, type TipoSconto } from "@/lib/constants/offers";
 
 // ============================================
 // TYPES
 // ============================================
-
-export const VALID_TIPI_SCONTO = ["percentuale", "importo"] as const;
-export type TipoSconto = (typeof VALID_TIPI_SCONTO)[number];
 
 export type Offer = {
   id: string;
