@@ -25,6 +25,7 @@ export type BusinessSettings = {
   iva_default: number | null;
   metodi_pagamento: string[] | null;
   policy_cancellazione: string | null;
+  google_review_url: string | null;
   updated_at: string | null;
 };
 
@@ -144,6 +145,22 @@ export async function updateBusinessSettings(
     allowed.policy_cancellazione = data.policy_cancellazione
       ? truncate(sanitizeString(String(data.policy_cancellazione)), 4000)
       : null;
+  }
+  if (data.google_review_url !== undefined) {
+    const raw = data.google_review_url ? String(data.google_review_url).trim() : null;
+    if (raw) {
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== "http:" && u.protocol !== "https:") {
+          throw new Error("URL Google non valido");
+        }
+      } catch {
+        throw new Error("URL Google non valido");
+      }
+      allowed.google_review_url = truncate(raw, 500);
+    } else {
+      allowed.google_review_url = null;
+    }
   }
 
   allowed.updated_at = new Date().toISOString();

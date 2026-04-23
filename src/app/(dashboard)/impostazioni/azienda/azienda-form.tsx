@@ -58,6 +58,7 @@ export function AziendaForm({ initial }: { initial: BusinessSettings | null }) {
     timezone: initial?.timezone ?? "Europe/Rome",
     metodi_pagamento: (initial?.metodi_pagamento ?? ["Contanti", "Carta", "Bancomat"]) as string[],
     policy_cancellazione: initial?.policy_cancellazione ?? "",
+    google_review_url: initial?.google_review_url ?? "",
   });
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
@@ -107,6 +108,7 @@ export function AziendaForm({ initial }: { initial: BusinessSettings | null }) {
           timezone: form.timezone,
           metodi_pagamento: form.metodi_pagamento,
           policy_cancellazione: form.policy_cancellazione.trim() || null,
+          google_review_url: form.google_review_url.trim() || null,
         });
         setOk("Impostazioni salvate.");
         router.refresh();
@@ -412,6 +414,31 @@ export function AziendaForm({ initial }: { initial: BusinessSettings | null }) {
             placeholder="Es. Cancellazioni gratuite fino a 24 ore prima dell'appuntamento..."
             className="resize-y"
           />
+        </div>
+      </section>
+
+      {/* Recensioni Google */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Recensioni Google
+        </h2>
+        <div>
+          <Label htmlFor="google_review_url">
+            URL diretto alla pagina recensioni Google Business
+          </Label>
+          <Input
+            id="google_review_url"
+            type="url"
+            value={form.google_review_url}
+            onChange={(e) => set("google_review_url", e.target.value)}
+            placeholder="https://g.page/r/CbE.../review"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Usato per reindirizzare i clienti che lasciano 4-5 stelle sulla
+            recensione pubblica Google. Se vuoto, le recensioni restano interne.
+            Lo trovi dal pannello Google Business Profile (sezione Recensioni
+            &rarr; Ottieni pi&ugrave; recensioni).
+          </p>
         </div>
       </section>
 
