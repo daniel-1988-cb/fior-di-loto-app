@@ -7,7 +7,6 @@ import {
   Phone,
   Mail,
   Calendar,
-  CalendarPlus,
   User as UserIcon,
   AlertTriangle,
   Ban,
@@ -25,6 +24,7 @@ import { PanoramicaTab } from "@/components/clienti/panoramica-tab";
 import { AppuntamentiTab } from "@/components/clienti/appuntamenti-tab";
 import { VenditeTab } from "@/components/clienti/vendite-tab";
 import { ArticoliTab } from "@/components/clienti/articoli-tab";
+import { ProfileHeaderActions } from "@/components/clienti/profile-header-actions";
 
 function getSegmentoStyle(segmento: string) {
   switch (segmento) {
@@ -147,25 +147,8 @@ export default async function ClienteDetailPage({
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              {/* TODO: riusa ClientActivityMenu (v2/client-activity-menu.tsx)
-                  quando stabile in questo contesto — per ora bottone semplice
-                  che linka a modifica. */}
-              <Link
-                href={`/clienti/${client.id}/modifica`}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-brown hover:bg-muted"
-              >
-                Attività
-              </Link>
-              <Link
-                href={`/agenda/nuovo?clientId=${client.id}`}
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose px-3 py-2 text-sm font-medium text-white hover:bg-rose-dark"
-              >
-                <CalendarPlus className="h-4 w-4" />
-                Prenota ora
-              </Link>
-            </div>
+            {/* Actions — client island for interactive Attività menu */}
+            <ProfileHeaderActions client={client} />
           </div>
 
           {/* Dati base */}
