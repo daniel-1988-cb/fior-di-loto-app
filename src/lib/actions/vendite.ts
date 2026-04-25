@@ -27,6 +27,21 @@ function isValidIsoDate(s: string | undefined): s is string {
   return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
+function isValidIsoMonth(s: string | undefined): s is string {
+  return !!s && /^\d{4}-\d{2}$/.test(s);
+}
+
+/** Returns [start, nextStart] inclusive/exclusive ISO date strings for a YYYY-MM month. */
+function monthRangeFromString(month: string): { start: string; nextStart: string } {
+  const [y, m] = month.split("-").map((p) => parseInt(p, 10));
+  const start = new Date(y, m - 1, 1);
+  const nextStart = new Date(y, m, 1);
+  return {
+    start: toIsoDate(start),
+    nextStart: toIsoDate(nextStart),
+  };
+}
+
 // ============================================
 // Types
 // ============================================
@@ -72,6 +87,29 @@ export type AppuntamentoPagato = {
   servizioNome: string;
   staffNome: string | null;
   importo: number;
+};
+
+export type ProductSaleRow = {
+  id: string;
+  data: string;
+  clientId: string | null;
+  clientName: string | null;
+  productLabel: string;
+  quantity: number;
+  unitPrice: number;
+  totalRow: number;
+  metodoPagamento: string | null;
+};
+
+export type SubscriptionSaleRow = {
+  id: string;
+  data: string;
+  clientId: string | null;
+  clientName: string | null;
+  subscriptionName: string;
+  seduteTotali: number | null;
+  prezzo: number;
+  metodoPagamento: string | null;
 };
 
 // ============================================
@@ -326,4 +364,179 @@ export async function getAppuntamentiPagati(opts: {
       importo,
     };
   });
+}
+
+// ============================================
+// getProductSales — vendite di prodotti per mese
+// ============================================
+
+type TxItemJoinedRow = {
+  id: string;
+  label: string;
+  quantity: number | string;
+  unit_price: number | string;
+  transaction_id: string;
+  ref_id: string | null;
+  transactions:
+    | {
+        data: string;
+        metodo_pagamento: string | null;
+        client_id: string | null;
+        clients: { nome?: string; cognome?: string } | { nome?: string; cognome?: string }[] | null;
+      }
+    | {
+        data: string;
+        metodo_pagamento: string | null;
+        client_id: string | null;
+        clients: { nome?: string; cognome?: string } | { nome?: string; cognome?: string }[] | null;
+      }[]
+    | null;
+};
+
+function pickOneTx(
+  v: TxItemJoinedRow["transactions"]
+): { data: string; metodo_pagamento: string | null; client_id: string | null; clients: { nome?: string; cognome?: string } | { nome?: string; cognome?: string }[] | null } | null {
+  if (!v) return null;
+  return Array.isArray(v) ? v[0] ?? null : v;
+}
+
+function pickOneClient(
+  v: { nome?: string; cognome?: string } | { nome?: string; cognome?: string }[] | null | undefined
+): { nome?: string; cognome?: string } | null {
+  if (!v) return null;
+  return Array.isArray(v) ? v[0] ?? null : v;
+}
+
+/**
+ * Vendite prodotti del mese specificato (YYYY-MM). Default: mese corrente.
+ * Joina transaction_items kind='prodotto' con la transactions parent
+ * (filtro `data` su mese). Limit 200 righe.
+ */
+export async function getProductSales(month?: string): Promise<ProductSaleRow[]> {
+  const supabase = await createClient();
+
+  const target = isValidIsoMonth(month)
+    ? month
+    : (() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      })();
+  const { start, nextStart } = monthRangeFromString(target);
+
+  const { data, error } = await supabase
+    .from("transaction_items")
+    .select(
+      "id, label, quantity, unit_price, transaction_id, ref_id, transactions!inner(data, metodo_pagamento, client_id, clients(nome, cognome))"
+    )
+    .eq("kind", "prodotto")
+    .gte("transactions.data", start)
+    .lt("transactions.data", nextStart)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  const rows = (data || []) as unknown as TxItemJoinedRow[];
+
+  return rows
+    .map((r) => {
+      const tx = pickOneTx(r.transactions);
+      if (!tx) return null;
+      const client = pickOneClient(tx.clients);
+      const qty = Number(r.quantity) || 0;
+      const unit = Number(r.unit_price) || 0;
+      return {
+        id: r.id,
+        data: tx.data,
+        clientId: tx.client_id,
+        clientName: client
+          ? `${client.nome ?? ""} ${client.cognome ?? ""}`.trim() || null
+          : null,
+        productLabel: r.label,
+        quantity: qty,
+        unitPrice: unit,
+        totalRow: Math.round(qty * unit * 100) / 100,
+        metodoPagamento: tx.metodo_pagamento,
+      } satisfies ProductSaleRow;
+    })
+    .filter((r): r is ProductSaleRow => r !== null)
+    .sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
+}
+
+// ============================================
+// getSubscriptionSales — abbonamenti venduti per mese
+// ============================================
+
+/**
+ * Vendite abbonamenti del mese (YYYY-MM). Default: mese corrente.
+ * Per ogni transaction_item kind='abbonamento' fa lookup del subscription
+ * via ref_id per recuperare nome canonico e sedute_totali. Limit 200.
+ */
+export async function getSubscriptionSales(month?: string): Promise<SubscriptionSaleRow[]> {
+  const supabase = await createClient();
+
+  const target = isValidIsoMonth(month)
+    ? month
+    : (() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      })();
+  const { start, nextStart } = monthRangeFromString(target);
+
+  const { data, error } = await supabase
+    .from("transaction_items")
+    .select(
+      "id, label, quantity, unit_price, transaction_id, ref_id, transactions!inner(data, metodo_pagamento, client_id, clients(nome, cognome))"
+    )
+    .eq("kind", "abbonamento")
+    .gte("transactions.data", start)
+    .lt("transactions.data", nextStart)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  const rows = (data || []) as unknown as TxItemJoinedRow[];
+
+  // Lookup subscriptions for sedute_totali / nome canonico.
+  const refIds = Array.from(
+    new Set(rows.map((r) => r.ref_id).filter((id): id is string => !!id))
+  );
+  const subsMap = new Map<string, { nome: string; sedute_totali: number | null }>();
+  if (refIds.length > 0) {
+    const { data: subs } = await supabase
+      .from("subscriptions")
+      .select("id, nome, sedute_totali")
+      .in("id", refIds);
+    for (const s of subs || []) {
+      subsMap.set(s.id as string, {
+        nome: (s.nome as string) || "",
+        sedute_totali: (s.sedute_totali as number | null) ?? null,
+      });
+    }
+  }
+
+  return rows
+    .map((r) => {
+      const tx = pickOneTx(r.transactions);
+      if (!tx) return null;
+      const client = pickOneClient(tx.clients);
+      const qty = Number(r.quantity) || 1;
+      const unit = Number(r.unit_price) || 0;
+      const sub = r.ref_id ? subsMap.get(r.ref_id) : null;
+      return {
+        id: r.id,
+        data: tx.data,
+        clientId: tx.client_id,
+        clientName: client
+          ? `${client.nome ?? ""} ${client.cognome ?? ""}`.trim() || null
+          : null,
+        subscriptionName: sub?.nome || r.label,
+        seduteTotali: sub?.sedute_totali ?? null,
+        prezzo: Math.round(qty * unit * 100) / 100,
+        metodoPagamento: tx.metodo_pagamento,
+      } satisfies SubscriptionSaleRow;
+    })
+    .filter((r): r is SubscriptionSaleRow => r !== null)
+    .sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
 }
