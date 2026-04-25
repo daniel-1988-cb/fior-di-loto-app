@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export type ProfileTabKey =
@@ -24,7 +23,7 @@ interface Props {
     vendite: number;
     articoli: number;
   };
-  /** /clienti/[id]/modifica for "Dettagli cliente" fallback link */
+  /** /clienti/[id]/modifica — kept for backward compat, not used now */
   editHref: string;
 }
 
@@ -40,12 +39,10 @@ const ORDER: Array<{ key: ProfileTabKey; label: string; countKey?: keyof Props["
   { key: "recensioni", label: "Recensioni" },
 ];
 
-export function ClientProfileTabs({ contents, counts, editHref }: Props) {
+export function ClientProfileTabs({ contents, counts }: Props) {
   const [active, setActive] = useState<ProfileTabKey>("panoramica");
 
-  const content = contents[active] ?? (
-    <PlaceholderTab activeKey={active} editHref={editHref} />
-  );
+  const content = contents[active] ?? <FallbackTab />;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
@@ -92,59 +89,14 @@ export function ClientProfileTabs({ contents, counts, editHref }: Props) {
   );
 }
 
-function PlaceholderTab({
-  activeKey,
-  editHref,
-}: {
-  activeKey: ProfileTabKey;
-  editHref: string;
-}) {
-  if (activeKey === "documenti") {
-    return <EmptyCard title="Documenti" message="Nessun documento caricato." />;
-  }
-  if (activeKey === "portafoglio") {
-    return <EmptyCard title="Portafoglio" message="Saldo: 0,00 €" />;
-  }
-  if (activeKey === "fedelta") {
-    return (
-      <EmptyCard
-        title="Programma fedeltà"
-        message="Il cliente non ha ancora accumulato punti."
-      />
-    );
-  }
-  if (activeKey === "recensioni") {
-    return (
-      <EmptyCard
-        title="Recensioni"
-        message="Nessuna recensione."
-      />
-    );
-  }
-  if (activeKey === "dettagli") {
-    return (
-      <EmptyCard
-        title="Dettagli cliente"
-        message={
-          <>
-            Modifica i dati completi del cliente dalla{" "}
-            <Link href={editHref} className="text-rose hover:underline">
-              pagina di modifica
-            </Link>
-            .
-          </>
-        }
-      />
-    );
-  }
-  return <EmptyCard title="" message="Nessun contenuto." />;
-}
-
-function EmptyCard({ title, message }: { title: string; message: ReactNode }) {
+/**
+ * Fallback per tab non popolati. In condizioni normali tutti i tab ricevono
+ * un content dal page.tsx — questo è solo difesa.
+ */
+function FallbackTab() {
   return (
     <div className="rounded-xl border border-border bg-card p-6">
-      {title && <h3 className="mb-2 font-semibold text-brown">{title}</h3>}
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-muted-foreground">Nessun contenuto.</p>
     </div>
   );
 }

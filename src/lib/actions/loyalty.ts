@@ -299,6 +299,30 @@ export async function getClientPoints(clientId: string) {
   };
 }
 
+/**
+ * Storico transazioni loyalty di un singolo cliente, ordinato dalla più
+ * recente. Usato dal tab "Programma fedeltà" del profilo cliente.
+ */
+export async function getClientLoyaltyTransactions(
+  clientId: string,
+  limit = 50
+): Promise<LoyaltyTransaction[]> {
+  if (!isValidUUID(clientId)) return [];
+  const safeLimit = Math.max(1, Math.min(200, limit));
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("loyalty_transactions")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
+  if (error) {
+    console.error("[loyalty] getClientLoyaltyTransactions error:", error);
+    return [];
+  }
+  return (data as LoyaltyTransaction[]) || [];
+}
+
 async function applyPointsDelta(
   clientId: string,
   delta: number,

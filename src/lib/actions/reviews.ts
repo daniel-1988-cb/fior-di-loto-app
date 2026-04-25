@@ -286,6 +286,44 @@ export async function getRecentReviews(limit = 20): Promise<ClientReviewRow[]> {
   return (data as ClientReviewRow[]) || [];
 }
 
+/**
+ * Recensioni di un singolo cliente — tutte le `client_reviews` (submitted) +
+ * eventuali `review_requests` ancora aperte (clicked ma non submitted, o
+ * solo inviate). Usato dal tab "Recensioni" del profilo cliente.
+ */
+export async function getClientReviews(clientId: string): Promise<{
+  reviews: ClientReviewRow[];
+  pendingRequests: ReviewRequestRow[];
+}> {
+  if (!isValidUUID(clientId)) return { reviews: [], pendingRequests: [] };
+  const supabase = createAdminClient();
+  const [reviewsRes, requestsRes] = await Promise.all([
+    supabase
+      .from("client_reviews")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("review_requests")
+      .select("*")
+      .eq("client_id", clientId)
+      .is("submitted_at", null)
+      .order("sent_at", { ascending: false })
+      .limit(20),
+  ]);
+  if (reviewsRes.error) {
+    console.error("[reviews] getClientReviews reviews error:", reviewsRes.error);
+  }
+  if (requestsRes.error) {
+    console.error("[reviews] getClientReviews requests error:", requestsRes.error);
+  }
+  return {
+    reviews: (reviewsRes.data as ClientReviewRow[]) || [],
+    pendingRequests: (requestsRes.data as ReviewRequestRow[]) || [],
+  };
+}
+
 export async function getPendingReviewRequests(limit = 50): Promise<ReviewRequestRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
