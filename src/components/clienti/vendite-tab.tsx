@@ -16,6 +16,7 @@ const METODO_LABEL: Record<string, string> = {
   satispay: "Satispay",
   paypal: "PayPal",
   buono: "Buono",
+  saldo: "Saldo cliente",
   qr: "QR",
   self_service: "Self service",
   split: "Split",

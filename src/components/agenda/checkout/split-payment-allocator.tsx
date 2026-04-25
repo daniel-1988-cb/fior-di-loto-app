@@ -17,6 +17,8 @@ type Props = {
  totale: number;
  rows: SplitPaymentRow[];
  onChange: (rows: SplitPaymentRow[]) => void;
+ /** Saldo cliente: se 0, l'opzione "saldo" viene rimossa dal Select. */
+ walletBalance?: number;
 };
 
 // Sottoinsieme dei metodi validi — escludiamo "split" per evitare ricorsione.
@@ -27,6 +29,7 @@ const METODI_SPLIT: { id: string; label: string }[] = [
  { id: "satispay", label: "Satispay" },
  { id: "paypal", label: "PayPal" },
  { id: "buono", label: "Buono" },
+ { id: "saldo", label: "Saldo cliente" },
  { id: "qr", label: "Codice QR" },
  { id: "self_service", label: "Pagamento self service" },
  { id: "assegno", label: "Assegno" },
@@ -39,11 +42,16 @@ function round2(n: number): number {
  return Math.round(n * 100) / 100;
 }
 
-export function SplitPaymentAllocator({ totale, rows, onChange }: Props) {
+export function SplitPaymentAllocator({ totale, rows, onChange, walletBalance = 0 }: Props) {
  const allocato = round2(rows.reduce((s, r) => s + (Number(r.amount) || 0), 0));
  const residuo = round2(totale - allocato);
  const delta = Math.abs(residuo);
  const quadra = rows.length > 0 && delta < 0.005;
+
+ // Filtra saldo se cliente non ha saldo disponibile
+ const visibleMetodi = METODI_SPLIT.filter(
+  (m) => m.id !== "saldo" || walletBalance > 0,
+ );
 
  function updateRow(index: number, patch: Partial<SplitPaymentRow>) {
   const next = rows.map((r, i) => (i === index ? { ...r, ...patch } : r));
@@ -58,7 +66,7 @@ export function SplitPaymentAllocator({ totale, rows, onChange }: Props) {
   const remaining = round2(Math.max(totale - allocato, 0));
   onChange([
    ...rows,
-   { metodo: METODI_SPLIT[0].id, amount: remaining },
+   { metodo: visibleMetodi[0].id, amount: remaining },
   ]);
  }
 
@@ -79,49 +87,57 @@ export function SplitPaymentAllocator({ totale, rows, onChange }: Props) {
 
    {rows.length > 0 && (
     <div className="space-y-2">
-     {rows.map((row, i) => (
-      <div
-       key={i}
-       className="flex items-center gap-2 rounded-lg border border-border bg-background p-2"
-      >
-       <select
-        value={row.metodo}
-        onChange={(e) => updateRow(i, { metodo: e.target.value })}
-        className="flex-1 rounded-md border border-input bg-card px-2 py-1.5 text-sm text-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
-        aria-label={`Metodo di pagamento riga ${i + 1}`}
-       >
-        {METODI_SPLIT.map((m) => (
-         <option key={m.id} value={m.id}>
-          {m.label}
-         </option>
-        ))}
-       </select>
-       <div className="relative w-32 shrink-0">
-        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-         €
-        </span>
-        <input
-         type="number"
-         min="0"
-         step="0.01"
-         value={Number.isFinite(row.amount) ? row.amount : 0}
-         onChange={(e) =>
-          updateRow(i, { amount: parseFloat(e.target.value) || 0 })
-         }
-         className="w-full rounded-md border border-input bg-card py-1.5 pl-6 pr-2 text-right text-sm text-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
-         aria-label={`Importo riga ${i + 1}`}
-        />
+     {rows.map((row, i) => {
+      const isSaldo = row.metodo === "saldo";
+      const saldoOver = isSaldo && Number(row.amount) > walletBalance + 0.005;
+      return (
+       <div key={i} className="space-y-1">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-background p-2">
+         <select
+          value={row.metodo}
+          onChange={(e) => updateRow(i, { metodo: e.target.value })}
+          className="flex-1 rounded-md border border-input bg-card px-2 py-1.5 text-sm text-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
+          aria-label={`Metodo di pagamento riga ${i + 1}`}
+         >
+          {visibleMetodi.map((m) => (
+           <option key={m.id} value={m.id}>
+            {m.label}
+           </option>
+          ))}
+         </select>
+         <div className="relative w-32 shrink-0">
+          <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+           €
+          </span>
+          <input
+           type="number"
+           min="0"
+           step="0.01"
+           value={Number.isFinite(row.amount) ? row.amount : 0}
+           onChange={(e) =>
+            updateRow(i, { amount: parseFloat(e.target.value) || 0 })
+           }
+           className="w-full rounded-md border border-input bg-card py-1.5 pl-6 pr-2 text-right text-sm text-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20"
+           aria-label={`Importo riga ${i + 1}`}
+          />
+         </div>
+         <button
+          type="button"
+          onClick={() => removeRow(i)}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={`Rimuovi riga ${i + 1}`}
+         >
+          <Trash2 className="h-4 w-4" />
+         </button>
+        </div>
+        {saldoOver && (
+         <p className="px-2 text-xs font-medium text-red-600">
+          Saldo insufficiente: € {Number(row.amount).toFixed(2)} richiesti, disponibili € {walletBalance.toFixed(2)}
+         </p>
+        )}
        </div>
-       <button
-        type="button"
-        onClick={() => removeRow(i)}
-        className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-        aria-label={`Rimuovi riga ${i + 1}`}
-       >
-        <Trash2 className="h-4 w-4" />
-       </button>
-      </div>
-     ))}
+      );
+     })}
     </div>
    )}
 

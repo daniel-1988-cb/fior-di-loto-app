@@ -11,6 +11,7 @@ const VALID_METODI = [
   "satispay",
   "paypal",
   "buono",
+  "saldo",
   "qr",
   "self_service",
   "split",

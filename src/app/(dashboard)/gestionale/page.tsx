@@ -23,6 +23,7 @@ function getMetodoLabel(metodo: string | null) {
   case "carta": return "Carta";
   case "bonifico": return "Bonifico";
   case "satispay": return "Satispay";
+  case "saldo": return "Saldo cliente";
   default: return metodo || "—";
  }
 }

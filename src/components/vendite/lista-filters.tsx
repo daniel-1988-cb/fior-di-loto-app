@@ -12,6 +12,7 @@ const METODI = [
   "satispay",
   "paypal",
   "buono",
+  "saldo",
   "qr",
   "self_service",
   "split",

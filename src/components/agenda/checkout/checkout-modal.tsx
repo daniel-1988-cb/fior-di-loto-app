@@ -21,10 +21,12 @@ import {
  Landmark,
  HelpCircle,
  CheckCircle,
+ Wallet,
  type LucideIcon,
 } from "lucide-react";
 import { getAppointment, markAppointmentPaid } from "@/lib/actions/appointments";
 import { createCartTransaction } from "@/lib/actions/transaction-items";
+import { getClientWalletBalance } from "@/lib/actions/client-wallet";
 import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
 import { useCart } from "@/lib/cart/storage";
 import {
@@ -107,6 +109,7 @@ type MetodoId =
  | "satispay"
  | "paypal"
  | "buono"
+ | "saldo"
  | "qr"
  | "self_service"
  | "split"
@@ -127,6 +130,7 @@ const METODI: MetodoCard[] = [
  { id: "qr", label: "Codice QR", icon: QrCode, iconClass: "text-emerald-500" },
  { id: "contanti", label: "Contanti", icon: Banknote, iconClass: "text-emerald-500" },
  { id: "buono", label: "Buono", icon: Ticket, iconClass: "text-emerald-500" },
+ { id: "saldo", label: "Saldo cliente", icon: Wallet, iconClass: "text-emerald-500" },
  { id: "split", label: "Dividi il pagamento", icon: SplitSquareHorizontal, iconClass: "text-rose" },
  { id: "carta", label: "Carta di Credito", icon: CreditCard, iconClass: "text-rose" },
  { id: "paypal", label: "PayPal", icon: CreditCard, iconClass: "text-rose" },
@@ -199,6 +203,28 @@ function CheckoutModalInner({
   setSplitPayments,
   reset: resetCart,
  } = useCart(appointmentId, clientId);
+
+ // -------------------- Wallet balance (per saldo payment) --------------------
+ const [walletBalance, setWalletBalance] = useState<number>(0);
+ useEffect(() => {
+  let cancelled = false;
+  if (!clientId) {
+   setWalletBalance(0);
+   return;
+  }
+  (async () => {
+   try {
+    const balance = await getClientWalletBalance(clientId);
+    if (!cancelled) setWalletBalance(balance);
+   } catch (err) {
+    console.error("CheckoutModal wallet balance error:", err);
+    if (!cancelled) setWalletBalance(0);
+   }
+  })();
+  return () => {
+   cancelled = true;
+  };
+ }, [clientId]);
 
  // Pre-popola con il servizio dell'appuntamento alla prima apertura
  useEffect(() => {
@@ -331,10 +357,24 @@ function CheckoutModalInner({
   Math.round(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) * 100) / 100;
  const splitQuadra = splitRows.length > 0 && Math.abs(splitSum - totale) < 0.005;
 
+ // Saldo allocato (singolo o somma split row "saldo")
+ const saldoAllocato =
+  metodoPagamento === "saldo"
+   ? totale
+   : metodoPagamento === "split"
+    ? Math.round(
+       splitRows
+        .filter((r) => r.metodo === "saldo")
+        .reduce((s, r) => s + (Number(r.amount) || 0), 0) * 100,
+      ) / 100
+    : 0;
+ const saldoSufficiente = saldoAllocato <= walletBalance + 0.005;
+
  const canSubmit =
   !!metodoPagamento &&
   totale > 0 &&
-  (metodoPagamento !== "split" || splitQuadra);
+  (metodoPagamento !== "split" || splitQuadra) &&
+  saldoSufficiente;
 
  async function handleApplyVoucher() {
   if (!voucherCode.trim()) return;
@@ -547,6 +587,9 @@ function CheckoutModalInner({
       saving={saving}
       canSubmit={canSubmit}
       completed={completed}
+      walletBalance={walletBalance}
+      saldoAllocato={saldoAllocato}
+      saldoSufficiente={saldoSufficiente}
      />
     )}
    </div>
@@ -704,6 +747,9 @@ type PaymentStepProps = {
  saving: boolean;
  canSubmit: boolean;
  completed: boolean;
+ walletBalance: number;
+ saldoAllocato: number;
+ saldoSufficiente: boolean;
 };
 
 function PaymentStep({
@@ -739,7 +785,16 @@ function PaymentStep({
  saving,
  canSubmit,
  completed,
+ walletBalance,
+ saldoAllocato,
+ saldoSufficiente,
 }: PaymentStepProps) {
+ // Filtra il bottone "saldo" se il cliente non ha saldo disponibile.
+ // (Lo lasciamo nell'array METODI globale per coerenza VALID_METODI.)
+ const visibleMetodi = METODI.filter(
+  (m) => m.id !== "saldo" || walletBalance > 0,
+ );
+
  return (
   <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
    {/* Main: metodi */}
@@ -749,16 +804,17 @@ function PaymentStep({
     </h1>
 
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-     {METODI.map((m) => {
+     {visibleMetodi.map((m) => {
       const Icon = m.icon;
       const active = metodoPagamento === m.id;
+      const isSaldo = m.id === "saldo";
       return (
        <button
         key={m.id}
         type="button"
         onClick={() => setMetodoPagamento(m.id)}
         aria-pressed={active}
-        className={`flex flex-col items-center justify-center gap-2 rounded-2xl border p-4 text-center transition-all ${
+        className={`relative flex flex-col items-center justify-center gap-2 rounded-2xl border p-4 text-center transition-all ${
          active
           ? "border-rose bg-rose/5 ring-2 ring-rose/40"
           : "border-border bg-background hover:border-muted-foreground"
@@ -766,17 +822,36 @@ function PaymentStep({
        >
         <Icon className={`h-7 w-7 ${m.iconClass}`} />
         <span className="text-xs font-medium text-foreground">{m.label}</span>
+        {isSaldo && (
+         <span className="mt-0.5 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+          Saldo: € {walletBalance.toFixed(2)}
+         </span>
+        )}
        </button>
       );
      })}
     </div>
 
+    {metodoPagamento === "saldo" && !saldoSufficiente && (
+     <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+      Saldo insufficiente: serve € {saldoAllocato.toFixed(2)} (saldo € {walletBalance.toFixed(2)})
+     </p>
+    )}
+
     {metodoPagamento === "split" && (
-     <SplitPaymentAllocator
-      totale={totale}
-      rows={splitRows}
-      onChange={setSplitPayments}
-     />
+     <>
+      <SplitPaymentAllocator
+       totale={totale}
+       rows={splitRows}
+       onChange={setSplitPayments}
+       walletBalance={walletBalance}
+      />
+      {!saldoSufficiente && (
+       <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+        Saldo insufficiente: allocato € {saldoAllocato.toFixed(2)} (saldo € {walletBalance.toFixed(2)})
+       </p>
+      )}
+     </>
     )}
 
     <div className="mt-6 space-y-4">
