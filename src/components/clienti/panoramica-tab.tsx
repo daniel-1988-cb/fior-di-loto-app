@@ -1,25 +1,25 @@
 import { formatCurrency } from "@/lib/utils";
 import type { ClientProfileSummary } from "@/lib/actions/clients";
 
-export function PanoramicaTab({ summary }: { summary: ClientProfileSummary }) {
+export function PanoramicaTab({
+  summary,
+  walletBalance = 0,
+}: {
+  summary: ClientProfileSummary;
+  walletBalance?: number;
+}) {
   return (
     <div className="space-y-8">
       {/* Portafoglio */}
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-semibold text-brown">Portafoglio</h3>
-          <button
-            type="button"
-            className="text-sm text-muted-foreground hover:text-rose"
-            // Placeholder — non c'è ancora una pagina portafoglio.
-            // TODO: link a /clienti/[id]/portafoglio quando esisterà.
-          >
-            Visualizza portafoglio
-          </button>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-xs text-muted-foreground">Saldo</p>
-          <p className="mt-1 text-2xl font-semibold text-brown">{formatCurrency(0)}</p>
+          <p className="mt-1 text-2xl font-semibold text-brown">
+            {formatCurrency(walletBalance)}
+          </p>
         </div>
       </section>
 

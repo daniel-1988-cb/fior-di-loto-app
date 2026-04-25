@@ -18,12 +18,27 @@ import {
   getClientProfileSummary,
   getClientTransactions,
 } from "@/lib/actions/clients";
+import {
+  getClientPoints,
+  getClientLoyaltyTransactions,
+} from "@/lib/actions/loyalty";
+import { getClientReviews } from "@/lib/actions/reviews";
+import { listClientDocuments } from "@/lib/actions/client-documents";
+import {
+  getClientWalletBalance,
+  listClientWalletTransactions,
+} from "@/lib/actions/client-wallet";
 import { formatPhone, formatDate } from "@/lib/utils";
 import { ClientProfileTabs } from "@/components/clienti/client-profile-tabs";
 import { PanoramicaTab } from "@/components/clienti/panoramica-tab";
 import { AppuntamentiTab } from "@/components/clienti/appuntamenti-tab";
 import { VenditeTab } from "@/components/clienti/vendite-tab";
 import { ArticoliTab } from "@/components/clienti/articoli-tab";
+import { DettagliTab } from "@/components/clienti/dettagli-tab";
+import { FedeltaTab } from "@/components/clienti/fedelta-tab";
+import { RecensioniTab } from "@/components/clienti/recensioni-tab";
+import { DocumentiTab } from "@/components/clienti/documenti-tab";
+import { PortafoglioTab } from "@/components/clienti/portafoglio-tab";
 import { ProfileHeaderActions } from "@/components/clienti/profile-header-actions";
 
 function getSegmentoStyle(segmento: string) {
@@ -60,11 +75,28 @@ export default async function ClienteDetailPage({
     notFound();
   }
 
-  const [summary, appointments, transactions, products] = await Promise.all([
+  const [
+    summary,
+    appointments,
+    transactions,
+    products,
+    loyalty,
+    loyaltyTx,
+    reviewsData,
+    documents,
+    walletBalance,
+    walletTx,
+  ] = await Promise.all([
     getClientProfileSummary(id),
     getClientAppointments(id),
     getClientTransactions(id),
     getClientProducts(id),
+    getClientPoints(id),
+    getClientLoyaltyTransactions(id, 50),
+    getClientReviews(id),
+    listClientDocuments(id),
+    getClientWalletBalance(id),
+    listClientWalletTransactions(id, 50),
   ]);
 
   const fullName = `${client.nome} ${client.cognome}`.trim();
@@ -184,7 +216,12 @@ export default async function ClienteDetailPage({
               articoli: summary.articoliCount,
             }}
             contents={{
-              panoramica: <PanoramicaTab summary={summary} />,
+              panoramica: (
+                <PanoramicaTab
+                  summary={summary}
+                  walletBalance={walletBalance}
+                />
+              ),
               appuntamenti: <AppuntamentiTab appointments={appointments} />,
               vendite: (
                 <VenditeTab
@@ -199,6 +236,35 @@ export default async function ClienteDetailPage({
                 />
               ),
               articoli: <ArticoliTab products={products} />,
+              dettagli: (
+                <DettagliTab
+                  client={client}
+                  editHref={`/clienti/${client.id}/modifica`}
+                />
+              ),
+              documenti: (
+                <DocumentiTab clientId={client.id} documents={documents} />
+              ),
+              portafoglio: (
+                <PortafoglioTab
+                  clientId={client.id}
+                  balance={walletBalance}
+                  transactions={walletTx}
+                />
+              ),
+              fedelta: (
+                <FedeltaTab
+                  punti={loyalty.punti}
+                  tier={loyalty.tier}
+                  transactions={loyaltyTx}
+                />
+              ),
+              recensioni: (
+                <RecensioniTab
+                  reviews={reviewsData.reviews}
+                  pendingRequests={reviewsData.pendingRequests}
+                />
+              ),
             }}
           />
         </section>
