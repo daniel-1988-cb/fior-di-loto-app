@@ -368,20 +368,46 @@ async function generateAndSendReply(
 ): Promise<void> {
   const { clientId, fromPhone, isAudio, audioInput, overrideLastUserText } = args;
 
-  const { data: history } = await supabase
+  // CRITICAL: prendi gli ULTIMI 50 messaggi (ascending=true + limit 50 dava
+  // i PRIMI 50 cronologici — su clienti con storia >50 messaggi Gemini
+  // riceveva conversazioni vecchie di giorni e l'ultimo turno era assistant
+  // → STOP a 0 token output → fallback in loop. Order desc + reverse per
+  // tornare ad ordine cronologico crescente per il modello.
+  const { data: historyDesc } = await supabase
     .from("wa_conversations")
     .select("role, content")
     .eq("client_id", clientId)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(50);
+  const history = (historyDesc ?? []).slice().reverse();
+
+  // Filtra dalle risposte assistant le frasi hardcoded di fallback che il
+  // bot ha emesso quando Gemini non rispondeva. Senza questo filtro, ad
+  // ogni nuovo messaggio il modello vede 20+ esempi recenti delle frasi
+  // VIETATE dal system prompt e le imita ignorando il divieto. Conferma:
+  // con history "infetta" Gemini risponde letteralmente "Un attimo che
+  // controllo e ti rispondo a breve 🙏" anche se il prompt lo vieta.
+  const HARDCODED_FALLBACK_PATTERNS: RegExp[] = [
+    /un attimo che controllo/i,
+    /ti rispondo a breve/i,
+    /ti ho girato la richiesta a laura/i,
+    /dammi un attimo/i,
+    /verifico subito/i,
+    /verifico e ti aggiorno/i,
+    /ti faccio sapere/i,
+  ];
+  const isHardcodedFallback = (content: string): boolean =>
+    HARDCODED_FALLBACK_PATTERNS.some((re) => re.test(content));
 
   // If the buffer path gave us an aggregated text, replace the trailing
   // consecutive `user` rows (which are the just-inserted fragments) with
   // a single synthetic user turn — so Gemini sees one utterance.
-  const historyForLlm = (history ?? []).map((h) => ({
-    role: h.role as "user" | "assistant",
-    content: h.content as string,
-  }));
+  const historyForLlm = history
+    .filter((h) => h.role === "user" || !isHardcodedFallback(h.content as string))
+    .map((h) => ({
+      role: h.role as "user" | "assistant",
+      content: h.content as string,
+    }));
   if (overrideLastUserText && historyForLlm.length > 0) {
     let i = historyForLlm.length;
     while (i > 0 && historyForLlm[i - 1].role === "user") i--;
