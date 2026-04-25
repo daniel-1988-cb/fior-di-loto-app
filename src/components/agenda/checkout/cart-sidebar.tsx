@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, X, CreditCard } from "lucide-react";
+import { Minus, Plus, X, CreditCard, Tag } from "lucide-react";
 import type { CartState, CartItem } from "@/lib/cart/types";
 import { cartSubtotal } from "@/lib/cart/types";
 
@@ -124,6 +124,14 @@ function CartLine({
 }) {
  const lineTotal = item.unitPrice * item.quantity;
  const canAdjustQty = item.kind !== "card_regalo" && item.kind !== "voucher";
+ const hasAppliedRule =
+  item.appliedRuleId != null &&
+  item.originalUnitPrice != null &&
+  item.originalUnitPrice !== item.unitPrice;
+ const originalLineTotal =
+  hasAppliedRule && item.originalUnitPrice != null
+   ? item.originalUnitPrice * item.quantity
+   : null;
  const metaParts: string[] = [];
  if (item.quantity > 1) metaParts.push(`qty ${item.quantity}`);
  if (item.staffId) metaParts.push("Staff");
@@ -139,13 +147,24 @@ function CartLine({
      <p className="truncate text-xs text-muted-foreground">{metaParts.join(" · ")}</p>
     </div>
     <div className="flex shrink-0 items-center gap-2">
-     <span
-      className={`text-sm font-semibold ${
-       lineTotal < 0 ? "text-emerald-600" : "text-foreground"
-      }`}
-     >
-      {lineTotal < 0 ? "-" : ""}€ {Math.abs(lineTotal).toFixed(2)}
-     </span>
+     <div className="flex flex-col items-end">
+      {originalLineTotal != null && (
+       <span className="text-xs text-muted-foreground line-through">
+        € {originalLineTotal.toFixed(2)}
+       </span>
+      )}
+      <span
+       className={`text-sm font-semibold ${
+        lineTotal < 0
+         ? "text-emerald-600"
+         : hasAppliedRule
+          ? "text-emerald-600"
+          : "text-foreground"
+       }`}
+      >
+       {lineTotal < 0 ? "-" : ""}€ {Math.abs(lineTotal).toFixed(2)}
+      </span>
+     </div>
      <button
       type="button"
       onClick={() => onRemove(item.id)}
@@ -156,6 +175,17 @@ function CartLine({
      </button>
     </div>
    </div>
+   {hasAppliedRule && item.appliedRuleLabel && (
+    <div className="mt-1.5">
+     <span
+      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      title={item.appliedRuleLabel}
+     >
+      <Tag className="h-3 w-3" />
+      {item.appliedRuleLabel}
+     </span>
+    </div>
+   )}
    {canAdjustQty && (
     <div className="mt-2 flex items-center gap-2">
      <button

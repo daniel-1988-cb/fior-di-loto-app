@@ -475,6 +475,14 @@ function CheckoutForm({ id }: { id: string }) {
         ) : (
          cart.items.map((item) => {
           const lineTotal = item.unitPrice * item.quantity;
+          const hasAppliedRule =
+           item.appliedRuleId != null &&
+           item.originalUnitPrice != null &&
+           item.originalUnitPrice !== item.unitPrice;
+          const originalLineTotal =
+           hasAppliedRule && item.originalUnitPrice != null
+            ? item.originalUnitPrice * item.quantity
+            : null;
           return (
            <div
             key={item.id}
@@ -489,10 +497,30 @@ function CheckoutForm({ id }: { id: string }) {
                {item.quantity > 1 ? `${item.quantity}× ` : ""}
                {item.kind}
               </p>
+              {hasAppliedRule && item.appliedRuleLabel && (
+               <span
+                className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                title={item.appliedRuleLabel}
+               >
+                <Tag className="h-3 w-3" />
+                {item.appliedRuleLabel}
+               </span>
+              )}
              </div>
-             <p className="shrink-0 text-sm font-semibold text-foreground">
-              € {lineTotal.toFixed(2)}
-             </p>
+             <div className="flex shrink-0 flex-col items-end">
+              {originalLineTotal != null && (
+               <span className="text-xs text-muted-foreground line-through">
+                € {originalLineTotal.toFixed(2)}
+               </span>
+              )}
+              <p
+               className={`text-sm font-semibold ${
+                hasAppliedRule ? "text-emerald-600" : "text-foreground"
+               }`}
+              >
+               € {lineTotal.toFixed(2)}
+              </p>
+             </div>
             </div>
            </div>
           );

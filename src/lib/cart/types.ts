@@ -30,6 +30,16 @@ export type CartItem = {
   value: number;
   label: string; // "Card Regalo Silver 100€"
  };
+ /** Prezzo originale prima dell'applicazione di una regola di pricing dinamico.
+  * null/undefined se nessuna regola è stata applicata. Usato dalla UI per
+  * mostrare il prezzo barrato accanto a quello aggiustato. */
+ originalUnitPrice?: number | null;
+ /** UUID della regola applicata (vedi `dynamic_pricing_rules`). */
+ appliedRuleId?: string | null;
+ /** Etichetta human-readable della regola applicata (es. "Sconto Mattina 10%"). */
+ appliedRuleLabel?: string | null;
+ /** Delta unitario applicato: positivo = sconto, negativo = maggiorazione. */
+ appliedDelta?: number | null;
 };
 
 export type SplitPaymentRow = {

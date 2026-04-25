@@ -14,6 +14,9 @@ import {
  type LucideIcon,
 } from "lucide-react";
 import { getAppointment } from "@/lib/actions/appointments";
+import { getActivePricingRules } from "@/lib/actions/dynamic-pricing";
+import { applyRules } from "@/lib/pricing/apply-rules";
+import type { PricingRule } from "@/lib/types/pricing";
 import { useCart } from "@/lib/cart/storage";
 import type { CardRegaloPreset } from "@/lib/cart/types";
 import {
@@ -52,11 +55,27 @@ const CATEGORIES: CategoryCard[] = [
  { id: "buoni", label: "Buoni", icon: Ticket },
 ];
 
+/** Costruisce un Date dal `data` (YYYY-MM-DD) e `ora_inizio` (HH:MM[:SS]) di un
+ * appuntamento. Usato come `when` per il match delle pricing rules. */
+function appointmentDateTime(date: string, time: string): Date {
+ const [y, m, d] = date.split("-").map(Number);
+ const [hh, mm] = time.split(":").map(Number);
+ return new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
+}
+
+/** Etichetta sintetica per la regola applicata, da mostrare in UI. */
+function ruleLabel(rule: PricingRule): string {
+ const sign = rule.adjustType === "sconto" ? "-" : "+";
+ const unit = rule.adjustKind === "percentuale" ? "%" : "€";
+ return `${rule.nome} (${sign}${rule.adjustValue}${unit})`;
+}
+
 function CarrelloPageInner({ id }: { id: string }) {
  const router = useRouter();
  const [appointment, setAppointment] = useState<AppointmentData | null>(null);
  const [loading, setLoading] = useState(true);
  const [prepopulated, setPrepopulated] = useState(false);
+ const [pricingRules, setPricingRules] = useState<PricingRule[] | null>(null);
  const [query, setQuery] = useState("");
  const [modalCategory, setModalCategory] = useState<AddItemsCategory | null>(null);
 
@@ -66,13 +85,23 @@ function CarrelloPageInner({ id }: { id: string }) {
   clientId,
  );
 
- // Load appointment
+ // Load appointment + active pricing rules in parallelo.
  useEffect(() => {
   let cancelled = false;
   async function load() {
    try {
-    const data = await getAppointment(id);
-    if (!cancelled) setAppointment(data as unknown as AppointmentData);
+    const [appt, rules] = await Promise.all([
+     getAppointment(id),
+     getActivePricingRules().catch((err) => {
+      // Le regole sono opzionali: se falla, prosegui senza pricing dinamico.
+      console.error("Errore caricamento pricing rules:", err);
+      return [] as PricingRule[];
+     }),
+    ]);
+    if (!cancelled) {
+     setAppointment(appt as unknown as AppointmentData);
+     setPricingRules(rules);
+    }
    } catch (err) {
     console.error("Errore caricamento appuntamento:", err);
    } finally {
@@ -101,20 +130,30 @@ function CarrelloPageInner({ id }: { id: string }) {
   if (prepopulated) return;
   if (!appointment) return;
   if (appointment.pagato_at) return; // già pagato: skip pre-populate
+  // Aspetta che le regole siano caricate (anche array vuoto va bene).
+  if (pricingRules === null) return;
   if (cart.items.length > 0) {
    setPrepopulated(true);
    return;
   }
+  const basePrice = Number(appointment.services?.prezzo ?? 0);
+  const serviceId = appointment.services?.id ?? null;
+  const when = appointmentDateTime(appointment.data, appointment.ora_inizio);
+  const pricing = applyRules(basePrice, pricingRules, { when, serviceId });
   addItem({
    kind: "servizio",
-   refId: appointment.services?.id ?? null,
+   refId: serviceId,
    label: appointment.services?.nome ?? "Servizio",
    quantity: 1,
-   unitPrice: Number(appointment.services?.prezzo ?? 0),
+   unitPrice: pricing.adjustedPrice,
    staffId: appointment.staff_id ?? null,
+   originalUnitPrice: pricing.applied ? pricing.originalPrice : null,
+   appliedRuleId: pricing.applied?.id ?? null,
+   appliedRuleLabel: pricing.applied ? ruleLabel(pricing.applied) : null,
+   appliedDelta: pricing.applied ? pricing.delta : null,
   });
   setPrepopulated(true);
- }, [mounted, appointment, cart.items.length, prepopulated, addItem]);
+ }, [mounted, appointment, cart.items.length, prepopulated, pricingRules, addItem]);
 
  const filteredCategories = CATEGORIES.filter((c) =>
   c.label.toLowerCase().includes(query.trim().toLowerCase()),
@@ -129,13 +168,27 @@ function CarrelloPageInner({ id }: { id: string }) {
  function handleModalPick(picked: PickedItem) {
   if (!modalCategory) return;
   if (modalCategory === "servizi") {
+   // Applica eventuale regola di pricing dinamico al servizio aggiunto
+   // manualmente, usando data+ora dell'appuntamento sorgente come `when`.
+   const rules = pricingRules ?? [];
+   const when = appointment
+    ? appointmentDateTime(appointment.data, appointment.ora_inizio)
+    : new Date();
+   const pricing = applyRules(picked.unitPrice, rules, {
+    when,
+    serviceId: picked.refId,
+   });
    addItem({
     kind: "servizio",
     refId: picked.refId,
     label: picked.label,
     quantity: 1,
-    unitPrice: picked.unitPrice,
+    unitPrice: pricing.adjustedPrice,
     staffId: appointment?.staff_id ?? null,
+    originalUnitPrice: pricing.applied ? pricing.originalPrice : null,
+    appliedRuleId: pricing.applied?.id ?? null,
+    appliedRuleLabel: pricing.applied ? ruleLabel(pricing.applied) : null,
+    appliedDelta: pricing.applied ? pricing.delta : null,
    });
   } else if (modalCategory === "prodotti") {
    addItem({
@@ -171,7 +224,7 @@ function CarrelloPageInner({ id }: { id: string }) {
   router.push(`/agenda/checkout/${id}`);
  }
 
- if (loading) {
+ if (loading || pricingRules === null) {
   return (
    <div className="flex items-center justify-center p-12">
     <p className="text-sm text-muted-foreground">Caricamento...</p>
