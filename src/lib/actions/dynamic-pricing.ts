@@ -237,6 +237,27 @@ export async function getPricingRules(activeOnly = false): Promise<PricingRule[]
   return (data ?? []).map((r) => rowToRule(r as PricingRuleRow));
 }
 
+/**
+ * Restituisce solo le regole attive, ordinate dalla "più importante" alla
+ * "meno importante" (priorita DESC, poi updated_at DESC). Pensata per essere
+ * passata direttamente ad `applyRules` lato carrello/agenda.
+ *
+ * NB: a differenza di `getPricingRules(true)` qui l'ordinamento è inverso
+ * sulla priorità (winner first), che è l'ordine atteso dal motore di pricing.
+ */
+export async function getActivePricingRules(): Promise<PricingRule[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("dynamic_pricing_rules")
+    .select("*")
+    .eq("attivo", true)
+    .order("priorita", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data ?? []).map((r) => rowToRule(r as PricingRuleRow));
+}
+
 export async function getPricingRule(id: string): Promise<PricingRule | null> {
   if (!isValidUUID(id)) return null;
   const supabase = createAdminClient();
