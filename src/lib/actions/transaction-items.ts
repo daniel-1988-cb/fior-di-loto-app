@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, isValidDate, sanitizeString, truncate } from "@/lib/security/validate";
 import type { CartState, CartItem, SplitPaymentRow } from "@/lib/cart/types";
+import { addWalletTransaction, getClientWalletBalance } from "@/lib/actions/client-wallet";
 
 // Deve stare allineato con VALID_METODI in transactions.ts.
 const VALID_METODI = [
@@ -137,6 +138,10 @@ function sumSplit(rows: SplitPaymentRow[]): number {
   return rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 // ============================================
 // MAIN ACTION
 // ============================================
@@ -148,11 +153,13 @@ function sumSplit(rows: SplitPaymentRow[]): number {
  *   lo linka all'item tramite `generated_voucher_id`.
  * - Se `splitPayments` è presente, forza metodo_pagamento="split" e
  *   serializza il dettaglio in fondo a `descrizione` (no schema change).
+ * - Se metodo (singolo o split-row) include `saldo`, scala l'importo dal
+ *   portafoglio cliente via `addWalletTransaction(tipo="utilizzo")`. In caso
+ *   di errore sul wallet, fa rollback eliminando la transaction creata.
  * - Aggiorna `clients.totale_speso` / `totale_visite` / `ultima_visita`
  *   coerente con `transactions.createTransaction`.
- * - Rollback NON disponibile (client supabase basic, no RPC). In caso di
- *   errore sui line items la transaction resta creata ma l'errore viene
- *   riportato nel result.
+ * - Rollback NON disponibile per errori sui line items (client supabase
+ *   basic, no RPC). La transaction resta creata ma l'errore viene riportato.
  */
 export async function createCartTransaction(
   input: CreateCartTransactionInput,
@@ -210,6 +217,33 @@ export async function createCartTransaction(
     const s = sumSplit(splitPayments!);
     if (Math.abs(s - totale) > 0.01) {
       return { ok: false, error: "Split payment: somma non pareggia il totale" };
+    }
+  }
+
+  // Pre-validazione "saldo": calcolo quota da scalare dal portafoglio.
+  // - metodo singolo "saldo" -> tutto il totale
+  // - split con riga "saldo" -> somma delle righe saldo
+  let saldoUsato = 0;
+  if (!useSplit && metodo === "saldo") {
+    saldoUsato = totale;
+  } else if (useSplit) {
+    saldoUsato = round2(
+      splitPayments!
+        .filter((r) => r.metodo === "saldo")
+        .reduce((s, r) => s + (Number(r.amount) || 0), 0),
+    );
+  }
+
+  if (saldoUsato > 0) {
+    if (!cart.clientId) {
+      return { ok: false, error: "Cliente obbligatorio per pagamento con saldo" };
+    }
+    const saldoCorrente = await getClientWalletBalance(cart.clientId);
+    if (saldoCorrente < saldoUsato - 0.005) {
+      return {
+        ok: false,
+        error: `Saldo insufficiente (saldo €${saldoCorrente.toFixed(2)}, richiesti €${saldoUsato.toFixed(2)})`,
+      };
     }
   }
 
@@ -275,7 +309,30 @@ export async function createCartTransaction(
     return { ok: false, error: `Transaction ${transactionId} creata ma errore line items: ${itemsErr.message}` };
   }
 
-  // 6) aggiorna cliente (allineato a transactions.createTransaction)
+  // 6) scala il saldo dal portafoglio se richiesto (post-creazione transaction).
+  //    Se fallisce, rollback completo: cancella la transaction (cascade pulisce
+  //    transaction_items). Eventuali voucher card_regalo già emessi restano,
+  //    ma in modo sicuro perché non sono linkati a items eliminati.
+  if (saldoUsato > 0 && cart.clientId) {
+    try {
+      await addWalletTransaction({
+        clientId: cart.clientId,
+        tipo: "utilizzo",
+        importo: saldoUsato,
+        descrizione: `Pagamento checkout #${transactionId.slice(0, 8)}`,
+        appointmentId: cart.appointmentId ?? null,
+        transactionId,
+      });
+    } catch (err) {
+      // Rollback: cancella transaction (cascade rimuove transaction_items).
+      await supabase.from("transaction_items").delete().eq("transaction_id", transactionId);
+      await supabase.from("transactions").delete().eq("id", transactionId);
+      const msg = err instanceof Error ? err.message : "Errore wallet";
+      return { ok: false, error: `Errore scalamento saldo: ${msg}` };
+    }
+  }
+
+  // 7) aggiorna cliente (allineato a transactions.createTransaction)
   if (cart.clientId) {
     const { data: client } = await supabase
       .from("clients")
