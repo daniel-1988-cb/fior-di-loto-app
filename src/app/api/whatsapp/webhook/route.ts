@@ -453,6 +453,36 @@ async function generateAndSendReply(
       console.warn(`[wa webhook] empty reply | rawDumpFailed=${e instanceof Error ? e.message : "?"}`);
     }
 
+    // ALSO write the full payload to bot_debug — Vercel log viewer aggregates
+    // multiple console.warn calls per request into one truncated row, making
+    // diagnosis impossible. The DB row preserves everything in jsonb.
+    try {
+      await supabase.from("bot_debug").insert({
+        client_id: clientId,
+        kind: "empty_reply",
+        payload: {
+          finishReason: gen?.finishReason ?? null,
+          safetyBlocked: gen?.safetyBlocked ?? null,
+          errorKind: gen?.errorKind ?? null,
+          errorMessage: gen?.errorMessage ?? null,
+          hasGen: gen !== null,
+          textLen: (gen?.text ?? "").length,
+          apiKeyLen: (process.env.GEMINI_API_KEY ?? "").length,
+          apiKeyTrimEq:
+            (process.env.GEMINI_API_KEY ?? "").length ===
+            (process.env.GEMINI_API_KEY ?? "").trim().length,
+          historyLen: historyForLlm.length,
+          docsCount: docs.length,
+          clientCtxLen: clientContextText.length,
+          // Cap the raw payload to avoid blowing up the row — full json with
+          // candidates/safetyRatings is what we really want to see.
+          raw: gen?.raw ?? null,
+        },
+      });
+    } catch (e) {
+      console.error("[wa webhook] bot_debug insert failed:", e instanceof Error ? e.message : e);
+    }
+
     // Errori CRITICI → alert + auto-escalate thread.
     // Questo evita che il bot risponda "Un attimo che controllo" in loop
     // ai clienti senza che nessuno se ne accorga.
