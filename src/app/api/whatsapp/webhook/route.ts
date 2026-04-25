@@ -431,9 +431,27 @@ async function generateAndSendReply(
   // on innocent Italian wellness terms, transient 500s from Gemini, quota,
   // or model returning an empty string). We now always send *something*.
   if (!rawReply) {
-    console.warn(
-      `[wa webhook] empty reply from Gemini for client ${clientId} — finishReason=${gen?.finishReason ?? "none"}, safetyBlocked=${gen?.safetyBlocked ?? "unknown"}, errorKind=${gen?.errorKind ?? "none"}, errorMessage=${gen?.errorMessage ?? "none"}`,
-    );
+    // Split into multiple short logs so Vercel CLI/UI doesn't truncate them.
+    console.warn(`[wa webhook] empty reply | client=${clientId}`);
+    console.warn(`[wa webhook] empty reply | finishReason=${gen?.finishReason ?? "none"}`);
+    console.warn(`[wa webhook] empty reply | safetyBlocked=${gen?.safetyBlocked ?? "unknown"}`);
+    console.warn(`[wa webhook] empty reply | errorKind=${gen?.errorKind ?? "none"}`);
+    console.warn(`[wa webhook] empty reply | errorMessage=${(gen?.errorMessage ?? "none").slice(0, 200)}`);
+    console.warn(`[wa webhook] empty reply | hasGen=${gen !== null}`);
+    console.warn(`[wa webhook] empty reply | textLen=${(gen?.text ?? "").length}`);
+    console.warn(`[wa webhook] empty reply | apiKeyLen=${(process.env.GEMINI_API_KEY ?? "").length}`);
+    console.warn(`[wa webhook] empty reply | apiKeyTrimEq=${(process.env.GEMINI_API_KEY ?? "").length === (process.env.GEMINI_API_KEY ?? "").trim().length}`);
+    console.warn(`[wa webhook] empty reply | historyLen=${historyForLlm.length}`);
+    console.warn(`[wa webhook] empty reply | docsCount=${docs.length}`);
+    console.warn(`[wa webhook] empty reply | clientCtxLen=${clientContextText.length}`);
+    // Dump the raw Gemini response (first 800 chars) — this tells us if it's
+    // a candidate filter, a safetyRating block, or something else entirely.
+    try {
+      const rawJson = JSON.stringify(gen?.raw ?? null).slice(0, 800);
+      console.warn(`[wa webhook] empty reply | rawSample=${rawJson}`);
+    } catch (e) {
+      console.warn(`[wa webhook] empty reply | rawDumpFailed=${e instanceof Error ? e.message : "?"}`);
+    }
 
     // Errori CRITICI → alert + auto-escalate thread.
     // Questo evita che il bot risponda "Un attimo che controllo" in loop
