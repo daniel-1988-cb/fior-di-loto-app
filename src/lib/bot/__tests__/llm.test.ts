@@ -46,4 +46,47 @@ describe("generateReply (Gemini)", () => {
     expect(result.safetyBlocked).toBe(true);
     expect(result.finishReason).toBe("SAFETY");
   });
+
+  it("falls back to candidates[0].content.parts when top-level text is empty", async () => {
+    // Real-world case on gemini-2.5-* with thinking nominally off: the SDK
+    // sometimes leaves `result.text` empty even though the visible reply is
+    // sitting in `candidates[0].content.parts[*].text`. We must extract it.
+    mockResponse.value = {
+      text: "",
+      candidates: [
+        {
+          finishReason: "STOP",
+          content: {
+            parts: [
+              { text: "thinking...", thought: true }, // hidden, must be filtered
+              { text: "ciao!! 😊 dimmi" },
+            ],
+          },
+        },
+      ],
+    };
+    const { generateReply } = await import("@/lib/bot/llm");
+    const result = await generateReply({
+      history: [{ role: "user", content: "ciao" }],
+      apiKey: "AIzaSy-test",
+    });
+    expect(result.text).toBe("ciao!! 😊 dimmi");
+    expect(result.errorKind).toBeUndefined();
+    expect(result.finishReason).toBe("STOP");
+  });
+
+  it("preserves MAX_TOKENS finishReason so the webhook can escalate", async () => {
+    mockResponse.value = {
+      text: "",
+      candidates: [{ finishReason: "MAX_TOKENS" }],
+    };
+    const { generateReply } = await import("@/lib/bot/llm");
+    const result = await generateReply({
+      history: [{ role: "user", content: "ciao" }],
+      apiKey: "AIzaSy-test",
+    });
+    expect(result.text).toBe("");
+    expect(result.finishReason).toBe("MAX_TOKENS");
+    expect(result.safetyBlocked).toBe(false);
+  });
 });

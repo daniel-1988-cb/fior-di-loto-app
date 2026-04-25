@@ -107,11 +107,16 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<GenerateRe
   let res: unknown;
   try {
     res = await client.models.generateContent({
-      model: opts.model ?? "gemini-2.5-flash",
+      // gemini-2.5-flash-lite has thinking OFF by default → no risk of MAX_TOKENS
+      // being eaten by internal thoughts before we get any visible output.
+      model: opts.model ?? "gemini-2.5-flash-lite",
       contents,
       config: {
         systemInstruction,
-        maxOutputTokens: opts.maxTokens ?? 600,
+        // Bumped from 600 → 2000: even with thinking nominally off, gemini-2.5
+        // can still emit a few hidden "thought" tokens, and 600 was tight
+        // enough that some replies finished as MAX_TOKENS with empty text.
+        maxOutputTokens: opts.maxTokens ?? 2000,
         temperature: 0.8,
         thinkingConfig: { thinkingBudget: 0 },
       },
@@ -132,6 +137,9 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<GenerateRe
     candidates?: Array<{
       finishReason?: string;
       safetyRatings?: Array<{ blocked?: boolean; probability?: string }>;
+      content?: {
+        parts?: Array<{ text?: string; thought?: boolean }>;
+      };
     }>;
   };
   const candidate = rawAny.candidates?.[0];
@@ -141,12 +149,31 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<GenerateRe
     finishReason === "RECITATION" ||
     (candidate?.safetyRatings?.some((r) => r.blocked === true) ?? false);
 
-  const text = rawAny.text ?? "";
+  // Prefer the SDK convenience getter `result.text`, but fall back to
+  // joining the visible (non-thought) parts ourselves. On gemini-2.5-* the
+  // top-level `.text` is sometimes empty even when `candidates[0].content.parts`
+  // contains the actual reply — typically when thinking parts are mixed in.
+  const partsText = (candidate?.content?.parts ?? [])
+    .filter((p) => p && p.thought !== true && typeof p.text === "string")
+    .map((p) => p.text as string)
+    .join("");
+  const text = rawAny.text && rawAny.text.length > 0 ? rawAny.text : partsText;
+
+  // MAX_TOKENS with empty text is a real outage (config bug, not user's fault) —
+  // distinguish from the generic "empty" case so the webhook can escalate.
+  const errorKind: LlmErrorKind | undefined = text
+    ? undefined
+    : safetyBlocked
+      ? "safety"
+      : finishReason === "MAX_TOKENS"
+        ? "empty"
+        : "empty";
+
   return {
     text,
     finishReason,
     safetyBlocked,
-    errorKind: text ? undefined : safetyBlocked ? "safety" : "empty",
+    errorKind,
     raw: res,
   };
 }

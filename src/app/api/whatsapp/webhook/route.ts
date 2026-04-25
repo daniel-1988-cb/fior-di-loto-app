@@ -435,11 +435,18 @@ async function generateAndSendReply(
       `[wa webhook] empty reply from Gemini for client ${clientId} — finishReason=${gen?.finishReason ?? "none"}, safetyBlocked=${gen?.safetyBlocked ?? "unknown"}, errorKind=${gen?.errorKind ?? "none"}, errorMessage=${gen?.errorMessage ?? "none"}`,
     );
 
-    // Errori CRITICI (key invalida / quota) → alert + auto-escalate thread.
+    // Errori CRITICI → alert + auto-escalate thread.
     // Questo evita che il bot risponda "Un attimo che controllo" in loop
     // ai clienti senza che nessuno se ne accorga.
+    // - api_key_invalid / quota_exceeded → key/billing problem
+    // - finishReason=MAX_TOKENS con text vuoto → config bug (thinking che mangia
+    //   tutto il budget). Capitato con gemini-2.5-flash: passare a
+    //   gemini-2.5-flash-lite e/o alzare maxOutputTokens.
     const criticalKinds = new Set<string>(["api_key_invalid", "quota_exceeded"]);
-    if (gen?.errorKind && criticalKinds.has(gen.errorKind)) {
+    const isMaxTokensFail = gen?.finishReason === "MAX_TOKENS";
+    const isCritical =
+      (gen?.errorKind && criticalKinds.has(gen.errorKind)) || isMaxTokensFail;
+    if (isCritical) {
       // Escalate il thread: il bot smette di rispondere finché un operatore
       // non lo riattiva da /whatsapp/conversazioni.
       await supabase
@@ -449,12 +456,17 @@ async function generateAndSendReply(
       // Push a Laura con dettaglio errore (best-effort, non blocca).
       try {
         const { sendPushToAll } = await import("@/lib/actions/push");
+        const body =
+          gen?.errorKind === "api_key_invalid"
+            ? "GEMINI_API_KEY invalida — rigenera su aistudio.google.com"
+            : gen?.errorKind === "quota_exceeded"
+              ? "Quota Gemini esaurita — controlla limiti / billing"
+              : isMaxTokensFail
+                ? "Risposta troncata (MAX_TOKENS) — alza maxOutputTokens o cambia modello"
+                : "Errore sconosciuto Gemini — controlla i log";
         await sendPushToAll({
           title: "⚠️ Bot Marialucia offline",
-          body:
-            gen.errorKind === "api_key_invalid"
-              ? "GEMINI_API_KEY invalida — rigenera su aistudio.google.com"
-              : "Quota Gemini esaurita — controlla limiti free tier",
+          body,
           url: "/whatsapp/conversazioni",
           tag: "bot-critical-error",
         });
