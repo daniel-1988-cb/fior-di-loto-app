@@ -47,9 +47,9 @@ function makeFake() {
   };
 
   // Builder returned by supabase.from(table). Chainable and stateful on
-  // the "current op" — insert vs select vs update.
+  // the "current op" — insert vs select vs update vs delete.
   function builder(table: string) {
-    const state: { op?: "insert" | "select" | "update"; payload?: unknown } = {};
+    const state: { op?: "insert" | "select" | "update" | "delete"; payload?: unknown } = {};
     const b: Record<string, unknown> = {};
 
     b.insert = (payload: unknown) => {
@@ -67,6 +67,11 @@ function makeFake() {
       state.op = "update";
       state.payload = payload;
       calls.push({ table: `${table}.update`, payload });
+      return b;
+    };
+    b.delete = () => {
+      state.op = "delete";
+      calls.push({ table: `${table}.delete`, payload: null });
       return b;
     };
     b.eq = () => b;
@@ -92,6 +97,9 @@ function makeFake() {
       if (table === "clients" && state.op === "update") {
         return Promise.resolve(responses.clientUpdate).then(onFulfilled);
       }
+      if (state.op === "delete") {
+        return Promise.resolve({ data: null, error: null }).then(onFulfilled);
+      }
       return Promise.resolve({ data: null, error: null }).then(onFulfilled);
     };
     return b;
@@ -110,12 +118,36 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => fake.client,
 }));
 
+// Mock client-wallet: createCartTransaction usa getClientWalletBalance per
+// la pre-validazione del saldo, e addWalletTransaction per scalarlo.
+const walletMock = {
+  /** balance corrente — i singoli test possono sovrascriverlo */
+  balance: 0,
+  /** se true, addWalletTransaction throwa */
+  failOnAdd: false,
+  /** registra le chiamate ad addWalletTransaction */
+  addCalls: [] as Array<Record<string, unknown>>,
+};
+vi.mock("@/lib/actions/client-wallet", () => ({
+  getClientWalletBalance: vi.fn(async () => walletMock.balance),
+  addWalletTransaction: vi.fn(async (input: Record<string, unknown>) => {
+    walletMock.addCalls.push(input);
+    if (walletMock.failOnAdd) {
+      throw new Error("Saldo insufficiente");
+    }
+    return { id: "wallet-tx-id", ...input };
+  }),
+}));
+
 // Now load the action.
 import { createCartTransaction } from "@/lib/actions/transaction-items";
 
 // Reset calls between tests.
 beforeEach(() => {
   fake.calls.length = 0;
+  walletMock.balance = 0;
+  walletMock.failOnAdd = false;
+  walletMock.addCalls.length = 0;
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -320,5 +352,217 @@ describe("createCartTransaction — happy path", () => {
     // descrizione is sanitizeString'd — quotes become HTML entities.
     // Just check the split marker is present.
     expect(String(txPayload.descrizione)).toContain("split=");
+  });
+});
+
+// --------------------------------------------
+// Saldo (wallet) — singolo + split + insufficienza
+// --------------------------------------------
+
+describe("createCartTransaction — saldo (wallet)", () => {
+  it("scala dal portafoglio quando metodo singolo è 'saldo' e saldo è sufficiente", async () => {
+    walletMock.balance = 100; // saldo cliente
+
+    const res = await createCartTransaction({
+      cart: baseCart({
+        appointmentId: null,
+        items: [
+          {
+            id: "a",
+            kind: "servizio",
+            refId: SERVICE_ID,
+            label: "Pressoterapia",
+            quantity: 1,
+            unitPrice: 40,
+          },
+        ],
+      }),
+      metodoPagamento: "saldo",
+    });
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.transactionId).toBe(NEW_TX_ID);
+
+    // Verifica: transaction creata con metodo_pagamento="saldo"
+    const txInsert = fake.calls.find((c) => c.table === "transactions");
+    const txPayload = txInsert!.payload as Record<string, unknown>;
+    expect(txPayload.metodo_pagamento).toBe("saldo");
+    expect(Number(txPayload.importo)).toBeCloseTo(40);
+
+    // Verifica: addWalletTransaction chiamato con tipo=utilizzo, importo=40,
+    // transactionId linkato.
+    expect(walletMock.addCalls).toHaveLength(1);
+    const walletCall = walletMock.addCalls[0];
+    expect(walletCall.tipo).toBe("utilizzo");
+    expect(walletCall.importo).toBe(40);
+    expect(walletCall.clientId).toBe(CLIENT_ID);
+    expect(walletCall.transactionId).toBe(NEW_TX_ID);
+    expect(String(walletCall.descrizione)).toMatch(/checkout/i);
+
+    // Verifica: nessuna delete (no rollback)
+    const deleteCalls = fake.calls.filter((c) => c.table.endsWith(".delete"));
+    expect(deleteCalls).toHaveLength(0);
+  });
+
+  it("rifiuta saldo singolo se saldo cliente è insufficiente (no transaction creata)", async () => {
+    walletMock.balance = 10; // saldo basso
+
+    const res = await createCartTransaction({
+      cart: baseCart({
+        items: [
+          {
+            id: "a",
+            kind: "servizio",
+            refId: SERVICE_ID,
+            label: "Massaggio",
+            quantity: 1,
+            unitPrice: 50,
+          },
+        ],
+      }),
+      metodoPagamento: "saldo",
+    });
+
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/saldo insufficiente/i);
+
+    // Verifica: NESSUNA transaction creata e nessuna chiamata al wallet
+    const txInsert = fake.calls.find((c) => c.table === "transactions");
+    expect(txInsert).toBeUndefined();
+    expect(walletMock.addCalls).toHaveLength(0);
+  });
+
+  it("rifiuta saldo se cart.clientId è null", async () => {
+    walletMock.balance = 100;
+
+    const res = await createCartTransaction({
+      cart: baseCart({
+        clientId: null,
+        items: [
+          {
+            id: "a",
+            kind: "servizio",
+            refId: SERVICE_ID,
+            label: "Massaggio",
+            quantity: 1,
+            unitPrice: 30,
+          },
+        ],
+      }),
+      metodoPagamento: "saldo",
+    });
+
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/cliente obbligatorio/i);
+    // Nessuna transaction creata
+    const txInsert = fake.calls.find((c) => c.table === "transactions");
+    expect(txInsert).toBeUndefined();
+  });
+
+  it("split misto saldo+carta: scala solo la quota saldo, transaction metodo=split", async () => {
+    walletMock.balance = 30;
+
+    const res = await createCartTransaction({
+      cart: baseCart({
+        items: [
+          {
+            id: "a",
+            kind: "servizio",
+            refId: SERVICE_ID,
+            label: "Trattamento Rinascita",
+            quantity: 1,
+            unitPrice: 80,
+          },
+        ],
+      }),
+      splitPayments: [
+        { metodo: "saldo", amount: 20 },
+        { metodo: "carta", amount: 60 },
+      ],
+    });
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    // Transaction salvata come split
+    const txInsert = fake.calls.find((c) => c.table === "transactions");
+    const txPayload = txInsert!.payload as Record<string, unknown>;
+    expect(txPayload.metodo_pagamento).toBe("split");
+
+    // Wallet scalato SOLO della quota saldo (20)
+    expect(walletMock.addCalls).toHaveLength(1);
+    expect(walletMock.addCalls[0].importo).toBe(20);
+    expect(walletMock.addCalls[0].tipo).toBe("utilizzo");
+    expect(walletMock.addCalls[0].transactionId).toBe(NEW_TX_ID);
+  });
+
+  it("split con saldo insufficiente: rifiuta, no transaction, no wallet call", async () => {
+    walletMock.balance = 5;
+
+    const res = await createCartTransaction({
+      cart: baseCart({
+        items: [
+          {
+            id: "a",
+            kind: "servizio",
+            refId: SERVICE_ID,
+            label: "Massaggio",
+            quantity: 1,
+            unitPrice: 40,
+          },
+        ],
+      }),
+      splitPayments: [
+        { metodo: "saldo", amount: 20 },
+        { metodo: "carta", amount: 20 },
+      ],
+    });
+
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/saldo insufficiente/i);
+    const txInsert = fake.calls.find((c) => c.table === "transactions");
+    expect(txInsert).toBeUndefined();
+    expect(walletMock.addCalls).toHaveLength(0);
+  });
+
+  it("rollback: se addWalletTransaction throwa dopo creazione, cancella la transaction", async () => {
+    walletMock.balance = 200;
+    walletMock.failOnAdd = true; // forza fallimento del wallet
+
+    const res = await createCartTransaction({
+      cart: baseCart({
+        items: [
+          {
+            id: "a",
+            kind: "servizio",
+            refId: SERVICE_ID,
+            label: "Pressoterapia",
+            quantity: 1,
+            unitPrice: 40,
+          },
+        ],
+      }),
+      metodoPagamento: "saldo",
+    });
+
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/scalamento saldo/i);
+
+    // Verifica: transaction è stata creata (insert) ma poi cancellata (delete)
+    const txInsert = fake.calls.find((c) => c.table === "transactions");
+    expect(txInsert).toBeDefined();
+    const deleteCalls = fake.calls.filter((c) =>
+      c.table.endsWith(".delete"),
+    );
+    // Mi aspetto due delete: transaction_items + transactions
+    expect(deleteCalls.length).toBeGreaterThanOrEqual(2);
+    const tables = deleteCalls.map((c) => c.table);
+    expect(tables).toContain("transactions.delete");
+    expect(tables).toContain("transaction_items.delete");
   });
 });
