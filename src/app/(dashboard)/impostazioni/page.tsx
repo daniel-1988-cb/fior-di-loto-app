@@ -74,6 +74,12 @@ const impostazioni: SettingCard[] = [
     href: "/impostazioni/template-messaggi",
   },
   {
+    icon: Send,
+    title: "Follow-up automatici",
+    description: "Messaggi WhatsApp automatici prima/dopo i trattamenti.",
+    href: "/impostazioni/follow-up",
+  },
+  {
     icon: Users,
     title: "Clienti",
     description: "Fonti, tag e preferenze di raccolta dati.",
