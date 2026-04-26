@@ -44,12 +44,28 @@ function makeFake() {
       error: null as unknown,
     },
     clientUpdate: { data: null as unknown, error: null as unknown },
+    /** Lookup: client_wallet_transactions where tipo='utilizzo' AND transaction_id=? */
+    walletUtilizzoLookup: {
+      data: null as unknown, // null = no-op (not paid by saldo)
+      error: null as unknown,
+    },
+    /** Idempotency check: client_wallet_transactions where tipo='rimborso' AND transaction_id=? */
+    walletRimborsoLookup: {
+      data: null as unknown, // null = no prior refund
+      error: null as unknown,
+    },
   };
 
   // Builder returned by supabase.from(table). Chainable and stateful on
   // the "current op" — insert vs select vs update vs delete.
   function builder(table: string) {
-    const state: { op?: "insert" | "select" | "update" | "delete"; payload?: unknown } = {};
+    const state: {
+      op?: "insert" | "select" | "update" | "delete";
+      payload?: unknown;
+      /** filtered eq() values, e.g. {tipo: "utilizzo"} — used by the
+       *  wallet refund tests to disambiguate the two select-by-tipo queries. */
+      filters: Record<string, unknown>;
+    } = { filters: {} };
     const b: Record<string, unknown> = {};
 
     b.insert = (payload: unknown) => {
@@ -74,10 +90,17 @@ function makeFake() {
       calls.push({ table: `${table}.delete`, payload: null });
       return b;
     };
-    b.eq = () => b;
+    b.eq = (col?: string, val?: unknown) => {
+      if (typeof col === "string") state.filters[col] = val;
+      return b;
+    };
     b.maybeSingle = async () => {
       if (table === "vouchers" && state.op === "select") {
         return responses.voucherLookup;
+      }
+      if (table === "client_wallet_transactions" && state.op === "select") {
+        if (state.filters.tipo === "utilizzo") return responses.walletUtilizzoLookup;
+        if (state.filters.tipo === "rimborso") return responses.walletRimborsoLookup;
       }
       return { data: null, error: null };
     };
@@ -140,7 +163,10 @@ vi.mock("@/lib/actions/client-wallet", () => ({
 }));
 
 // Now load the action.
-import { createCartTransaction } from "@/lib/actions/transaction-items";
+import {
+  createCartTransaction,
+  refundTransactionToWallet,
+} from "@/lib/actions/transaction-items";
 
 // Reset calls between tests.
 beforeEach(() => {
@@ -148,6 +174,8 @@ beforeEach(() => {
   walletMock.balance = 0;
   walletMock.failOnAdd = false;
   walletMock.addCalls.length = 0;
+  fake.responses.walletUtilizzoLookup = { data: null, error: null };
+  fake.responses.walletRimborsoLookup = { data: null, error: null };
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -564,5 +592,113 @@ describe("createCartTransaction — saldo (wallet)", () => {
     const tables = deleteCalls.map((c) => c.table);
     expect(tables).toContain("transactions.delete");
     expect(tables).toContain("transaction_items.delete");
+  });
+});
+
+// --------------------------------------------
+// refundTransactionToWallet — rimborso automatico al wallet
+// --------------------------------------------
+
+describe("refundTransactionToWallet", () => {
+  it("rifiuta se transactionId non è un UUID valido", async () => {
+    const res = await refundTransactionToWallet("not-a-uuid");
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/non valido/i);
+    // Nessuna chiamata al wallet
+    expect(walletMock.addCalls).toHaveLength(0);
+  });
+
+  it("no-op silenzioso se la transazione NON era pagata col saldo", async () => {
+    // walletUtilizzoLookup.data = null (default) → tx non linkata a nessun utilizzo
+    const res = await refundTransactionToWallet(NEW_TX_ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.refunded).toBe(0);
+    // Nessun rimborso scritto
+    expect(walletMock.addCalls).toHaveLength(0);
+  });
+
+  it("rimborsa l'importo originale (positivo) se la tx era pagata col saldo", async () => {
+    // Setup: utilizzo wallet di -40€ linkato alla tx, nessun rimborso preesistente.
+    fake.responses.walletUtilizzoLookup = {
+      data: {
+        id: "wallet-utilizzo-id",
+        client_id: CLIENT_ID,
+        importo: -40, // utilizzi sono memorizzati come negativi
+        appointment_id: null,
+      },
+      error: null,
+    };
+    fake.responses.walletRimborsoLookup = { data: null, error: null };
+
+    const res = await refundTransactionToWallet(NEW_TX_ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.refunded).toBe(40);
+
+    // Verifica: addWalletTransaction chiamato con tipo=rimborso, importo=40,
+    // transactionId linkato.
+    expect(walletMock.addCalls).toHaveLength(1);
+    const call = walletMock.addCalls[0];
+    expect(call.tipo).toBe("rimborso");
+    expect(call.importo).toBe(40);
+    expect(call.clientId).toBe(CLIENT_ID);
+    expect(call.transactionId).toBe(NEW_TX_ID);
+    expect(String(call.descrizione)).toMatch(/rimborso automatico/i);
+  });
+
+  it("idempotente: se un rimborso è già stato emesso per la tx, no-op", async () => {
+    fake.responses.walletUtilizzoLookup = {
+      data: {
+        id: "wallet-utilizzo-id",
+        client_id: CLIENT_ID,
+        importo: -40,
+        appointment_id: null,
+      },
+      error: null,
+    };
+    // Rimborso già esiste
+    fake.responses.walletRimborsoLookup = {
+      data: { id: "existing-refund-id" },
+      error: null,
+    };
+
+    const res = await refundTransactionToWallet(NEW_TX_ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.refunded).toBe(0);
+    // Nessun nuovo rimborso scritto
+    expect(walletMock.addCalls).toHaveLength(0);
+  });
+
+  it("propaga errore del DB sulla lookup utilizzo come {ok:false}", async () => {
+    fake.responses.walletUtilizzoLookup = {
+      data: null,
+      error: { message: "boom" },
+    };
+    const res = await refundTransactionToWallet(NEW_TX_ID);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/boom/i);
+    expect(walletMock.addCalls).toHaveLength(0);
+  });
+
+  it("se addWalletTransaction throwa, ritorna {ok:false} con messaggio", async () => {
+    fake.responses.walletUtilizzoLookup = {
+      data: {
+        id: "wallet-utilizzo-id",
+        client_id: CLIENT_ID,
+        importo: -25,
+        appointment_id: null,
+      },
+      error: null,
+    };
+    walletMock.failOnAdd = true;
+
+    const res = await refundTransactionToWallet(NEW_TX_ID);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toMatch(/saldo insufficiente/i);
   });
 });
