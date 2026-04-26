@@ -230,8 +230,16 @@ async function processPayload(rawBody: string): Promise<void> {
 
     if (intent === "booking_request") {
       // Park the request for Laura to triage; don't bother Gemini.
+      // Il push viene inviato dentro `createBookingRequest` (best-effort,
+      // non blocca l'insert) — non duplichiamo qui.
+      const rawNome = existingReal?.nome?.trim() ?? "";
+      const clientName =
+        rawNome && rawNome.toLowerCase() !== "nuovo" ? rawNome : undefined;
       try {
-        await createBookingRequest(supabase, clientId, msg.text ?? "");
+        await createBookingRequest(supabase, clientId, msg.text ?? "", {
+          clientName,
+          fromPhone: msg.fromPhone,
+        });
       } catch (e) {
         console.error("[wa webhook] booking request insert failed", e);
       }
@@ -248,21 +256,6 @@ async function processPayload(rawBody: string): Promise<void> {
         });
       } catch (e) {
         console.error("[wa webhook] booking ack send failed", e);
-      }
-      // Push notifica operatori (best-effort, non bloccare il webhook)
-      try {
-        const { sendPushToAll } = await import("@/lib/actions/push");
-        const preview = (msg.text ?? "").slice(0, 80);
-        await sendPushToAll({
-          title: "Nuova richiesta prenotazione",
-          body: preview
-            ? `Da +${msg.fromPhone}: "${preview}"`
-            : `Da +${msg.fromPhone}`,
-          url: "/whatsapp/richieste",
-          tag: "booking-request",
-        });
-      } catch (e) {
-        console.error("[wa webhook] push notification failed", e);
       }
       continue;
     }
