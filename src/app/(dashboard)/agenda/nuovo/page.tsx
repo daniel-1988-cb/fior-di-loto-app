@@ -1,15 +1,42 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createAppointment } from "@/lib/actions/appointments";
 import { getServices } from "@/lib/actions/services";
 import { getStaff, Staff } from "@/lib/actions/staff";
+import { getActivePricingRules } from "@/lib/actions/dynamic-pricing";
+import { applyRules, type PricingResult } from "@/lib/pricing/apply-rules";
+import type { PricingRule } from "@/lib/types/pricing";
 import { ClientSearchCombobox } from "@/components/clienti/client-search-combobox";
 
 type ServiceOption = { id: string; nome: string; categoria: string; durata: number; prezzo: number };
+
+/** Costruisce un Date locale a partire da `YYYY-MM-DD` + `HH:MM`. */
+function buildDateTime(data: string, oraInizio: string): Date | null {
+ if (!data || !oraInizio) return null;
+ const [y, m, d] = data.split("-").map(Number);
+ const [hh, mm] = oraInizio.split(":").map(Number);
+ if (
+  !Number.isFinite(y) ||
+  !Number.isFinite(m) ||
+  !Number.isFinite(d) ||
+  !Number.isFinite(hh) ||
+  !Number.isFinite(mm)
+ ) {
+  return null;
+ }
+ return new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, 0, 0);
+}
+
+/** Etichetta sintetica per la regola applicata (es: "Sconto Mattina (-10%)"). */
+function ruleLabel(rule: PricingRule): string {
+ const sign = rule.adjustType === "sconto" ? "-" : "+";
+ const unit = rule.adjustKind === "percentuale" ? "%" : "€";
+ return `${rule.nome} (${sign}${rule.adjustValue}${unit})`;
+}
 
 function NuovoAppuntamentoForm() {
  const router = useRouter();
@@ -17,6 +44,7 @@ function NuovoAppuntamentoForm() {
  const [loading, setLoading] = useState(false);
  const [services, setServices] = useState<ServiceOption[]>([]);
  const [staffList, setStaffList] = useState<Staff[]>([]);
+ const [pricingRules, setPricingRules] = useState<PricingRule[]>([]);
 
  // Read pre-fill values from URL
  const paramData = searchParams.get("data");
@@ -37,12 +65,18 @@ function NuovoAppuntamentoForm() {
 
  useEffect(() => {
   async function loadData() {
-   const [serviceList, staffData] = await Promise.all([
+   const [serviceList, staffData, rules] = await Promise.all([
     getServices(),
     getStaff(true),
+    getActivePricingRules().catch((err) => {
+     // Le regole sono opzionali: se falla, prosegui senza preview pricing.
+     console.error("Errore caricamento pricing rules:", err);
+     return [] as PricingRule[];
+    }),
    ]);
    setServices(serviceList as unknown as ServiceOption[]);
    setStaffList(staffData);
+   setPricingRules(rules);
   }
   loadData();
  }, []);
@@ -109,6 +143,21 @@ function NuovoAppuntamentoForm() {
  }
 
  const selectedStaff = staffList.find((s) => s.id === formData.staffId);
+ const selectedService = services.find((s) => s.id === formData.serviceId);
+
+ // Preview pricing: ricalcola quando cambia servizio, data o ora.
+ // Non muta nulla in DB — il pricing definitivo si applica al checkout.
+ const pricingPreview = useMemo<PricingResult | null>(() => {
+  if (!selectedService) return null;
+  const when = buildDateTime(formData.data, formData.oraInizio);
+  if (!when) return null;
+  const basePrice = Number(selectedService.prezzo);
+  if (!Number.isFinite(basePrice)) return null;
+  return applyRules(basePrice, pricingRules, {
+   when,
+   serviceId: selectedService.id,
+  });
+ }, [selectedService, formData.data, formData.oraInizio, pricingRules]);
 
  return (
   <div>
@@ -154,6 +203,28 @@ function NuovoAppuntamentoForm() {
          </optgroup>
         ))}
        </select>
+       {pricingPreview && pricingPreview.applied && (
+        <div className="mt-2 space-y-1">
+         <p className="text-xs text-muted-foreground">
+          Il prezzo finale viene calcolato in cassa al checkout in base alla data/ora dell&apos;appuntamento.
+         </p>
+         <div className="text-sm text-brown">
+          Prezzo aggiustato:{" "}
+          <span className="text-muted-foreground line-through">
+           €{pricingPreview.originalPrice.toFixed(2)}
+          </span>{" "}
+          <span className="font-bold text-brown">
+           €{pricingPreview.adjustedPrice.toFixed(2)}
+          </span>
+         </div>
+         <span
+          className="inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800"
+          title={pricingPreview.applied.descrizione ?? undefined}
+         >
+          {ruleLabel(pricingPreview.applied)}
+         </span>
+        </div>
+       )}
       </div>
      </div>
 
