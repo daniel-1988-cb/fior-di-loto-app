@@ -74,7 +74,13 @@ export function AppointmentDetailDrawer({ appt, onClose, onOpenCheckout }: Props
  function handleMarkStato(stato: "completato" | "cancellato" | "no_show") {
   startTransition(async () => {
    try {
-    await updateAppointmentStatus(appt!.id, stato);
+    const res = await updateAppointmentStatus(appt!.id, stato);
+    if (stato === "cancellato") {
+     const refunded = (res as { refunded?: number } | null)?.refunded ?? 0;
+     if (refunded > 0) {
+      alert(`✓ Appuntamento annullato. €${refunded.toFixed(2)} rimborsati al saldo cliente.`);
+     }
+    }
     router.refresh();
     onClose();
    } catch (e) {
@@ -87,7 +93,11 @@ export function AppointmentDetailDrawer({ appt, onClose, onOpenCheckout }: Props
   if (!confirm("Eliminare definitivamente questo appuntamento?")) return;
   startTransition(async () => {
    try {
-    await deleteAppointment(appt!.id);
+    const res = await deleteAppointment(appt!.id);
+    const refunded = (res as { refunded?: number } | null)?.refunded ?? 0;
+    if (refunded > 0) {
+     alert(`✓ Appuntamento eliminato. €${refunded.toFixed(2)} rimborsati al saldo cliente.`);
+    }
     router.refresh();
     onClose();
    } catch (e) {
