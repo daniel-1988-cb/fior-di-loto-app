@@ -5,6 +5,90 @@ import { isValidUUID, isValidDate, sanitizeString, truncate } from "@/lib/securi
 import type { CartState, CartItem, SplitPaymentRow } from "@/lib/cart/types";
 import { addWalletTransaction, getClientWalletBalance } from "@/lib/actions/client-wallet";
 
+export type RefundTransactionToWalletResult =
+  | { ok: true; refunded: number }
+  | { ok: false; error: string };
+
+/**
+ * Rimborsa al wallet del cliente l'importo che era stato scalato per pagare
+ * la `transaction` con id = `transactionId`.
+ *
+ * Idempotente: se non esiste alcun "utilizzo" wallet linkato a quella tx,
+ * o se un "rimborso" è già stato emesso per essa, ritorna `{ok:true, refunded:0}`.
+ *
+ * Non lancia mai: gli errori del DB diventano `{ok:false, error}` così il
+ * chiamante può loggare un warning senza bloccare l'annullamento.
+ */
+export async function refundTransactionToWallet(
+  transactionId: string,
+): Promise<RefundTransactionToWalletResult> {
+  if (!isValidUUID(transactionId)) {
+    return { ok: false, error: "ID transazione non valido" };
+  }
+
+  const supabase = createAdminClient();
+
+  // 1) Cerca la riga di "utilizzo" wallet linkata alla transaction.
+  //    Se non c'è, la transaction non è stata pagata col saldo: no-op.
+  const { data: utilizzo, error: e1 } = await supabase
+    .from("client_wallet_transactions")
+    .select("id, client_id, importo, appointment_id")
+    .eq("transaction_id", transactionId)
+    .eq("tipo", "utilizzo")
+    .maybeSingle();
+
+  if (e1) {
+    return { ok: false, error: e1.message };
+  }
+  if (!utilizzo) {
+    return { ok: true, refunded: 0 };
+  }
+
+  const row = utilizzo as {
+    id: string;
+    client_id: string;
+    importo: number | string;
+    appointment_id: string | null;
+  };
+
+  // 2) Idempotenza: se esiste già un "rimborso" per la stessa tx, no-op.
+  const { data: existingRefund, error: e2 } = await supabase
+    .from("client_wallet_transactions")
+    .select("id")
+    .eq("transaction_id", transactionId)
+    .eq("tipo", "rimborso")
+    .maybeSingle();
+
+  if (e2) {
+    return { ok: false, error: e2.message };
+  }
+  if (existingRefund) {
+    return { ok: true, refunded: 0 };
+  }
+
+  // 3) Crea la contro-riga "rimborso" col valore assoluto dell'utilizzo.
+  const importoOriginale = Math.abs(Number(row.importo) || 0);
+  if (importoOriginale <= 0) {
+    return { ok: true, refunded: 0 };
+  }
+
+  try {
+    await addWalletTransaction({
+      clientId: row.client_id,
+      tipo: "rimborso",
+      importo: importoOriginale,
+      descrizione: `Rimborso automatico annullamento tx #${transactionId.slice(0, 8)}`,
+      appointmentId: row.appointment_id,
+      transactionId,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Errore wallet";
+    return { ok: false, error: msg };
+  }
+
+  return { ok: true, refunded: importoOriginale };
+}
+
 // Deve stare allineato con VALID_METODI in transactions.ts.
 const VALID_METODI = [
   "contanti",
