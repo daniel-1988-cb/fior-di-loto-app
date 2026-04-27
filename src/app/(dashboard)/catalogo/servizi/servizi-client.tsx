@@ -258,16 +258,20 @@ function FormModal({
             </div>
 
             <div>
-              <Label htmlFor="svc-descr">Descrizione</Label>
+              <Label htmlFor="svc-descr">Descrizione del trattamento</Label>
               <Textarea
                 id="svc-descr"
                 value={form.descrizione}
                 onChange={(e) =>
                   setForm({ ...form, descrizione: e.target.value })
                 }
-                rows={3}
-                placeholder="Dettagli aggiuntivi..."
+                rows={4}
+                maxLength={1000}
+                placeholder="Es: pulizia viso completa con detergente, scrub enzimatico, estrazione comedoni, maschera personalizzata e massaggio finale. Adatta a tutti i tipi di pelle. Sconsigliata in caso di acne attiva grave."
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cosa include il trattamento, controindicazioni, indicazioni utili. Il bot Marialucia userà questa descrizione per rispondere ai clienti che chiedono info su WhatsApp.
+              </p>
             </div>
 
             {error && (

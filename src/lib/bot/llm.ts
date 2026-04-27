@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { MARIALUCIA_SYSTEM_PROMPT } from "./marialucia-system-prompt";
+import { buildCatalogBlock } from "./catalog-context";
+import { getServicesForBot } from "@/lib/actions/services";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -70,7 +72,15 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<GenerateRe
     ? "\n\n---\n\n" + opts.clientContext
     : "";
 
-  const systemInstruction = MARIALUCIA_SYSTEM_PROMPT + clientBlock + docsBlock;
+  let catalogBlock = "";
+  try {
+    const services = await getServicesForBot();
+    catalogBlock = buildCatalogBlock(services);
+  } catch (e) {
+    console.warn("[bot] failed to load catalog for systemInstruction:", e);
+  }
+
+  const systemInstruction = MARIALUCIA_SYSTEM_PROMPT + clientBlock + docsBlock + catalogBlock;
 
   // Gemini expects role: "user" | "model"
   const contents: Array<{

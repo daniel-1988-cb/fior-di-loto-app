@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
+import type { ServiceForBot } from "@/lib/types/bot";
 
 const VALID_CATEGORIE = ["viso", "corpo", "massaggi", "laser", "spa"] as const;
 
@@ -60,7 +61,7 @@ export async function createService(data: {
   if (typeof data.prezzo !== "number" || data.prezzo <= 0) throw new Error("Prezzo non valido");
 
   const nome = truncate(sanitizeString(data.nome), 200);
-  const descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
+  const descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 1000) : null;
 
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
@@ -88,7 +89,7 @@ export async function updateService(id: string, data: {
   const updates: Record<string, unknown> = {};
   if (data.nome) updates.nome = truncate(sanitizeString(data.nome), 200);
   if (data.categoria) updates.categoria = data.categoria;
-  if (data.descrizione !== undefined) updates.descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 2000) : null;
+  if (data.descrizione !== undefined) updates.descrizione = data.descrizione ? truncate(sanitizeString(data.descrizione), 1000) : null;
   if (data.durata !== undefined) updates.durata = data.durata;
   if (data.prezzo !== undefined) updates.prezzo = data.prezzo;
 
@@ -116,4 +117,37 @@ export async function deleteService(id: string) {
 
   if (error) throw error;
   return row;
+}
+
+// ============================================
+// BOT INTEGRATION
+// ============================================
+
+/**
+ * Carica i servizi attivi per il bot Marialucia. Il blocco testuale
+ * costruito da `buildCatalogBlock` viene iniettato nel systemInstruction
+ * di Gemini così il bot può rispondere a domande tipo "quanto costa la
+ * pulizia viso?" o "in cosa consiste X?".
+ *
+ * NB: il tipo `ServiceForBot` è definito in `src/lib/types/bot.ts` —
+ * un file `"use server"` non può esportare `type`/`interface`, e
+ * `catalog-context.ts` deve poterlo importare senza creare loop.
+ */
+export async function getServicesForBot(): Promise<ServiceForBot[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("services")
+    .select("nome, categoria, durata, prezzo, descrizione")
+    .eq("attivo", true)
+    .order("categoria", { ascending: true })
+    .order("nome", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((s) => ({
+    nome: s.nome as string,
+    categoria: s.categoria as string,
+    durata: Number(s.durata),
+    prezzo: typeof s.prezzo === "string" ? Number(s.prezzo) : (s.prezzo as number),
+    descrizione: (s.descrizione as string | null) ?? null,
+  }));
 }
