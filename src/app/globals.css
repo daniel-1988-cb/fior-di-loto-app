@@ -197,3 +197,33 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: 0.5em;
   opacity: 0.5;
 }
+
+/* ---------------------------------------------------------------
+   Recharts brand fill override
+
+   Recharts v3 non propaga il prop `fill` al <path> interno del
+   Bar (rimane senza attributo, default SVG = nero). Il prop
+   passato dal nostro `RevenueChart` viene ignorato lato render.
+   Forziamo via CSS la palette brand. Per chart multi-serie
+   distinguiamo via posizione del Bar nella .recharts-bar.
+   --------------------------------------------------------------- */
+
+/* Tutte le bar di default in brand rose */
+.recharts-rectangle:not([fill]) {
+  fill: #C97A7A;
+}
+
+/* Seconda serie in gold */
+.recharts-bar:nth-of-type(2) .recharts-rectangle:not([fill]) {
+  fill: #CFB06C;
+}
+
+/* Terza serie in rose-dark */
+.recharts-bar:nth-of-type(3) .recharts-rectangle:not([fill]) {
+  fill: #A85858;
+}
+
+/* Quarta serie in gold-light */
+.recharts-bar:nth-of-type(4) .recharts-rectangle:not([fill]) {
+  fill: #DCC99A;
+}
