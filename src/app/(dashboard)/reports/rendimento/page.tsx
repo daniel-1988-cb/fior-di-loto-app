@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui";
 import { PeriodSelector } from "@/components/reports/period-selector";
+import { EmptyTableRow } from "@/components/reports/empty-table";
 import { parsePeriodoFromSearchParams } from "@/lib/reports/period";
 import { RevenueChart, CHART_COLORS } from "@/components/reports/revenue-chart";
 import {
@@ -166,11 +167,7 @@ function StaffView({
             </thead>
             <tbody className="divide-y divide-border">
               {staff.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
-                    Nessun appuntamento completato nel periodo.
-                  </td>
-                </tr>
+                <EmptyTableRow colSpan={5} message="Nessun appuntamento completato nel periodo." />
               )}
               {staff.map((s) => (
                 <tr key={s.staffId}>
@@ -242,11 +239,7 @@ function ServiziView({
             </thead>
             <tbody className="divide-y divide-border">
               {servizi.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
-                    Nessun servizio nel periodo.
-                  </td>
-                </tr>
+                <EmptyTableRow colSpan={4} message="Nessun servizio nel periodo." />
               )}
               {servizi.map((s) => (
                 <tr key={s.serviceId}>
@@ -313,11 +306,7 @@ function CategorieView({
             </thead>
             <tbody className="divide-y divide-border">
               {categorie.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-8 text-center text-xs text-muted-foreground">
-                    Nessuna categoria nel periodo.
-                  </td>
-                </tr>
+                <EmptyTableRow colSpan={3} message="Nessuna categoria nel periodo." />
               )}
               {categorie.map((c) => (
                 <tr key={c.categoria}>

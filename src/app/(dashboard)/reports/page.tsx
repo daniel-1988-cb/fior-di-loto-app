@@ -3,12 +3,13 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui";
 import { PeriodSelector } from "@/components/reports/period-selector";
+import { KpiCard } from "@/components/reports/kpi-card";
+import { EmptyTableRow } from "@/components/reports/empty-table";
 import { parsePeriodoFromSearchParams } from "@/lib/reports/period";
 import { getKpiOverview } from "@/lib/actions/reports";
 import { formatCurrency } from "@/lib/utils";
 import {
   TrendingUp,
-  TrendingDown,
   Users,
   UserPlus,
   CalendarCheck,
@@ -118,11 +119,7 @@ export default async function ReportsHubPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {kpi.topServizi.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
-                      Nessun servizio venduto nel periodo.
-                    </td>
-                  </tr>
+                  <EmptyTableRow colSpan={3} message="Nessun servizio venduto nel periodo." />
                 )}
                 {kpi.topServizi.map((s) => (
                   <tr key={s.nome}>
@@ -151,11 +148,7 @@ export default async function ReportsHubPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {kpi.topProdotti.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
-                      Nessun prodotto venduto nel periodo.
-                    </td>
-                  </tr>
+                  <EmptyTableRow colSpan={3} message="Nessun prodotto venduto nel periodo." />
                 )}
                 {kpi.topProdotti.map((p) => (
                   <tr key={p.nome}>
@@ -199,49 +192,6 @@ export default async function ReportsHubPage({
       {/* suppress unused var warning */}
       <span className="hidden">{margine}</span>
     </>
-  );
-}
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  subtitle,
-  delta,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  subtitle?: string;
-  delta?: number;
-}) {
-  const hasDelta = typeof delta === "number" && Number.isFinite(delta);
-  const deltaPositive = (delta ?? 0) >= 0;
-  return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
-        {hasDelta && (
-          <span
-            className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${
-              deltaPositive
-                ? "bg-success/10 text-success"
-                : "bg-danger/10 text-danger"
-            }`}
-          >
-            {deltaPositive ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {Math.abs(delta!).toFixed(1)}%
-          </span>
-        )}
-      </div>
-      <p className="mt-3 text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
-      {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
-    </Card>
   );
 }
 

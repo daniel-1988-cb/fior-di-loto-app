@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui";
 import { PeriodSelector } from "@/components/reports/period-selector";
+import { EmptyTableRow } from "@/components/reports/empty-table";
 import { parsePeriodoFromSearchParams } from "@/lib/reports/period";
 import { RevenueChart, CHART_COLORS } from "@/components/reports/revenue-chart";
 import { getCashFlow } from "@/lib/actions/reports";
@@ -145,11 +146,7 @@ export default async function CashFlowPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {byMonth.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-center text-xs text-muted-foreground">
-                      Nessun dato.
-                    </td>
-                  </tr>
+                  <EmptyTableRow colSpan={5} message="Nessun dato." />
                 )}
                 {byMonth.map((m) => {
                   const margine = m.entrate > 0 ? (m.netto / m.entrate) * 100 : 0;
