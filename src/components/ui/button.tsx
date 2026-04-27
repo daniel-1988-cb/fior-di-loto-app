@@ -21,7 +21,7 @@ const buttonVariants = cva(
           "bg-danger text-white hover:opacity-90",
       },
       size: {
-        sm: "h-8 px-3 text-sm rounded-full",
+        sm: "h-9 px-3 text-sm rounded-full",
         md: "h-10 px-5 text-sm rounded-full",
         lg: "h-12 px-6 text-base rounded-full",
         icon: "h-10 w-10 rounded-full",

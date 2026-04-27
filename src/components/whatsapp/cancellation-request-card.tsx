@@ -133,7 +133,7 @@ export function CancellationRequestCard({ req }: Props) {
      type="button"
      onClick={doConfirm}
      disabled={pending || !ref}
-     className="inline-flex items-center gap-1 rounded-lg bg-rose px-3 py-1.5 text-xs font-medium text-white hover:bg-rose/90 disabled:opacity-50"
+     className="inline-flex items-center gap-1 rounded-lg bg-rose px-3 py-2 text-sm font-medium text-white hover:bg-rose/90 disabled:opacity-50"
     >
      <Check className="h-3 w-3" />
      Conferma cancellazione
@@ -142,7 +142,7 @@ export function CancellationRequestCard({ req }: Props) {
      type="button"
      onClick={doReject}
      disabled={pending}
-     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:border-red-500 hover:text-red-600 disabled:opacity-50"
+     className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm hover:border-red-500 hover:text-red-600 disabled:opacity-50"
     >
      <X className="h-3 w-3" />
      Rifiuta
