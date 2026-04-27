@@ -7,7 +7,6 @@ import { Plus, Download } from "lucide-react";
 import { ClientsTable } from "@/components/v2/clients-table";
 import { getClients } from "@/lib/actions/clients";
 import { isValidSegmento } from "@/lib/security/validate";
-import type { TableRow } from "@/types/database";
 
 interface Props {
   searchParams: Promise<{
@@ -26,9 +25,7 @@ export default async function V2ClientiPage({ searchParams }: Props) {
       : undefined;
   const safeSearch = params.search?.slice(0, 100) || undefined;
 
-  const clients = (await getClients(safeSeg, safeSearch)) as unknown as TableRow<
-    "clients"
-  >[];
+  const clients = await getClients(safeSeg, safeSearch);
 
   // Build export URL preserving the active filters.
   const exportParams = new URLSearchParams();

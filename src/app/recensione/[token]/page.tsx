@@ -39,6 +39,7 @@ async function fetchRequest(token: string): Promise<Row | null> {
     .eq("token", token)
     .maybeSingle();
   if (error || !data) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase join returns clients as nested object; Row normalises the union shape
   return data as unknown as Row;
 }
 

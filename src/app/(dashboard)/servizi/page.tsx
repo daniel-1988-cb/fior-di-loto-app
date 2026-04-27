@@ -6,15 +6,7 @@ import { getServices } from "@/lib/actions/services";
 import { formatCurrency } from "@/lib/utils";
 import { LABELS } from "@/lib/constants/italian";
 
-type Service = {
- id: string;
- nome: string;
- categoria: string;
- descrizione: string | null;
- durata: number;
- prezzo: number;
- attivo: boolean;
-};
+type Service = Awaited<ReturnType<typeof getServices>>[number];
 
 const categoriaOrder = ["viso", "corpo", "massaggi", "laser", "spa"];
 
@@ -34,7 +26,7 @@ function getCategoriaStyle(cat: string) {
 }
 
 export default async function ServiziPage() {
- const services = await getServices() as unknown as Service[];
+ const services = await getServices();
 
  // Group by categoria
  const grouped: Record<string, Service[]> = {};

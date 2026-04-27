@@ -124,7 +124,7 @@ export async function createClient(data: {
       segmento: (sanitized.segmento as string) || "nuova",
       fonte: (sanitized.fonte as string) || null,
       note: (sanitized.note as string) || null,
-      tags: sanitized.tags || [],
+      tags: (sanitized.tags || []) as string[],
     })
     .select()
     .single();
@@ -623,6 +623,7 @@ export async function getClientProducts(clientId: string) {
       | null;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- transaction_items join returns transactions as nested object/array; Row normalises the union shape
   const rows = (data || []) as unknown as Row[];
   const agg = new Map<
     string,

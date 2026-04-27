@@ -129,7 +129,8 @@ export async function createStaff(data: Partial<Staff>): Promise<Staff> {
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("staff")
-    .insert(insert)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- insert is built dynamically from validated input; shape matches DB Insert type at runtime
+    .insert(insert as any)
     .select()
     .single();
   if (error) throw error;

@@ -172,7 +172,7 @@ export async function createAppointment(data: {
       service_id: data.serviceId,
       data: data.data,
       ora_inizio: data.oraInizio,
-      ora_fine: data.oraFine || null,
+      ora_fine: data.oraFine || data.oraInizio,
       stato,
       note,
       staff_id: data.staffId || null,

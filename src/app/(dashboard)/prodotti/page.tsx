@@ -6,26 +6,16 @@ import { getProducts } from "@/lib/actions/products";
 import { formatCurrency } from "@/lib/utils";
 import { StockControls } from "@/components/prodotti/stock-controls";
 
-type Product = {
- id: string;
- nome: string;
- categoria: string;
- descrizione: string | null;
- prezzo: number;
- giacenza: number;
- soglia_alert: number;
- attivo: boolean;
- low_stock: boolean;
-};
+type Product = Awaited<ReturnType<typeof getProducts>>[number];
 
 export default async function ProdottiPage() {
- const products = await getProducts() as unknown as Product[];
+ const products = await getProducts();
 
  // Group by categoria
  const grouped: Record<string, Product[]> = {};
  for (const p of products) {
-  if (!grouped[p.categoria]) grouped[p.categoria] = [];
-  grouped[p.categoria].push(p);
+  if (!grouped[p.categoria ?? "altro"]) grouped[p.categoria ?? "altro"] = [];
+  grouped[p.categoria ?? "altro"].push(p);
  }
 
  const categorie = Object.keys(grouped).sort();
@@ -116,7 +106,7 @@ export default async function ProdottiPage() {
             <StockControls
              productId={product.id}
              initialGiacenza={product.giacenza}
-             sogliaAlert={product.soglia_alert}
+             sogliaAlert={product.soglia_alert ?? 5}
             />
             {product.low_stock && (
              <p className="text-xs text-amber-500">

@@ -71,7 +71,7 @@ function PostCard({ post }: { post: SocialPost }) {
 
    {/* Date */}
    <p className="mb-3 text-xs text-muted-foreground">
-    {formatDate(post.data_pubblicazione)}
+    {post.data_pubblicazione ? formatDate(post.data_pubblicazione) : "—"}
    </p>
 
    {/* Actions */}

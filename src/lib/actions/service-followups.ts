@@ -340,6 +340,7 @@ export async function getDueFollowUps(now: Date): Promise<FollowUpJob[]> {
     console.error("[followups] appointments query error:", apptsErr);
     return [];
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- appointments join returns clients/services as nested objects; AppointmentRow normalises the shape
   const appts = (apptsData ?? []) as unknown as AppointmentRow[];
   if (appts.length === 0) return [];
 

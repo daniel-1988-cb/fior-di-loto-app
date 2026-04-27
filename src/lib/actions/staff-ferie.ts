@@ -174,6 +174,7 @@ export async function getAppointmentsInRange(
     clients: { nome?: string; cognome?: string } | Array<{ nome?: string; cognome?: string }> | null;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- appointments join returns clients as nested object; ApptRow normalises the union shape
   return ((data as unknown as ApptRow[]) || []).map((r) => {
     // Supabase ritorna `clients` come array quando la relazione è many-to-one
     // o come singolo oggetto a seconda della configurazione. Gestiamo entrambi.

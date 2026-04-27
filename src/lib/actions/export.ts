@@ -90,11 +90,11 @@ export async function exportProdottiCSV(): Promise<string> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("products")
-    .select("id,nome,descrizione,prezzo,categoria,stock,attivo,created_at")
+    .select("id,nome,descrizione,prezzo,categoria,giacenza,attivo,created_at")
     .order("nome", { ascending: true });
   if (error) throw new Error(`Errore export prodotti: ${error.message}`);
 
-  const headers = ["id","nome","descrizione","prezzo","categoria","stock","attivo","created_at"];
+  const headers = ["id","nome","descrizione","prezzo","categoria","giacenza","attivo","created_at"];
   return buildCSV((data || []) as Record<string, unknown>[], headers);
 }
 

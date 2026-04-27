@@ -407,6 +407,7 @@ export async function getAppointmentsNeedingReviewRequest(): Promise<
       | null;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- appointments join returns clients as nested object/array; Row normalises the union shape
   const rows = data as unknown as Row[];
 
   // Filtra SOLO primo appuntamento completato del cliente. Non spammiamo

@@ -129,17 +129,17 @@ export async function getClientContextForBot(
     .order("data", { ascending: true })
     .limit(3);
 
-  const appointmentsUpcoming = (apptUpcoming ?? [])
+  type ApptUpcomingRow = { data: string; ora_inizio: string; stato: string; services: { nome: string; categoria: string } | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- appointments join returns services as nested object; ApptUpcomingRow normalises the shape
+  const appointmentsUpcoming = ((apptUpcoming ?? []) as unknown as ApptUpcomingRow[])
     .map((a) => {
-      const s = (a as unknown as {
-        services: { nome: string; categoria: string } | null;
-      }).services;
-      const dataFmt = new Date(a.data as string).toLocaleDateString("it-IT", {
+      const s = a.services;
+      const dataFmt = new Date(a.data).toLocaleDateString("it-IT", {
         weekday: "long",
         day: "numeric",
         month: "long",
       });
-      const ora = (a.ora_inizio as string)?.slice(0, 5) ?? "";
+      const ora = a.ora_inizio?.slice(0, 5) ?? "";
       return `- ${dataFmt} alle ${ora} — ${s?.nome ?? "servizio"} (${a.stato})`;
     })
     .join("\n");
@@ -154,10 +154,12 @@ export async function getClientContextForBot(
     .order("data", { ascending: false })
     .limit(5);
 
-  const appointmentsPast = (apptPast ?? [])
+  type ApptPastRow = { data: string; ora_inizio: string; services: { nome: string } | null };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- appointments join returns services as nested object; ApptPastRow normalises the shape
+  const appointmentsPast = ((apptPast ?? []) as unknown as ApptPastRow[])
     .map((a) => {
-      const s = (a as unknown as { services: { nome: string } | null }).services;
-      const dataFmt = new Date(a.data as string).toLocaleDateString("it-IT", {
+      const s = a.services;
+      const dataFmt = new Date(a.data).toLocaleDateString("it-IT", {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -202,16 +204,16 @@ export async function getClientContextForBot(
   //    il crash se viene aggiunta in futuro ma lo schema differisce.
   let programs: string | undefined;
   try {
-    const { data: p } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- client_programs table not in current schema; entire block is future-proofed via try/catch
+    const { data: p } = await (supabase as any)
       .from("client_programs")
       .select("program_id, sedute_totali, sedute_usate, treatment_programs(nome)")
       .eq("client_id", realClientId);
     if (p && p.length > 0) {
-      const rendered = p
-        .map((x) => {
-          const tp = (x as unknown as {
-            treatment_programs: { nome: string } | null;
-          }).treatment_programs;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- p is any[] since table is not in schema
+      const rendered = (p as any[])
+        .map((x: any) => {
+          const tp = (x as { treatment_programs: { nome: string } | null }).treatment_programs;
           const totali = Number(x.sedute_totali ?? 0);
           const usate = Number(x.sedute_usate ?? 0);
           const rimaste = totali - usate;

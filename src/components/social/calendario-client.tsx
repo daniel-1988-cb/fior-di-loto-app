@@ -237,7 +237,7 @@ export function CalendarioClient({ posts }: { posts: SocialPost[] }) {
 
       <h3 className="mb-1 font-semibold text-brown">{selectedPost.titolo}</h3>
       <p className="mb-3 text-xs text-muted-foreground capitalize">
-       {formatDateFull(selectedPost.data_pubblicazione)}
+       {selectedPost.data_pubblicazione ? formatDateFull(selectedPost.data_pubblicazione) : "—"}
       </p>
 
       {selectedPost.caption && (
@@ -253,9 +253,9 @@ export function CalendarioClient({ posts }: { posts: SocialPost[] }) {
        </p>
       )}
 
-      {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
+      {Array.isArray(selectedPost.hashtags) && selectedPost.hashtags.length > 0 && (
        <div className="mt-3 flex flex-wrap gap-1">
-        {selectedPost.hashtags.map((h) => (
+        {(selectedPost.hashtags as string[]).map((h) => (
          <span key={h} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
           #{h}
          </span>

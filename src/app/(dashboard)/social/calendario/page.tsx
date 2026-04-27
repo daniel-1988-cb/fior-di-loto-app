@@ -6,7 +6,7 @@ import { CalendarioClient } from "@/components/social/calendario-client";
 import type { SocialPost } from "@/app/(dashboard)/social/page";
 
 export default async function CalendarioPage() {
- const posts = await getAllSocialPosts() as unknown as SocialPost[];
+ const posts = await getAllSocialPosts();
 
  return (
   <div>
@@ -21,7 +21,7 @@ export default async function CalendarioPage() {
 
    <SocialNav />
 
-   <CalendarioClient posts={posts} />
+   <CalendarioClient posts={posts as SocialPost[]} />
   </div>
  );
 }

@@ -281,7 +281,8 @@ export async function createPricingRule(data: PricingRuleInput): Promise<Pricing
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("dynamic_pricing_rules")
-    .insert(patch)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- patch is built dynamically from validated input; shape matches DB Insert type at runtime
+    .insert(patch as any)
     .select()
     .single();
   if (error) throw error;
@@ -305,7 +306,8 @@ export async function updatePricingRule(
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("dynamic_pricing_rules")
-    .update(patch)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- patch is built dynamically from validated input; shape matches DB Update type at runtime
+    .update(patch as any)
     .eq("id", id)
     .select()
     .single();

@@ -162,9 +162,10 @@ export async function getInventoryMovements(
   const { data: entrateData, error: entrateErr } = await entrateQ;
   if (entrateErr) throw entrateErr;
 
-  const entrate: InventoryMovement[] = (
-    (entrateData as unknown as PoiMovementRow[] | null) || []
-  ).map((r) => {
+  const entrateRows: PoiMovementRow[] =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- purchase_order_items join returns purchase_orders as nested object; PoiMovementRow normalises the shape
+    (entrateData as unknown as PoiMovementRow[] | null) || [];
+  const entrate: InventoryMovement[] = entrateRows.map((r) => {
     const po = pickOne(r.purchase_orders);
     const data = po?.data_consegna_effettiva ?? po?.data_ordine ?? "";
     const ref = po?.numero_ordine ?? r.purchase_order_id.slice(0, 8);
@@ -192,9 +193,10 @@ export async function getInventoryMovements(
   const { data: usciteData, error: usciteErr } = await usciteQ;
   if (usciteErr) throw usciteErr;
 
-  const uscite: InventoryMovement[] = (
-    (usciteData as unknown as TxItemMovementRow[] | null) || []
-  ).map((r) => {
+  const usciteRows: TxItemMovementRow[] =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- transaction_items join returns transactions as nested object; TxItemMovementRow normalises the shape
+    (usciteData as unknown as TxItemMovementRow[] | null) || [];
+  const uscite: InventoryMovement[] = usciteRows.map((r) => {
     const tx = pickOne(r.transactions);
     return {
       id: `tx-${r.id}`,

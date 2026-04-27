@@ -436,6 +436,7 @@ export async function getProductSales(month?: string): Promise<ProductSaleRow[]>
 
   if (error) throw error;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- transaction_items join returns transactions→clients as nested objects; TxItemJoinedRow normalises the shape
   const rows = (data || []) as unknown as TxItemJoinedRow[];
 
   return rows
@@ -496,6 +497,7 @@ export async function getSubscriptionSales(month?: string): Promise<Subscription
 
   if (error) throw error;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- transaction_items join returns transactions→clients as nested objects; TxItemJoinedRow normalises the shape
   const rows = (data || []) as unknown as TxItemJoinedRow[];
 
   // Lookup subscriptions for sedute_totali / nome canonico.

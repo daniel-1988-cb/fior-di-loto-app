@@ -5,6 +5,7 @@ import { Plus, Camera, Globe, Video } from "lucide-react";
 import { getAllSocialPosts } from "@/lib/actions/social";
 import { SocialNav } from "@/components/social/social-nav";
 import { KanbanBoard } from "@/components/social/kanban-board";
+import type { Json } from "@/lib/database.types";
 
 export type SocialPost = {
  id: string;
@@ -12,8 +13,8 @@ export type SocialPost = {
  tipo_contenuto: string;
  titolo: string;
  caption: string | null;
- hashtags: string[] | null;
- data_pubblicazione: string;
+ hashtags: Json | null;
+ data_pubblicazione: string | null;
  stato: string;
  keyword: string | null;
 };
@@ -59,7 +60,7 @@ export function getPiattaformaBadgeStyle(piattaforma: string) {
 }
 
 export default async function SocialPage() {
- const allPosts = await getAllSocialPosts() as unknown as SocialPost[];
+ const allPosts = await getAllSocialPosts();
 
  const bozze = allPosts.filter((p) => p.stato === "bozza");
  const programmati = allPosts.filter((p) => p.stato === "programmato");

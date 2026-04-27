@@ -44,6 +44,7 @@ export default async function GestionalePage({
   getTransactions(currentMonth),
  ]);
 
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any -- getTransactions returns nested clients relation; local Transaction type flattens it
  const recentTransactions = (transactions as unknown as Transaction[]).slice(0, 20);
 
  return (
