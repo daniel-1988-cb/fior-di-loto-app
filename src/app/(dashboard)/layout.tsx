@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import { V2Shell } from "@/components/layout/v2-shell";
 import { AiFab } from "@/components/v2/ai-fab";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { UiProviders } from "@/components/providers/ui-providers";
 import {
   venditeSubNav,
   clientiSubNav,
@@ -35,9 +37,12 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   return (
-    <V2Shell subNav={subNavFor(pathname)} maxWidth={maxWidthFor(pathname)}>
-      {children}
-      <AiFab />
-    </V2Shell>
+    <UiProviders>
+      <V2Shell subNav={subNavFor(pathname)} maxWidth={maxWidthFor(pathname)}>
+        {children}
+        <AiFab />
+      </V2Shell>
+      <MobileBottomNav />
+    </UiProviders>
   );
 }

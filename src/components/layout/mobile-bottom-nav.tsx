@@ -25,7 +25,7 @@ export function MobileBottomNav() {
  if (pathname.startsWith("/agenda")) return null;
 
  return (
-  <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card shadow-lg">
+  <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card shadow-lg">
    <div className="flex items-center justify-around px-2 py-1.5">
     {NAV_ITEMS.map((item) => {
      const isActive =
