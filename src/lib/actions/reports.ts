@@ -74,18 +74,38 @@ export type KpiOverview = {
   topProdotti: Array<{ nome: string; qty: number; fatturato: number }>;
 };
 
+const EMPTY_KPI: KpiOverview = {
+  fatturatoTotale: 0,
+  fatturatoMesePrec: 0,
+  clientiAttivi: 0,
+  nuoviClienti: 0,
+  appuntamentiCompletati: 0,
+  ticketMedio: 0,
+  topServizi: [],
+  topProdotti: [],
+};
+
 export async function getKpiOverview(p: Periodo): Promise<KpiOverview> {
+  try {
+    return await _getKpiOverviewInner(p);
+  } catch (err) {
+    console.error("[reports] getKpiOverview failed:", err);
+    return EMPTY_KPI;
+  }
+}
+
+async function _getKpiOverviewInner(p: Periodo): Promise<KpiOverview> {
   const period = sanitizePeriodo(p);
   const prev = previousEquivalentPeriod(period);
   const supabase = createAdminClient();
 
   const [
-    { data: entrateRows },
-    { data: entratePrevRows },
-    { data: aptCompletRows },
-    { data: nuoviClientiRows },
-    { data: clientiAttiviRows },
-    { data: itemsRows },
+    { data: entrateRows, error: e1 },
+    { data: entratePrevRows, error: e2 },
+    { data: aptCompletRows, error: e3 },
+    { data: nuoviClientiRows, error: e4 },
+    { data: clientiAttiviRows, error: e5 },
+    { data: itemsRows, error: e6 },
   ] = await Promise.all([
     supabase
       .from("transactions")
@@ -124,6 +144,14 @@ export async function getKpiOverview(p: Periodo): Promise<KpiOverview> {
       .gte("transactions.data", period.from)
       .lte("transactions.data", period.to),
   ]);
+
+  // Log query errors but don't throw — render con dati parziali
+  if (e1) console.warn("[reports] entrate query error:", e1);
+  if (e2) console.warn("[reports] entrate prev query error:", e2);
+  if (e3) console.warn("[reports] appt query error:", e3);
+  if (e4) console.warn("[reports] nuovi clienti query error:", e4);
+  if (e5) console.warn("[reports] clienti attivi query error:", e5);
+  if (e6) console.warn("[reports] items query error:", e6);
 
   const fatturatoTotale = (entrateRows || []).reduce(
     (s, r) => s + Number(r.importo || 0),
@@ -209,7 +237,21 @@ export type CashFlow = {
   totale: { entrate: number; uscite: number; netto: number; margine: number };
 };
 
+const EMPTY_CASH_FLOW: CashFlow = {
+  byDay: [],
+  totale: { entrate: 0, uscite: 0, netto: 0, margine: 0 },
+};
+
 export async function getCashFlow(p: Periodo): Promise<CashFlow> {
+  try {
+    return await _getCashFlowInner(p);
+  } catch (err) {
+    console.error("[reports] getCashFlow failed:", err);
+    return EMPTY_CASH_FLOW;
+  }
+}
+
+async function _getCashFlowInner(p: Periodo): Promise<CashFlow> {
   const period = sanitizePeriodo(p);
   const supabase = createAdminClient();
 
@@ -267,6 +309,15 @@ export type CohortRetention = {
 };
 
 export async function getCohortRetention(year: number): Promise<CohortRetention> {
+  try {
+    return await _getCohortRetentionInner(year);
+  } catch (err) {
+    console.error("[reports] getCohortRetention failed:", err);
+    return { cohorts: [] };
+  }
+}
+
+async function _getCohortRetentionInner(year: number): Promise<CohortRetention> {
   const safeYear =
     Number.isFinite(year) && year >= 2020 && year <= 2100 ? Math.floor(year) : new Date().getFullYear();
 
@@ -361,6 +412,15 @@ export type StaffPerformanceRow = {
 };
 
 export async function getStaffPerformance(p: Periodo): Promise<StaffPerformanceRow[]> {
+  try {
+    return await _getStaffPerformanceInner(p);
+  } catch (err) {
+    console.error("[reports] getStaffPerformance failed:", err);
+    return [];
+  }
+}
+
+async function _getStaffPerformanceInner(p: Periodo): Promise<StaffPerformanceRow[]> {
   const period = sanitizePeriodo(p);
   const supabase = createAdminClient();
 
@@ -425,6 +485,15 @@ export type ServicePerformanceRow = {
 };
 
 export async function getServicePerformance(p: Periodo): Promise<ServicePerformanceRow[]> {
+  try {
+    return await _getServicePerformanceInner(p);
+  } catch (err) {
+    console.error("[reports] getServicePerformance failed:", err);
+    return [];
+  }
+}
+
+async function _getServicePerformanceInner(p: Periodo): Promise<ServicePerformanceRow[]> {
   const period = sanitizePeriodo(p);
   const supabase = createAdminClient();
 
