@@ -132,7 +132,11 @@ export function ClientList({
       <div
        key={client.id}
        onClick={() => router.push(`/clienti/${client.id}`)}
-       className="group flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-rose/30 hover:shadow-sm"
+       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/clienti/${client.id}`); } }}
+       role="button"
+       tabIndex={0}
+       aria-label={`Apri scheda cliente ${client.nome} ${client.cognome}`}
+       className="group flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-rose/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/60"
       >
        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose/10">
         <span className="text-lg font-semibold text-rose">

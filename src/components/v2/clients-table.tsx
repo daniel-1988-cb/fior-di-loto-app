@@ -69,11 +69,15 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                 <tr
                   key={c.id}
                   onClick={() => setActive(c)}
-                  className="cursor-pointer transition-colors hover:bg-muted/50"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActive(c); } }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Apri dettagli cliente ${c.nome} ${c.cognome}`}
+                  className="cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <Avatar name={`${c.nome} ${c.cognome}`} size="sm" color="#C97A7A" />
+                      <Avatar name={`${c.nome} ${c.cognome}`} size="sm" color="var(--color-rose)" />
                       <span className="font-medium">
                         {c.nome} {c.cognome}
                       </span>
