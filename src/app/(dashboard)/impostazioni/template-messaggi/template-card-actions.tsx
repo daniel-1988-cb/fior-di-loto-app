@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Power, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { updateTemplate, deleteTemplate } from "@/lib/actions/messages";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 export function TemplateCardActions({
   id,
@@ -17,6 +19,8 @@ export function TemplateCardActions({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function onToggle() {
     startTransition(async () => {
@@ -24,19 +28,25 @@ export function TemplateCardActions({
         await updateTemplate(id, { attivo: !attivo });
         router.refresh();
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Errore aggiornamento");
+        toast.error(err instanceof Error ? err.message : "Errore aggiornamento");
       }
     });
   }
 
-  function onDelete() {
-    if (!confirm(`Eliminare il template "${nome}"? Operazione non reversibile.`)) return;
+  async function onDelete() {
+    const ok = await confirm({
+      title: `Eliminare il template "${nome}"?`,
+      message: "Operazione non reversibile.",
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     startTransition(async () => {
       try {
         await deleteTemplate(id);
         router.refresh();
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Errore eliminazione");
+        toast.error(err instanceof Error ? err.message : "Errore eliminazione");
       }
     });
   }

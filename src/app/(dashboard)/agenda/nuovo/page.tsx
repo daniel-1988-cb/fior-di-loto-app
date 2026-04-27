@@ -11,6 +11,7 @@ import { getActivePricingRules } from "@/lib/actions/dynamic-pricing";
 import { applyRules, type PricingResult } from "@/lib/pricing/apply-rules";
 import type { PricingRule } from "@/lib/types/pricing";
 import { ClientSearchCombobox } from "@/components/clienti/client-search-combobox";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type ServiceOption = { id: string; nome: string; categoria: string; durata: number; prezzo: number };
 
@@ -45,6 +46,7 @@ function NuovoAppuntamentoForm() {
  const [services, setServices] = useState<ServiceOption[]>([]);
  const [staffList, setStaffList] = useState<Staff[]>([]);
  const [pricingRules, setPricingRules] = useState<PricingRule[]>([]);
+ const toast = useToast();
 
  // Read pre-fill values from URL
  const paramData = searchParams.get("data");
@@ -109,8 +111,8 @@ function NuovoAppuntamentoForm() {
 
  async function handleSubmit(e: React.FormEvent) {
   e.preventDefault();
-  if (!formData.clientId) { alert("Seleziona un cliente"); return; }
-  if (!formData.serviceId) { alert("Seleziona un servizio"); return; }
+  if (!formData.clientId) { toast.error("Seleziona un cliente"); return; }
+  if (!formData.serviceId) { toast.error("Seleziona un servizio"); return; }
   setLoading(true);
 
   try {
@@ -126,7 +128,7 @@ function NuovoAppuntamentoForm() {
    router.push(`/agenda?data=${formData.data}`);
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

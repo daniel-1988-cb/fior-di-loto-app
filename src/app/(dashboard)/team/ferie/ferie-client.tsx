@@ -22,6 +22,7 @@ import {
   type FerieStato,
 } from "@/lib/actions/staff-ferie";
 import type { Staff } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const TIPI = ["ferie", "permesso", "malattia", "altro"] as const;
 type Tipo = (typeof TIPI)[number];
@@ -57,6 +58,7 @@ export function FerieClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const toast = useToast();
 
   const staffById = useMemo(
     () => new Map(staff.map((s) => [s.id, s])),
@@ -77,7 +79,7 @@ export function FerieClient({
         await approveFerie(id);
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Errore approvazione");
+        toast.error(e instanceof Error ? e.message : "Errore approvazione");
       } finally {
         setActiveId(null);
       }
@@ -91,7 +93,7 @@ export function FerieClient({
         await rejectFerie(id);
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Errore rifiuto");
+        toast.error(e instanceof Error ? e.message : "Errore rifiuto");
       } finally {
         setActiveId(null);
       }

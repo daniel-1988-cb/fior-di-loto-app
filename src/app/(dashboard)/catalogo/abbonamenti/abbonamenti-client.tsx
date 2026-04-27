@@ -15,6 +15,7 @@ import {
   toggleSubscriptionAttivo,
   type Subscription,
 } from "@/lib/actions/subscriptions";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type ServiceOption = { id: string; nome: string; categoria: string };
 
@@ -64,6 +65,7 @@ export function AbbonamentiClient({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   function openNew() {
     setForm({ ...EMPTY_FORM, serviziInclusi: new Set() });
@@ -150,11 +152,11 @@ export function AbbonamentiClient({
   async function handleDelete(item: CatalogoItem) {
     const res = await deleteSubscription(item.id);
     if (!res.ok && res.error !== "archived") {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     if (res.error === "archived") {
-      alert(
+      toast.info(
         "Questo abbonamento è già stato venduto: archiviato (attivo=false) invece di eliminato."
       );
     }

@@ -9,6 +9,7 @@ import {
 } from "@/components/catalogo/catalogo-list-view";
 import { deleteVoucher } from "@/lib/actions/vouchers";
 import { formatCurrency } from "@/lib/utils";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type Voucher = {
   id: string;
@@ -49,6 +50,7 @@ function toItem(v: Voucher): CatalogoItem {
 
 export function VoucherClient({ vouchers }: { vouchers: Voucher[] }) {
   const router = useRouter();
+  const toast = useToast();
 
   const active = vouchers.filter((v) => !v.usato && !isExpired(v));
   const used = vouchers.filter((v) => v.usato);
@@ -68,7 +70,7 @@ export function VoucherClient({ vouchers }: { vouchers: Voucher[] }) {
       await deleteVoucher(item.id);
       router.refresh();
     } catch (err) {
-      alert(
+      toast.error(
         err instanceof Error
           ? err.message
           : "Impossibile eliminare (voucher già usato?)"

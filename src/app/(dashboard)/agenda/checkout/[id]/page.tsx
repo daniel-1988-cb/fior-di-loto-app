@@ -26,6 +26,7 @@ import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
 import { useCart } from "@/lib/cart/storage";
 import { cartSubtotal, type SplitPaymentRow } from "@/lib/cart/types";
 import { SplitPaymentAllocator } from "@/components/agenda/checkout/split-payment-allocator";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type AppointmentData = {
  id: string;
@@ -89,6 +90,7 @@ function CheckoutForm({ id }: { id: string }) {
  const [loading, setLoading] = useState(true);
  const [saving, setSaving] = useState(false);
  const [completed, setCompleted] = useState(false);
+ const toast = useToast();
 
  const [showSconto, setShowSconto] = useState(false);
  const [scontoTipo, setScontoTipo] = useState<"percentuale" | "importo">("percentuale");
@@ -122,20 +124,16 @@ function CheckoutForm({ id }: { id: string }) {
  }, [id]);
 
  // Se l'appuntamento è già pagato, NON permettere re-pagamento.
- // Torna in agenda al giorno giusto con alert.
  useEffect(() => {
   if (loading || !appointment) return;
   if (appointment.pagato_at) {
-   alert("Questo appuntamento risulta già pagato. Transazione già effettuata.");
+   toast.warning("Questo appuntamento risulta già pagato. Transazione già effettuata.");
    router.replace(`/agenda?date=${appointment.data}`);
   }
- }, [loading, appointment, router]);
+ }, [loading, appointment, router, toast]);
 
  // Se il cart è vuoto (arrivato al pagamento senza passare dal carrello),
- // redirect a /carrello. Skippa se stiamo completando (completed=true) o
- // se l'appuntamento è già pagato (gestito dall'effect sopra) — altrimenti
- // dopo resetCart() post-checkout facciamo un redirect errato a /carrello
- // invece che a /agenda.
+ // redirect a /carrello.
  useEffect(() => {
   if (!cartMounted || loading || saving || completed) return;
   if (appointment?.pagato_at) return;
@@ -144,8 +142,7 @@ function CheckoutForm({ id }: { id: string }) {
   }
  }, [cartMounted, loading, saving, completed, appointment, cart.items.length, id, router]);
 
- // Prezzo base dal cart (subtotale IVA inclusa). Se il cart è vuoto (pre-redirect),
- // fallback al servizio dell'appuntamento per evitare flash di "€ 0,00".
+ // Prezzo base dal cart (subtotale IVA inclusa).
  const prezzoBase =
   cart.items.length > 0
    ? cartSubtotal(cart)
@@ -171,7 +168,7 @@ function CheckoutForm({ id }: { id: string }) {
  const subtotale = totale / (1 + IVA_RATE);
  const imposta = totale - subtotale;
 
- // Split validation: la somma delle righe deve combaciare col totale (± 0.005 €).
+ // Split validation
  const splitRows: SplitPaymentRow[] = cart.splitPayments ?? [];
  const splitSum = Math.round(
   splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0) * 100,
@@ -226,7 +223,7 @@ function CheckoutForm({ id }: { id: string }) {
    });
 
    if (!result.ok) {
-    alert(`Errore pagamento: ${result.error}`);
+    toast.error(`Errore pagamento: ${result.error}`);
     return;
    }
 
@@ -236,11 +233,12 @@ function CheckoutForm({ id }: { id: string }) {
    // Flag che blocca il redirect a /carrello scatenato da resetCart().
    setCompleted(true);
 
-   const giftCodesMsg =
-    result.generatedVoucherCodes.length > 0
-     ? `\n\nCard regalo generate:\n${result.generatedVoucherCodes.join("\n")}\nComunica i codici al cliente.`
-     : "";
-   alert(`Transazione effettuata ✓${giftCodesMsg}`);
+   if (result.generatedVoucherCodes.length > 0) {
+    const codes = result.generatedVoucherCodes.join(", ");
+    toast.success(`Transazione effettuata. Card regalo: ${codes} — comunica i codici al cliente.`, { duration: 12000 });
+   } else {
+    toast.success("Transazione effettuata con successo.");
+   }
 
    resetCart();
    const dest = appointment?.data
@@ -249,7 +247,7 @@ function CheckoutForm({ id }: { id: string }) {
    router.replace(dest);
   } catch (err) {
    console.error("Errore checkout:", err);
-   alert("Errore durante il checkout. Riprova.");
+   toast.error("Errore durante il checkout. Riprova.");
   } finally {
    setSaving(false);
   }

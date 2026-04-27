@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createSocialPost } from "@/lib/actions/social";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const piattaformeOpzioni = [
  { value: "instagram", label: "Instagram" },
@@ -28,6 +29,7 @@ const statiOpzioni = [
 export default function NuovoPostPage() {
  const router = useRouter();
  const [loading, setLoading] = useState(false);
+ const toast = useToast();
  const [formData, setFormData] = useState({
   piattaforma: "instagram",
   tipoContenuto: "reel_hook",
@@ -71,7 +73,7 @@ export default function NuovoPostPage() {
    router.refresh();
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

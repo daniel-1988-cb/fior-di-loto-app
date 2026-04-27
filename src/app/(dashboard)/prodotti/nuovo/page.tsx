@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createProduct } from "@/lib/actions/products";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export default function NuovoProdottoPage() {
  const router = useRouter();
  const [loading, setLoading] = useState(false);
+ const toast = useToast();
  const [formData, setFormData] = useState({
   nome: "",
   categoria: "",
@@ -30,8 +32,8 @@ export default function NuovoProdottoPage() {
   const giacenza = parseInt(formData.giacenza, 10);
   const sogliaAlert = parseInt(formData.sogliaAlert, 10);
 
-  if (isNaN(prezzo) || prezzo < 0) { alert("Inserisci un prezzo valido"); return; }
-  if (!Number.isInteger(giacenza) || giacenza < 0) { alert("Inserisci una giacenza valida"); return; }
+  if (isNaN(prezzo) || prezzo < 0) { toast.error("Inserisci un prezzo valido"); return; }
+  if (!Number.isInteger(giacenza) || giacenza < 0) { toast.error("Inserisci una giacenza valida"); return; }
 
   setLoading(true);
   try {
@@ -47,7 +49,7 @@ export default function NuovoProdottoPage() {
    router.refresh();
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

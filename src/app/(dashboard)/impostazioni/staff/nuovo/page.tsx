@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { createStaff } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const RUOLI = ["operatrice", "titolare", "receptionist", "manager"];
 
 export default function NuovoStaffPage() {
  const router = useRouter();
  const [saving, setSaving] = useState(false);
+ const toast = useToast();
 
  const [formData, setFormData] = useState({
   nome: "",
@@ -27,7 +29,7 @@ export default function NuovoStaffPage() {
 
  async function handleSubmit(e: React.FormEvent) {
   e.preventDefault();
-  if (!formData.nome.trim()) { alert("Il nome è obbligatorio"); return; }
+  if (!formData.nome.trim()) { toast.error("Il nome è obbligatorio"); return; }
   setSaving(true);
   try {
    await createStaff({
@@ -41,7 +43,7 @@ export default function NuovoStaffPage() {
    router.push("/impostazioni");
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setSaving(false);
   }

@@ -15,6 +15,8 @@ import {
 } from "@/components/ui";
 import { updateTemplate, deleteTemplate } from "@/lib/actions/messages";
 import { VALID_CHANNELS } from "@/lib/constants/messages";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const CATEGORIE_SUGGERITE = [
   "reminder",
@@ -56,6 +58,8 @@ export function EditForm({ initial }: { initial: TemplateInitial }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [deletePending, startDelete] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [form, setForm] = useState({
     nome: initial.nome,
     canale: initial.canale,
@@ -104,17 +108,21 @@ export function EditForm({ initial }: { initial: TemplateInitial }) {
     }
   }
 
-  function onDelete() {
-    if (!confirm(`Eliminare il template "${initial.nome}"? Operazione non reversibile.`)) {
-      return;
-    }
+  async function onDelete() {
+    const ok = await confirm({
+      title: `Eliminare il template "${initial.nome}"?`,
+      message: "Operazione non reversibile.",
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     startDelete(async () => {
       try {
         await deleteTemplate(initial.id);
         router.push("/impostazioni/template-messaggi");
         router.refresh();
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Errore eliminazione");
+        toast.error(err instanceof Error ? err.message : "Errore eliminazione");
       }
     });
   }

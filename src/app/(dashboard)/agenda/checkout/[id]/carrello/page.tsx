@@ -26,6 +26,7 @@ import {
 } from "@/components/agenda/checkout/add-items-modal";
 import { CartSidebar } from "@/components/agenda/checkout/cart-sidebar";
 import { QuickSaleTiles } from "@/components/agenda/checkout/quick-sale-tiles";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type AppointmentData = {
  id: string;
@@ -78,6 +79,7 @@ function CarrelloPageInner({ id }: { id: string }) {
  const [pricingRules, setPricingRules] = useState<PricingRule[] | null>(null);
  const [query, setQuery] = useState("");
  const [modalCategory, setModalCategory] = useState<AddItemsCategory | null>(null);
+ const toast = useToast();
 
  const clientId = appointment?.clients?.id ?? null;
  const { cart, mounted, addItem, removeItem, setQuantity } = useCart(
@@ -118,10 +120,10 @@ function CarrelloPageInner({ id }: { id: string }) {
  useEffect(() => {
   if (loading || !appointment) return;
   if (appointment.pagato_at) {
-   alert("Questo appuntamento risulta già pagato. Transazione già effettuata.");
+   toast.warning("Questo appuntamento risulta già pagato. Transazione già effettuata.");
    router.replace(`/agenda?date=${appointment.data}`);
   }
- }, [loading, appointment, router]);
+ }, [loading, appointment, router, toast]);
 
  // Pre-populate cart with appointment service exactly once, only after the
  // cart has mounted (i.e. localStorage has been read), so refresh doesn't dup.

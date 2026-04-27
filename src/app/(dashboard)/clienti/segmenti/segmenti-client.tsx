@@ -14,13 +14,15 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@/components/ui";
-import { Crown, UserX, UserPlus, Users, Sparkles, RefreshCw, Check } from "lucide-react";
+import { Crown, UserX, UserPlus, Users, Sparkles, RefreshCw } from "lucide-react";
 import { formatCurrency, formatPhone } from "@/lib/utils";
 import type { TableRow } from "@/types/database";
 import {
   bulkUpdateSegmento,
   autoClassifyClients,
 } from "@/lib/actions/client-segments";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Client = TableRow<"clients">;
 
@@ -82,7 +84,8 @@ export default function SegmentiClient({ clients, stats }: Props) {
   const [pending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<Segmento>("vip");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const clientsBySeg = useMemo(() => {
     const grouped: Record<Segmento, Client[]> = {
@@ -129,48 +132,40 @@ export default function SegmentiClient({ clients, stats }: Props) {
     setSelected(new Set());
   }
 
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3500);
-  }
-
-  function handleBulkMove(target: Segmento) {
+  async function handleBulkMove(target: Segmento) {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
     const label = SEG_META[target].label;
-    if (
-      !window.confirm(
-        `Sposta ${ids.length} client${ids.length === 1 ? "e" : "i"} al segmento "${label}"?`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Sposta ${ids.length} client${ids.length === 1 ? "e" : "i"} al segmento "${label}"?`,
+      confirmLabel: "Sposta",
+    });
+    if (!ok) return;
     startTransition(async () => {
       const res = await bulkUpdateSegmento(ids, target);
       if (res.errors.length > 0) {
-        showToast(`Errore: ${res.errors.join("; ")}`);
+        toast.error(`Errore: ${res.errors.join("; ")}`);
         return;
       }
-      showToast(`${res.updated} client${res.updated === 1 ? "e" : "i"} aggiornat${res.updated === 1 ? "a" : "i"}.`);
+      toast.success(`${res.updated} client${res.updated === 1 ? "e" : "i"} aggiornat${res.updated === 1 ? "a" : "i"}.`);
       clearSelection();
       router.refresh();
     });
   }
 
-  function handleReclassify() {
-    if (
-      !window.confirm(
-        "Riclassifica TUTTI i clienti secondo le regole automatiche? L'operazione è sicura e reversibile manualmente."
-      )
-    ) {
-      return;
-    }
+  async function handleReclassify() {
+    const ok = await confirm({
+      title: "Riclassifica tutti i clienti?",
+      message: "Riclassifica TUTTI i clienti secondo le regole automatiche. L'operazione è sicura e reversibile manualmente.",
+      confirmLabel: "Riclassifica",
+    });
+    if (!ok) return;
     startTransition(async () => {
       const res = await autoClassifyClients();
       if (res.errors.length > 0) {
-        showToast(`Completato con errori: ${res.changed}/${res.classified} modificati · ${res.errors.join("; ")}`);
+        toast.error(`Completato con errori: ${res.changed}/${res.classified} modificati · ${res.errors.join("; ")}`);
       } else {
-        showToast(
+        toast.success(
           `${res.changed} client${res.changed === 1 ? "e" : "i"} riclassificat${res.changed === 1 ? "a" : "i"} (su ${res.classified}).`
         );
       }
@@ -389,14 +384,6 @@ export default function SegmentiClient({ clients, stats }: Props) {
           >
             Annulla
           </Button>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed right-4 top-20 z-50 flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm shadow-lg">
-          <Check className="h-4 w-4 text-success" />
-          {toast}
         </div>
       )}
     </>

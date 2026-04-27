@@ -7,6 +7,7 @@ import Link from "next/link";
 import { use } from "react";
 import { LABELS } from "@/lib/constants/italian";
 import { getClient, updateClient } from "@/lib/actions/clients";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const segmentiOpzioni = [
  { value: "nuova", label: LABELS.segmenti.nuova },
@@ -34,6 +35,7 @@ export default function ModificaClientePage({
  const router = useRouter();
  const [loading, setLoading] = useState(false);
  const [notFound, setNotFound] = useState(false);
+ const toast = useToast();
  const [formData, setFormData] = useState({
   nome: "",
   cognome: "",
@@ -104,7 +106,7 @@ export default function ModificaClientePage({
    router.refresh();
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

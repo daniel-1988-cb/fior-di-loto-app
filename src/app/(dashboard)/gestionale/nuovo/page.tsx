@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createTransaction } from "@/lib/actions/transactions";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const categorie = {
  entrata: ["servizio", "prodotto", "abbonamento", "altro"],
@@ -14,6 +15,7 @@ const categorie = {
 export default function NuovaTransazionePage() {
  const router = useRouter();
  const [loading, setLoading] = useState(false);
+ const toast = useToast();
  const [formData, setFormData] = useState({
   tipo: "entrata",
   categoria: "",
@@ -39,7 +41,7 @@ export default function NuovaTransazionePage() {
   e.preventDefault();
   const importoNum = parseFloat(formData.importo);
   if (isNaN(importoNum) || importoNum <= 0) {
-   alert("Inserisci un importo valido");
+   toast.error("Inserisci un importo valido");
    return;
   }
   setLoading(true);
@@ -57,7 +59,7 @@ export default function NuovaTransazionePage() {
    router.refresh();
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }
@@ -87,7 +89,6 @@ export default function NuovaTransazionePage() {
     <div className="rounded-xl border border-border bg-card p-6 ">
      <h2 className="mb-4 font-semibold text-brown">Dettagli Transazione</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {/* Tipo */}
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Tipo *</label>
        <div className="flex gap-3">
@@ -109,13 +110,11 @@ export default function NuovaTransazionePage() {
        </div>
       </div>
 
-      {/* Data */}
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Data *</label>
        <input type="date" name="data" value={formData.data} onChange={handleChange} required className={inputClass} />
       </div>
 
-      {/* Categoria */}
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Categoria *</label>
        <select name="categoria" value={formData.categoria} onChange={handleChange} required className={inputClass}>
@@ -126,7 +125,6 @@ export default function NuovaTransazionePage() {
        </select>
       </div>
 
-      {/* Metodo pagamento */}
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Metodo Pagamento</label>
        <select name="metodoPagamento" value={formData.metodoPagamento} onChange={handleChange} className={inputClass}>
@@ -138,7 +136,6 @@ export default function NuovaTransazionePage() {
        </select>
       </div>
 
-      {/* Descrizione */}
       <div className="sm:col-span-2">
        <label className="mb-1 block text-sm font-medium text-brown">Descrizione *</label>
        <input
@@ -152,7 +149,6 @@ export default function NuovaTransazionePage() {
        />
       </div>
 
-      {/* Importo */}
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Importo (€) *</label>
        <input

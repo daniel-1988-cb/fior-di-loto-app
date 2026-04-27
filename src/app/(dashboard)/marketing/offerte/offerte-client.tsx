@@ -20,6 +20,8 @@ import {
   type Offer,
 } from "@/lib/actions/offers";
 import { type TipoSconto } from "@/lib/constants/offers";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const SEGMENTI = ["lead", "nuova", "lotina", "inattiva", "vip"] as const;
 
@@ -58,6 +60,8 @@ export function OfferteClient({ offers }: { offers: Offer[] }) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function openNew() {
     setForm({ ...EMPTY, segmentiApplicabili: new Set() });
@@ -87,14 +91,19 @@ export function OfferteClient({ offers }: { offers: Offer[] }) {
   }
 
   async function handleDelete(o: Offer) {
-    if (!confirm(`Elimina l'offerta "${o.codice}"?`)) return;
+    const ok = await confirm({
+      title: `Eliminare "${o.codice}"?`,
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const res = await deleteOffer(o.id);
     if (!res.ok && res.error !== "archived") {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     if (res.error === "archived")
-      alert("Offerta già usata: archiviata (attivo=false).");
+      toast.info("Offerta già usata: archiviata (attivo=false).");
     router.refresh();
   }
 

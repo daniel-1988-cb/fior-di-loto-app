@@ -8,6 +8,7 @@ import { createVoucher } from "@/lib/actions/vouchers";
 import { getClients } from "@/lib/actions/clients";
 import { getServices } from "@/lib/actions/services";
 import { getProducts } from "@/lib/actions/products";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type ClientOption = { id: string; nome: string; cognome: string };
 type ServiceOption = { id: string; nome: string; prezzo: number };
@@ -24,6 +25,7 @@ function NuovoVoucherForm() {
  const [products, setProducts] = useState<ProductOption[]>([]);
  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
  const [copied, setCopied] = useState(false);
+ const toast = useToast();
 
  const [tipo, setTipo] = useState<"importo" | "servizio" | "prodotto">("importo");
  const [valore, setValore] = useState("");
@@ -52,7 +54,6 @@ function NuovoVoucherForm() {
   load();
  }, []);
 
- // Auto-fill valore when service/product selected
  useEffect(() => {
   if (tipo === "servizio" && serviceId) {
    const svc = services.find((s) => s.id === serviceId);
@@ -71,15 +72,15 @@ function NuovoVoucherForm() {
   e.preventDefault();
   const valoreParsed = parseFloat(valore);
   if (!valore || isNaN(valoreParsed) || valoreParsed <= 0) {
-   alert("Inserisci un valore valido");
+   toast.error("Inserisci un valore valido");
    return;
   }
   if (tipo === "servizio" && !serviceId) {
-   alert("Seleziona un servizio");
+   toast.error("Seleziona un servizio");
    return;
   }
   if (tipo === "prodotto" && !productId) {
-   alert("Seleziona un prodotto");
+   toast.error("Seleziona un prodotto");
    return;
   }
 
@@ -98,7 +99,7 @@ function NuovoVoucherForm() {
    setGeneratedCode((result as { codice: string }).codice);
   } catch (err) {
    console.error(err);
-   alert("Errore durante la creazione del voucher. Riprova.");
+   toast.error("Errore durante la creazione del voucher. Riprova.");
   } finally {
    setLoading(false);
   }
@@ -184,7 +185,6 @@ function NuovoVoucherForm() {
    </div>
 
    <form onSubmit={handleSubmit} className="space-y-6">
-    {/* Tipo voucher */}
     <div className="rounded-lg border border-border bg-card p-5">
      <h2 className="mb-4 font-semibold text-brown">Tipo Voucher</h2>
      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -210,7 +210,6 @@ function NuovoVoucherForm() {
       ))}
      </div>
 
-     {/* Valore / selezione */}
      <div className="mt-4">
       {tipo === "importo" && (
        <div>
@@ -231,31 +230,16 @@ function NuovoVoucherForm() {
        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
          <label className="mb-1 block text-sm font-medium text-brown">Servizio *</label>
-         <select
-          value={serviceId}
-          onChange={(e) => setServiceId(e.target.value)}
-          required
-          className={inputClass}
-         >
+         <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} required className={inputClass}>
           <option value="">Seleziona servizio...</option>
           {services.map((s) => (
-           <option key={s.id} value={s.id}>
-            {s.nome} — €{Number(s.prezzo).toFixed(2)}
-           </option>
+           <option key={s.id} value={s.id}>{s.nome} — €{Number(s.prezzo).toFixed(2)}</option>
           ))}
          </select>
         </div>
         <div>
          <label className="mb-1 block text-sm font-medium text-brown">Valore (€) *</label>
-         <input
-          type="number"
-          min="0.01"
-          step="0.01"
-          value={valore}
-          onChange={(e) => setValore(e.target.value)}
-          required
-          className={inputClass}
-         />
+         <input type="number" min="0.01" step="0.01" value={valore} onChange={(e) => setValore(e.target.value)} required className={inputClass} />
         </div>
        </div>
       )}
@@ -263,112 +247,67 @@ function NuovoVoucherForm() {
        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
          <label className="mb-1 block text-sm font-medium text-brown">Prodotto *</label>
-         <select
-          value={productId}
-          onChange={(e) => setProductId(e.target.value)}
-          required
-          className={inputClass}
-         >
+         <select value={productId} onChange={(e) => setProductId(e.target.value)} required className={inputClass}>
           <option value="">Seleziona prodotto...</option>
           {products.map((p) => (
-           <option key={p.id} value={p.id}>
-            {p.nome} — €{Number(p.prezzo).toFixed(2)}
-           </option>
+           <option key={p.id} value={p.id}>{p.nome} — €{Number(p.prezzo).toFixed(2)}</option>
           ))}
          </select>
         </div>
         <div>
          <label className="mb-1 block text-sm font-medium text-brown">Valore (€) *</label>
-         <input
-          type="number"
-          min="0.01"
-          step="0.01"
-          value={valore}
-          onChange={(e) => setValore(e.target.value)}
-          required
-          className={inputClass}
-         />
+         <input type="number" min="0.01" step="0.01" value={valore} onChange={(e) => setValore(e.target.value)} required className={inputClass} />
         </div>
        </div>
       )}
      </div>
     </div>
 
-    {/* Persone */}
     <div className="rounded-lg border border-border bg-card p-5">
      <h2 className="mb-4 font-semibold text-brown">Persone (opzionale)</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Destinatario</label>
-       <select
-        value={destinatarioId}
-        onChange={(e) => setDestinatarioId(e.target.value)}
-        className={inputClass}
-       >
+       <select value={destinatarioId} onChange={(e) => setDestinatarioId(e.target.value)} className={inputClass}>
         <option value="">Nessun destinatario</option>
         {clients.map((c) => (
-         <option key={c.id} value={c.id}>
-          {c.nome} {c.cognome}
-         </option>
+         <option key={c.id} value={c.id}>{c.nome} {c.cognome}</option>
         ))}
        </select>
       </div>
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Acquistato da</label>
-       <select
-        value={acquistatoDaId}
-        onChange={(e) => setAcquistatoDaId(e.target.value)}
-        className={inputClass}
-       >
+       <select value={acquistatoDaId} onChange={(e) => setAcquistatoDaId(e.target.value)} className={inputClass}>
         <option value="">Nessuno</option>
         {clients.map((c) => (
-         <option key={c.id} value={c.id}>
-          {c.nome} {c.cognome}
-         </option>
+         <option key={c.id} value={c.id}>{c.nome} {c.cognome}</option>
         ))}
        </select>
       </div>
      </div>
     </div>
 
-    {/* Dettagli */}
     <div className="rounded-lg border border-border bg-card p-5">
      <h2 className="mb-4 font-semibold text-brown">Dettagli</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Data Scadenza</label>
-       <input
-        type="date"
-        value={dataScadenza}
-        onChange={(e) => setDataScadenza(e.target.value)}
-        className={inputClass}
-       />
+       <input type="date" value={dataScadenza} onChange={(e) => setDataScadenza(e.target.value)} className={inputClass} />
       </div>
       <div>
        <label className="mb-1 block text-sm font-medium text-brown">Descrizione / Note</label>
-       <input
-        type="text"
-        value={descrizione}
-        onChange={(e) => setDescrizione(e.target.value)}
-        placeholder="Note opzionali..."
-        className={inputClass}
-       />
+       <input type="text" value={descrizione} onChange={(e) => setDescrizione(e.target.value)} placeholder="Note opzionali..." className={inputClass} />
       </div>
      </div>
     </div>
 
     <div className="flex gap-3">
-     <button
-      type="submit"
-      disabled={loading}
-      className="inline-flex items-center gap-2 rounded-lg bg-rose px-6 py-2.5 text-sm font-medium text-white hover:bg-rose-dark disabled:opacity-50"
-     >
+     <button type="submit" disabled={loading}
+      className="inline-flex items-center gap-2 rounded-lg bg-rose px-6 py-2.5 text-sm font-medium text-white hover:bg-rose-dark disabled:opacity-50">
       {loading ? "Generazione..." : "Genera Voucher"}
      </button>
-     <Link
-      href="/gestionale/voucher"
-      className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-medium text-brown hover:bg-cream-dark"
-     >
+     <Link href="/gestionale/voucher"
+      className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-medium text-brown hover:bg-cream-dark">
       Annulla
      </Link>
     </div>

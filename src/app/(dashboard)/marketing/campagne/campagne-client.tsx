@@ -32,6 +32,8 @@ import {
   type Campaign,
 } from "@/lib/actions/campaigns";
 import { type CampaignStato } from "@/lib/constants/campaigns";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const SEGMENT_LABELS: Record<string, string> = {
   "": "Tutti i clienti",
@@ -66,12 +68,19 @@ export function CampagneClient({ campaigns }: { campaigns: Campaign[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   async function handleDelete(c: Campaign) {
-    if (!confirm(`Elimina la campagna "${c.nome}"?`)) return;
+    const ok = await confirm({
+      title: `Eliminare "${c.nome}"?`,
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const res = await deleteCampaign(c.id);
     if (!res.ok) {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     router.refresh();
@@ -79,23 +88,21 @@ export function CampagneClient({ campaigns }: { campaigns: Campaign[] }) {
 
   async function handleSendNow(c: Campaign) {
     if (c.stato === "in_invio" || c.stato === "inviata") return;
-    if (
-      !confirm(
-        `Invia subito la campagna "${c.nome}"? Verrà spedita a tutti i clienti del segmento "${
-          SEGMENT_LABELS[c.segmentoTarget ?? ""]
-        }".`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `Inviare "${c.nome}" adesso?`,
+      message: `Verrà spedita a tutti i clienti del segmento "${SEGMENT_LABELS[c.segmentoTarget ?? ""]}"`,
+      confirmLabel: "Invia ora",
+    });
+    if (!ok) return;
     setSendingId(c.id);
     try {
       const s = await sendCampaignNow(c.id);
-      alert(
+      toast.success(
         `Invio completato: ${s.sent} inviati, ${s.failed} falliti, ${s.skipped} skippati.`
       );
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Errore invio");
+      toast.error(e instanceof Error ? e.message : "Errore invio");
     } finally {
       setSendingId(null);
     }

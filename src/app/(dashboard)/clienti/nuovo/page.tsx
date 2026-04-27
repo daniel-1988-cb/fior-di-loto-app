@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { LABELS } from "@/lib/constants/italian";
 import { createClient } from "@/lib/actions/clients";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const segmentiOpzioni = [
  { value: "nuova", label: LABELS.segmenti.nuova },
@@ -26,6 +27,7 @@ const fontiOpzioni = [
 export default function NuovoClientePage() {
  const router = useRouter();
  const [loading, setLoading] = useState(false);
+ const toast = useToast();
  const [formData, setFormData] = useState({
   nome: "",
   cognome: "",
@@ -72,7 +74,7 @@ export default function NuovoClientePage() {
    router.refresh();
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

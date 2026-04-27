@@ -13,6 +13,7 @@ import {
   updateService,
   deleteService,
 } from "@/lib/actions/services";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type Service = {
   id: string;
@@ -65,6 +66,7 @@ export function ServiziClient({ services }: { services: Service[] }) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   function openNew() {
     setForm(EMPTY_FORM);
@@ -130,7 +132,7 @@ export function ServiziClient({ services }: { services: Service[] }) {
       await deleteService(item.id);
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Errore eliminazione");
+      toast.error(err instanceof Error ? err.message : "Errore eliminazione");
     }
   }
 

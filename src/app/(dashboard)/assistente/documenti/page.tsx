@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, FileText, AlertCircle, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { getDocuments, createDocument, deleteDocument } from "@/lib/actions/ai-assistant";
 import Link from "next/link";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Doc = {
  id: string;
@@ -42,6 +44,8 @@ export default function DocumentiPage() {
  const [saving, setSaving] = useState(false);
  const [error, setError] = useState("");
  const [expandedId, setExpandedId] = useState<string | null>(null);
+ const toast = useToast();
+ const confirm = useConfirm();
 
  const [nome, setNome] = useState("");
  const [descrizione, setDescrizione] = useState("");
@@ -84,12 +88,17 @@ export default function DocumentiPage() {
  }
 
  async function handleDelete(id: string, docNome: string) {
-  if (!confirm(`Eliminare "${docNome}"?`)) return;
+  const ok = await confirm({
+   title: `Eliminare "${docNome}"?`,
+   confirmLabel: "Elimina",
+   variant: "destructive",
+  });
+  if (!ok) return;
   try {
    await deleteDocument(id);
    setDocs((prev) => prev.filter((d) => d.id !== id));
   } catch (e) {
-   setError(e instanceof Error ? e.message : "Errore eliminazione");
+   toast.error(e instanceof Error ? e.message : "Errore eliminazione");
   }
  }
 
@@ -108,7 +117,6 @@ export default function DocumentiPage() {
 
  return (
   <div>
-   {/* Header */}
    <div className="mb-6">
     <Link
      href="/assistente"
@@ -151,7 +159,6 @@ export default function DocumentiPage() {
     </div>
    )}
 
-   {/* New document form */}
    {showForm && (
     <div className="mb-6 rounded-xl border border-rose/30 bg-rose/5 p-5 ">
      <h2 className="mb-4 font-semibold text-brown">Nuovo Documento</h2>
@@ -213,7 +220,6 @@ export default function DocumentiPage() {
     </div>
    )}
 
-   {/* Documents list */}
    {loading ? (
     <div className="flex items-center justify-center py-20 text-muted-foreground">
      <span className="h-6 w-6 animate-spin rounded-full border-2 border-rose/30 border-t-rose" />

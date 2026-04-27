@@ -7,6 +7,7 @@ import { ArrowLeft, Save, Pencil, BookOpen, Plane, Coffee, MoreHorizontal } from
 import type { LucideIcon } from "lucide-react";
 import { createBlockedSlot, type BlockedSlotTipo } from "@/lib/actions/blocked-slots";
 import { getStaff, type Staff } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type TipoPreset = {
  id: BlockedSlotTipo;
@@ -43,6 +44,7 @@ function BloccaForm() {
  const searchParams = useSearchParams();
  const [loading, setLoading] = useState(false);
  const [staffList, setStaffList] = useState<Staff[]>([]);
+ const toast = useToast();
 
  const paramData = searchParams.get("data");
  const paramOra = searchParams.get("ora");
@@ -78,7 +80,7 @@ function BloccaForm() {
  async function handleSubmit(e: React.FormEvent) {
   e.preventDefault();
   if (oraFine <= oraInizio) {
-   alert("Ora fine deve essere dopo ora inizio");
+   toast.error("Ora fine deve essere dopo ora inizio");
    return;
   }
   setLoading(true);
@@ -95,11 +97,11 @@ function BloccaForm() {
    if (res.ok) {
     router.push(`/agenda?date=${data}`);
    } else {
-    alert(`Errore: ${res.error}`);
+    toast.error(`Errore: ${res.error}`);
    }
   } catch (err) {
    console.error(err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

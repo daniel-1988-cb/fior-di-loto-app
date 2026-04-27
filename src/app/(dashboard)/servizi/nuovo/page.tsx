@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { createService } from "@/lib/actions/services";
 import { LABELS } from "@/lib/constants/italian";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const categorieOpzioni = [
  { value: "viso", label: LABELS.categorie.viso },
@@ -18,6 +19,7 @@ const categorieOpzioni = [
 export default function NuovoServizioPage() {
  const router = useRouter();
  const [loading, setLoading] = useState(false);
+ const toast = useToast();
  const [formData, setFormData] = useState({
   nome: "",
   categoria: "viso",
@@ -38,11 +40,11 @@ export default function NuovoServizioPage() {
   const prezzo = parseFloat(formData.prezzo);
 
   if (!Number.isInteger(durata) || durata <= 0) {
-   alert("Inserisci una durata valida in minuti");
+   toast.error("Inserisci una durata valida in minuti");
    return;
   }
   if (isNaN(prezzo) || prezzo <= 0) {
-   alert("Inserisci un prezzo valido");
+   toast.error("Inserisci un prezzo valido");
    return;
   }
 
@@ -59,7 +61,7 @@ export default function NuovoServizioPage() {
    router.refresh();
   } catch (err) {
    console.error("Errore salvataggio:", err);
-   alert("Errore durante il salvataggio. Riprova.");
+   toast.error("Errore durante il salvataggio. Riprova.");
   } finally {
    setLoading(false);
   }

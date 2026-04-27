@@ -20,6 +20,8 @@ import {
   type Automation,
 } from "@/lib/actions/marketing-automations";
 import { type TriggerTipo } from "@/lib/constants/marketing-automations";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const TRIGGER_LABELS: Record<TriggerTipo, { label: string; icon: React.ComponentType<{ className?: string }>; desc: string; hasDays: boolean; daysLabel: string }> = {
   inattivita_giorni: {
@@ -74,6 +76,8 @@ export function AutomaticiClient({ automations }: { automations: Automation[] })
   const [form, setForm] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function openNew() {
     setForm(EMPTY);
@@ -104,10 +108,15 @@ export function AutomaticiClient({ automations }: { automations: Automation[] })
   }
 
   async function handleDelete(a: Automation) {
-    if (!confirm(`Elimina l'automazione "${a.nome}"?`)) return;
+    const ok = await confirm({
+      title: `Eliminare "${a.nome}"?`,
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     const res = await deleteAutomation(a.id);
     if (!res.ok) {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     router.refresh();

@@ -14,6 +14,7 @@ import {
   updateProduct,
   updateGiacenza,
 } from "@/lib/actions/products";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type Product = {
   id: string;
@@ -75,6 +76,7 @@ export function ProdottiClient({ products }: { products: Product[] }) {
   const [giacenzaPendingId, setGiacenzaPendingId] = useState<string | null>(
     null
   );
+  const toast = useToast();
 
   const lowStockCount = products.filter(
     (p) => p.attivo && p.giacenza <= (p.soglia_alert ?? 5)
@@ -151,7 +153,7 @@ export function ProdottiClient({ products }: { products: Product[] }) {
       await updateGiacenza(id, delta);
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Errore aggiornamento");
+      toast.error(err instanceof Error ? err.message : "Errore aggiornamento");
     } finally {
       setGiacenzaPendingId(null);
     }
