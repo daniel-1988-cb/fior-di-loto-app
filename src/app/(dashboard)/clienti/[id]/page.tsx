@@ -41,27 +41,7 @@ import { DocumentiTab } from "@/components/clienti/documenti-tab";
 import { PortafoglioTab } from "@/components/clienti/portafoglio-tab";
 import { ProfileHeaderActions } from "@/components/clienti/profile-header-actions";
 
-function getSegmentoStyle(segmento: string) {
-  switch (segmento) {
-    case "lotina": return "bg-gold/20 text-gold-dark";
-    case "vip": return "bg-rose/20 text-rose-dark";
-    case "nuova": return "bg-success/20 text-success";
-    case "lead": return "bg-info/20 text-info";
-    case "inattiva": return "bg-muted text-muted-foreground";
-    default: return "bg-muted text-muted-foreground";
-  }
-}
-
-function getSegmentoLabel(segmento: string) {
-  switch (segmento) {
-    case "lotina": return "Lotina";
-    case "vip": return "VIP";
-    case "nuova": return "Nuova";
-    case "lead": return "Lead";
-    case "inattiva": return "Inattiva";
-    default: return segmento;
-  }
-}
+import { getSegmentoStyle, getSegmentoLabel } from "@/lib/clienti/segmenti";
 
 export default async function ClienteDetailPage({
   params,
