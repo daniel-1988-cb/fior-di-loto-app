@@ -181,8 +181,9 @@ function NuovoAppuntamentoForm() {
      <h2 className="mb-4 font-semibold text-brown">Cliente e Servizio</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Cliente *</label>
+       <label htmlFor="nuovo-appt-cliente" className="mb-1 block text-sm font-medium text-brown">Cliente *</label>
        <ClientSearchCombobox
+        inputId="nuovo-appt-cliente"
         name="clientId"
         required
         value={formData.clientId || null}
@@ -192,8 +193,8 @@ function NuovoAppuntamentoForm() {
        />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Servizio *</label>
-       <select name="serviceId" value={formData.serviceId} onChange={handleServiceChange} required className={inputClass}>
+       <label htmlFor="nuovo-appt-servizio" className="mb-1 block text-sm font-medium text-brown">Servizio *</label>
+       <select id="nuovo-appt-servizio" name="serviceId" value={formData.serviceId} onChange={handleServiceChange} required className={inputClass}>
         <option value="">Seleziona servizio...</option>
         {Object.entries(servicesByCategoria).map(([cat, svcs]) => (
          <optgroup key={cat} label={cat.charAt(0).toUpperCase() + cat.slice(1)}>
@@ -232,7 +233,7 @@ function NuovoAppuntamentoForm() {
 
      {/* Operatrice */}
      <div className="mt-4">
-      <label className="mb-1 block text-sm font-medium text-brown">Operatrice</label>
+      <label htmlFor="nuovo-appt-staff" className="mb-1 block text-sm font-medium text-brown">Operatrice</label>
       <div className="flex items-center gap-2">
        {selectedStaff && (
         <div
@@ -240,7 +241,7 @@ function NuovoAppuntamentoForm() {
          style={{ backgroundColor: selectedStaff.colore }}
         />
        )}
-       <select name="staffId" value={formData.staffId} onChange={handleChange} className={inputClass}>
+       <select id="nuovo-appt-staff" name="staffId" value={formData.staffId} onChange={handleChange} className={inputClass}>
         <option value="">— Nessuna operatrice —</option>
         {staffList.map((s) => (
          <option key={s.id} value={s.id}>
@@ -256,23 +257,25 @@ function NuovoAppuntamentoForm() {
      <h2 className="mb-4 font-semibold text-brown">Data e Ora</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Data *</label>
-       <input type="date" name="data" value={formData.data} onChange={handleChange} required className={inputClass} />
+       <label htmlFor="nuovo-appt-data" className="mb-1 block text-sm font-medium text-brown">Data *</label>
+       <input id="nuovo-appt-data" type="date" name="data" value={formData.data} onChange={handleChange} required className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Ora Inizio *</label>
-       <input type="time" name="oraInizio" value={formData.oraInizio} onChange={handleChange} step={1800} required className={inputClass} />
+       <label htmlFor="nuovo-appt-ora-inizio" className="mb-1 block text-sm font-medium text-brown">Ora Inizio *</label>
+       <input id="nuovo-appt-ora-inizio" type="time" name="oraInizio" value={formData.oraInizio} onChange={handleChange} step={1800} required className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Ora Fine</label>
-       <input type="time" name="oraFine" value={formData.oraFine} onChange={handleChange} step={1800} className={inputClass} />
+       <label htmlFor="nuovo-appt-ora-fine" className="mb-1 block text-sm font-medium text-brown">Ora Fine</label>
+       <input id="nuovo-appt-ora-fine" type="time" name="oraFine" value={formData.oraFine} onChange={handleChange} step={1800} className={inputClass} />
       </div>
      </div>
     </div>
 
     <div className="rounded-xl border border-border bg-card p-6 ">
      <h2 className="mb-4 font-semibold text-brown">Note</h2>
+     <label htmlFor="nuovo-appt-note" className="mb-1 block text-sm font-medium text-brown">Note</label>
      <textarea
+      id="nuovo-appt-note"
       name="note"
       value={formData.note}
       onChange={handleChange}

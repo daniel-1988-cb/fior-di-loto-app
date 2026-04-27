@@ -12,6 +12,8 @@ type Props = {
  required?: boolean;
  /** Nome campo form (per a11y / autofill). */
  name?: string;
+ /** id dell'input interno — usato da <label htmlFor>. */
+ inputId?: string;
 };
 
 const DEBOUNCE_MS = 200;
@@ -28,6 +30,7 @@ export function ClientSearchCombobox({
  placeholder = "Cerca cliente per nome, cognome, telefono o email...",
  required,
  name,
+ inputId,
 }: Props) {
  const [open, setOpen] = useState(false);
  const [query, setQuery] = useState("");
@@ -159,6 +162,7 @@ export function ClientSearchCombobox({
     <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
     <input
      ref={inputRef}
+     id={inputId}
      type="text"
      value={open ? query : displayLabel}
      onChange={(e) => setQuery(e.target.value)}

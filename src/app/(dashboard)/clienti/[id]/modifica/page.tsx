@@ -146,10 +146,11 @@ export default function ModificaClientePage({
      <h2 className="mb-4 font-semibold text-brown">Dati Personali</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-nome" className="mb-1 block text-sm font-medium text-brown">
         {LABELS.clienti.nome} *
        </label>
        <input
+        id="modifica-cliente-nome"
         type="text"
         name="nome"
         value={formData.nome}
@@ -159,10 +160,11 @@ export default function ModificaClientePage({
        />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-cognome" className="mb-1 block text-sm font-medium text-brown">
         {LABELS.clienti.cognome} *
        </label>
        <input
+        id="modifica-cliente-cognome"
         type="text"
         name="cognome"
         value={formData.cognome}
@@ -172,10 +174,11 @@ export default function ModificaClientePage({
        />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-telefono" className="mb-1 block text-sm font-medium text-brown">
         {LABELS.clienti.telefono}
        </label>
        <input
+        id="modifica-cliente-telefono"
         type="tel"
         name="telefono"
         value={formData.telefono}
@@ -185,10 +188,11 @@ export default function ModificaClientePage({
        />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-email" className="mb-1 block text-sm font-medium text-brown">
         {LABELS.clienti.email}
        </label>
        <input
+        id="modifica-cliente-email"
         type="email"
         name="email"
         value={formData.email}
@@ -198,10 +202,11 @@ export default function ModificaClientePage({
        />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-datanascita" className="mb-1 block text-sm font-medium text-brown">
         {LABELS.clienti.dataNascita}
        </label>
        <input
+        id="modifica-cliente-datanascita"
         type="date"
         name="dataNascita"
         value={formData.dataNascita}
@@ -210,8 +215,9 @@ export default function ModificaClientePage({
        />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Indirizzo</label>
+       <label htmlFor="modifica-cliente-indirizzo" className="mb-1 block text-sm font-medium text-brown">Indirizzo</label>
        <input
+        id="modifica-cliente-indirizzo"
         type="text"
         name="indirizzo"
         value={formData.indirizzo}
@@ -227,10 +233,11 @@ export default function ModificaClientePage({
      <h2 className="mb-4 font-semibold text-brown">Classificazione</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-segmento" className="mb-1 block text-sm font-medium text-brown">
         {LABELS.clienti.segmento}
        </label>
        <select
+        id="modifica-cliente-segmento"
         name="segmento"
         value={formData.segmento}
         onChange={handleChange}
@@ -244,10 +251,11 @@ export default function ModificaClientePage({
        </select>
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-fonte" className="mb-1 block text-sm font-medium text-brown">
         Come ci ha conosciuto
        </label>
        <select
+        id="modifica-cliente-fonte"
         name="fonte"
         value={formData.fonte}
         onChange={handleChange}
@@ -262,10 +270,11 @@ export default function ModificaClientePage({
        </select>
       </div>
       <div className="sm:col-span-2">
-       <label className="mb-1 block text-sm font-medium text-brown">
+       <label htmlFor="modifica-cliente-tags" className="mb-1 block text-sm font-medium text-brown">
         Tag (separati da virgola)
        </label>
        <input
+        id="modifica-cliente-tags"
         type="text"
         name="tags"
         value={formData.tags}
@@ -279,7 +288,9 @@ export default function ModificaClientePage({
 
     <div className="rounded-xl border border-border bg-card p-6 ">
      <h2 className="mb-4 font-semibold text-brown">Note</h2>
+     <label htmlFor="modifica-cliente-note" className="mb-1 block text-sm font-medium text-brown">Note</label>
      <textarea
+      id="modifica-cliente-note"
       name="note"
       value={formData.note}
       onChange={handleChange}

@@ -99,28 +99,28 @@ export default function NuovoClientePage() {
      <h2 className="mb-4 font-semibold text-brown">Dati Personali</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.nome} *</label>
-       <input type="text" name="nome" value={formData.nome} onChange={handleChange} required className={inputClass} />
+       <label htmlFor="nuovo-cliente-nome" className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.nome} *</label>
+       <input id="nuovo-cliente-nome" type="text" name="nome" value={formData.nome} onChange={handleChange} required className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.cognome} *</label>
-       <input type="text" name="cognome" value={formData.cognome} onChange={handleChange} required className={inputClass} />
+       <label htmlFor="nuovo-cliente-cognome" className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.cognome} *</label>
+       <input id="nuovo-cliente-cognome" type="text" name="cognome" value={formData.cognome} onChange={handleChange} required className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.telefono}</label>
-       <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="333 123 4567" className={inputClass} />
+       <label htmlFor="nuovo-cliente-telefono" className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.telefono}</label>
+       <input id="nuovo-cliente-telefono" type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="333 123 4567" className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.email}</label>
-       <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="email@esempio.it" className={inputClass} />
+       <label htmlFor="nuovo-cliente-email" className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.email}</label>
+       <input id="nuovo-cliente-email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="email@esempio.it" className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.dataNascita}</label>
-       <input type="date" name="dataNascita" value={formData.dataNascita} onChange={handleChange} className={inputClass} />
+       <label htmlFor="nuovo-cliente-datanascita" className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.dataNascita}</label>
+       <input id="nuovo-cliente-datanascita" type="date" name="dataNascita" value={formData.dataNascita} onChange={handleChange} className={inputClass} />
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Indirizzo</label>
-       <input type="text" name="indirizzo" value={formData.indirizzo} onChange={handleChange} placeholder="Via Roma 1, Campobasso" className={inputClass} />
+       <label htmlFor="nuovo-cliente-indirizzo" className="mb-1 block text-sm font-medium text-brown">Indirizzo</label>
+       <input id="nuovo-cliente-indirizzo" type="text" name="indirizzo" value={formData.indirizzo} onChange={handleChange} placeholder="Via Roma 1, Campobasso" className={inputClass} />
       </div>
      </div>
     </div>
@@ -129,16 +129,16 @@ export default function NuovoClientePage() {
      <h2 className="mb-4 font-semibold text-brown">Classificazione</h2>
      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.segmento}</label>
-       <select name="segmento" value={formData.segmento} onChange={handleChange} className={inputClass}>
+       <label htmlFor="nuovo-cliente-segmento" className="mb-1 block text-sm font-medium text-brown">{LABELS.clienti.segmento}</label>
+       <select id="nuovo-cliente-segmento" name="segmento" value={formData.segmento} onChange={handleChange} className={inputClass}>
         {segmentiOpzioni.map((opt) => (
          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
        </select>
       </div>
       <div>
-       <label className="mb-1 block text-sm font-medium text-brown">Come ci ha conosciuto</label>
-       <select name="fonte" value={formData.fonte} onChange={handleChange} className={inputClass}>
+       <label htmlFor="nuovo-cliente-fonte" className="mb-1 block text-sm font-medium text-brown">Come ci ha conosciuto</label>
+       <select id="nuovo-cliente-fonte" name="fonte" value={formData.fonte} onChange={handleChange} className={inputClass}>
         <option value="">Seleziona...</option>
         {fontiOpzioni.map((opt) => (
          <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -146,15 +146,16 @@ export default function NuovoClientePage() {
        </select>
       </div>
       <div className="sm:col-span-2">
-       <label className="mb-1 block text-sm font-medium text-brown">Tag (separati da virgola)</label>
-       <input type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="Metodo Rinascita, Viso, Corpo..." className={inputClass} />
+       <label htmlFor="nuovo-cliente-tags" className="mb-1 block text-sm font-medium text-brown">Tag (separati da virgola)</label>
+       <input id="nuovo-cliente-tags" type="text" name="tags" value={formData.tags} onChange={handleChange} placeholder="Metodo Rinascita, Viso, Corpo..." className={inputClass} />
       </div>
      </div>
     </div>
 
     <div className="rounded-xl border border-border bg-card p-6 ">
      <h2 className="mb-4 font-semibold text-brown">Note</h2>
-     <textarea name="note" value={formData.note} onChange={handleChange} rows={4} placeholder="Note sul cliente, preferenze, allergie..." className={inputClass} />
+     <label htmlFor="nuovo-cliente-note" className="mb-1 block text-sm font-medium text-brown">Note</label>
+     <textarea id="nuovo-cliente-note" name="note" value={formData.note} onChange={handleChange} rows={4} placeholder="Note sul cliente, preferenze, allergie..." className={inputClass} />
     </div>
 
     <div className="flex gap-3">
