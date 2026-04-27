@@ -19,11 +19,9 @@ export default async function OrariImpostazioniPage() {
           <ArrowLeft className="h-4 w-4" />
           Indietro
         </Link>
-        <div className="flex items-center gap-2">
-          <div className="rounded-full bg-gradient-to-br from-primary to-secondary p-2 text-white">
-            <CalendarCog className="h-5 w-5" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Orari di apertura</h1>
+        <div className="flex items-center gap-3">
+          <CalendarCog className="h-6 w-6 text-rose" />
+          <h1 className="font-display text-3xl">Orari di apertura</h1>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Imposta gli orari standard del centro.
