@@ -114,4 +114,12 @@ export const reportsSubNav: SubNavGroup[] = [
       { href: "/reports/clienti", label: "Clienti" },
     ],
   },
+  {
+    title: "Approfondimenti",
+    items: [
+      { href: "/reports/cash-flow", label: "Cash flow" },
+      { href: "/reports/cohort", label: "Retention cohort" },
+      { href: "/reports/rendimento", label: "Rendimento" },
+    ],
+  },
 ];
