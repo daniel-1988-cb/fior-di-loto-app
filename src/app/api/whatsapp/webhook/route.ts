@@ -10,7 +10,19 @@ import {
 } from "@/lib/bot/whatsapp-meta";
 import { detectIntent } from "@/lib/bot/intent";
 import { generateReply } from "@/lib/bot/llm";
-import { createBookingRequest, BOOKING_ACK_REPLY } from "@/lib/bot/booking";
+import {
+  createBookingRequest,
+  createChangeRequest,
+  BOOKING_ACK_REPLY,
+  RESCHEDULE_ACK_REPLY,
+  RESCHEDULE_GENERIC_REPLY,
+  CANCEL_ACK_REPLY,
+} from "@/lib/bot/booking";
+import {
+  checkSlotAvailable,
+  getAvailableSlotsAroundDate,
+} from "@/lib/bot/slot-availability";
+import { parseDateTimeFromText } from "@/lib/bot/slot-time-utils";
 import { aggregateClaimedRows } from "@/lib/bot/message-buffer";
 import { getActiveBotDocuments } from "@/lib/actions/wa-bot-documents";
 import {
@@ -256,6 +268,120 @@ async function processPayload(rawBody: string): Promise<void> {
         });
       } catch (e) {
         console.error("[wa webhook] booking ack send failed", e);
+      }
+      continue;
+    }
+
+    if (intent === "reschedule_request" || intent === "cancel_request") {
+      // CRITICO: questi intent NON devono MAI passare a Gemini. Il bot non ha
+      // accesso scrittura sull'agenda; rispondiamo SOLO con testo hardcoded e
+      // parcheggiamo la richiesta in coda revisione per Laura.
+      // (Vedi anche REGOLA 3 nel system prompt + hallucination guard più sotto.)
+      const rawNome = existingReal?.nome?.trim() ?? "";
+      const clientName =
+        rawNome && rawNome.toLowerCase() !== "nuovo" ? rawNome : undefined;
+
+      // Cerca l'appuntamento futuro più imminente del cliente (può anche essere
+      // null — nel qual caso il bot non sa quale appt il cliente vuole spostare
+      // e la richiesta finisce in coda con appointment_id_ref=null. Laura
+      // identifica a mano).
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: futureAppts } = await supabase
+        .from("appointments")
+        .select("id, data, ora_inizio, ora_fine, service_id, staff_id, services(durata)")
+        .eq("client_id", clientId)
+        .eq("stato", "confermato")
+        .gte("data", today)
+        .order("data", { ascending: true })
+        .order("ora_inizio", { ascending: true })
+        .limit(1);
+      const targetAppt = (futureAppts && futureAppts[0]) || null;
+
+      let reply: string;
+      try {
+        if (intent === "cancel_request") {
+          await createChangeRequest(supabase, {
+            clientId,
+            tipo: "cancellazione",
+            appointmentIdRef: targetAppt?.id ?? null,
+            testoRichiesta: msg.text ?? "",
+            clientName,
+            fromPhone: msg.fromPhone,
+          });
+          reply = CANCEL_ACK_REPLY;
+        } else {
+          // reschedule_request
+          const proposedIso = parseDateTimeFromText(msg.text ?? "");
+          let proposedAlternatives: string[] = [];
+          let finalProposedDate: string | null = proposedIso;
+
+          if (proposedIso && targetAppt && targetAppt.staff_id) {
+            const services = targetAppt.services as { durata?: number } | null;
+            const dur = services?.durata ?? 60;
+            const avail = await checkSlotAvailable({
+              staffId: targetAppt.staff_id as string,
+              startDateTime: proposedIso,
+              durataMinuti: dur,
+            });
+            if (!avail.available) {
+              const alts = await getAvailableSlotsAroundDate({
+                staffId: targetAppt.staff_id as string,
+                preferredDateTime: proposedIso,
+                durataMinuti: dur,
+                searchRangeDays: 3,
+                maxResults: 3,
+              });
+              proposedAlternatives = alts.map((s) => s.startDateTime);
+              if (alts.length > 0) {
+                const list = alts.map((s) => s.humanLabel).join(", ");
+                reply = `Quell'orario non è disponibile. Sono libere queste fasce: ${list}. Quale preferisci? Laura conferma a breve 🌸`;
+              } else {
+                reply = RESCHEDULE_GENERIC_REPLY;
+              }
+            } else {
+              reply = RESCHEDULE_ACK_REPLY;
+            }
+          } else if (proposedIso) {
+            // Datetime estratto ma niente appt futuro/staff → reply ack standard
+            reply = RESCHEDULE_ACK_REPLY;
+          } else {
+            // Nessun datetime parsabile → reply generico, Laura concorda offline
+            finalProposedDate = null;
+            reply = RESCHEDULE_GENERIC_REPLY;
+          }
+
+          await createChangeRequest(supabase, {
+            clientId,
+            tipo: "spostamento",
+            appointmentIdRef: targetAppt?.id ?? null,
+            testoRichiesta: msg.text ?? "",
+            proposedDateTime: finalProposedDate,
+            proposedAlternatives,
+            clientName,
+            fromPhone: msg.fromPhone,
+          });
+        }
+      } catch (e) {
+        console.error("[wa webhook] change request insert failed", e);
+        // Anche in caso di errore DB rispondiamo SEMPRE con testo hardcoded:
+        // mai lasciare il cliente senza risposta, mai chiamare Gemini qui.
+        reply =
+          intent === "cancel_request" ? CANCEL_ACK_REPLY : RESCHEDULE_GENERIC_REPLY;
+      }
+
+      try {
+        const ackId = await sendMessage(msg.fromPhone, reply, {
+          phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID!,
+          accessToken: process.env.META_WA_ACCESS_TOKEN!,
+        });
+        await supabase.from("wa_conversations").insert({
+          client_id: clientId,
+          role: "assistant",
+          content: reply,
+          meta_message_id: ackId,
+        });
+      } catch (e) {
+        console.error("[wa webhook] change ack send failed", e);
       }
       continue;
     }
