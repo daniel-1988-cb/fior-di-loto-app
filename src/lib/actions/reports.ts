@@ -513,3 +513,517 @@ async function _getServicePerformanceInner(p: Periodo): Promise<ServicePerforman
     }))
     .sort((a, b) => b.fatturato - a.fatturato);
 }
+
+// ============================================
+// getDashboardOverview
+// ============================================
+
+export type DashboardOverview = {
+  pagamentiBreakdown: Array<{ metodo: string; importo: number; count: number }>;
+  appOperativi: {
+    totali: number;
+    completati: number;
+    cancellati: number;
+    noShow: number;
+    confermati: number;
+    mediaPerGiorno: number;
+  };
+};
+
+const EMPTY_DASHBOARD_OVERVIEW: DashboardOverview = {
+  pagamentiBreakdown: [],
+  appOperativi: {
+    totali: 0,
+    completati: 0,
+    cancellati: 0,
+    noShow: 0,
+    confermati: 0,
+    mediaPerGiorno: 0,
+  },
+};
+
+export async function getDashboardOverview(p: Periodo): Promise<DashboardOverview> {
+  return safeReportAction(
+    "getDashboardOverview",
+    () => _getDashboardOverviewInner(p),
+    EMPTY_DASHBOARD_OVERVIEW,
+  );
+}
+
+async function _getDashboardOverviewInner(p: Periodo): Promise<DashboardOverview> {
+  const period = sanitizePeriodo(p);
+  const supabase = createAdminClient();
+
+  const [{ data: transRows }, { data: aptRows }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("metodo_pagamento, importo")
+      .eq("tipo", "entrata")
+      .gte("data", period.from)
+      .lte("data", period.to),
+    supabase
+      .from("appointments")
+      .select("stato")
+      .gte("data", period.from)
+      .lte("data", period.to),
+  ]);
+
+  // --- Pagamenti breakdown ---
+  const metodoMap = new Map<string, { importo: number; count: number }>();
+  for (const r of transRows || []) {
+    const key = r.metodo_pagamento || "altro";
+    if (!metodoMap.has(key)) metodoMap.set(key, { importo: 0, count: 0 });
+    const e = metodoMap.get(key)!;
+    e.importo += Number(r.importo || 0);
+    e.count += 1;
+  }
+  const pagamentiBreakdown = Array.from(metodoMap.entries())
+    .map(([metodo, v]) => ({ metodo, importo: v.importo, count: v.count }))
+    .sort((a, b) => b.importo - a.importo);
+
+  // --- Appuntamenti operativi ---
+  let totali = 0;
+  let completati = 0;
+  let cancellati = 0;
+  let noShow = 0;
+  let confermati = 0;
+  for (const r of aptRows || []) {
+    totali += 1;
+    if (r.stato === "completato") completati += 1;
+    else if (r.stato === "cancellato") cancellati += 1;
+    else if (r.stato === "no_show") noShow += 1;
+    else if (r.stato === "confermato") confermati += 1;
+  }
+
+  const giorni = Math.max(1, daysBetween(period.from, period.to) + 1);
+  const mediaPerGiorno = Math.round((totali / giorni) * 10) / 10;
+
+  return {
+    pagamentiBreakdown,
+    appOperativi: { totali, completati, cancellati, noShow, confermati, mediaPerGiorno },
+  };
+}
+
+// ============================================
+// getClientReport
+// ============================================
+
+export type ClientReport = {
+  clientiAttivi: number;
+  nuoviClienti: number;
+  retentionRate: number; // 0..1
+  ltv_medio: number;
+  segmenti: Array<{ segmento: string; count: number }>;
+  topLtv: Array<{
+    clientId: string;
+    nome: string;
+    cognome: string;
+    segmento: string;
+    visite: number;
+    spesa: number;
+    ultimaVisita: string | null;
+  }>;
+  spesaDistribution: Array<{ bin: string; count: number }>;
+};
+
+const EMPTY_CLIENT_REPORT: ClientReport = {
+  clientiAttivi: 0,
+  nuoviClienti: 0,
+  retentionRate: 0,
+  ltv_medio: 0,
+  segmenti: [],
+  topLtv: [],
+  spesaDistribution: [],
+};
+
+export async function getClientReport(p: Periodo): Promise<ClientReport> {
+  return safeReportAction("getClientReport", () => _getClientReportInner(p), EMPTY_CLIENT_REPORT);
+}
+
+async function _getClientReportInner(p: Periodo): Promise<ClientReport> {
+  const period = sanitizePeriodo(p);
+  const supabase = createAdminClient();
+
+  // Previous month (same length as period) for retention calculation
+  const prev = previousEquivalentPeriod(period);
+
+  const [
+    { data: transRows, error: e1 },
+    { data: nuoviRows, error: e2 },
+    { data: prevTransRows, error: e3 },
+    { data: segmentoRows, error: e4 },
+    { data: aptRows, error: e5 },
+  ] = await Promise.all([
+    // All entrate in period: client_id + importo + data
+    supabase
+      .from("transactions")
+      .select("client_id, importo, data")
+      .eq("tipo", "entrata")
+      .not("client_id", "is", null)
+      .gte("data", period.from)
+      .lte("data", period.to),
+    // New clients in period
+    supabase
+      .from("clients")
+      .select("id")
+      .gte("created_at", `${period.from}T00:00:00`)
+      .lte("created_at", `${period.to}T23:59:59`),
+    // Clients with a purchase in the previous equivalent period (for retention)
+    supabase
+      .from("transactions")
+      .select("client_id")
+      .eq("tipo", "entrata")
+      .not("client_id", "is", null)
+      .gte("data", prev.from)
+      .lte("data", prev.to),
+    // All clients for segmento distribution
+    supabase.from("clients").select("id, segmento, nome, cognome"),
+    // Completed appointments in period: client_id + data
+    supabase
+      .from("appointments")
+      .select("client_id, data")
+      .eq("stato", "completato")
+      .not("client_id", "is", null)
+      .gte("data", period.from)
+      .lte("data", period.to),
+  ]);
+
+  if (e1) console.warn("[reports] getClientReport transRows:", e1);
+  if (e2) console.warn("[reports] getClientReport nuoviRows:", e2);
+  if (e3) console.warn("[reports] getClientReport prevTransRows:", e3);
+  if (e4) console.warn("[reports] getClientReport segmentoRows:", e4);
+  if (e5) console.warn("[reports] getClientReport aptRows:", e5);
+
+  // ---- Clienti attivi (union di chi ha speso o prenotato nel periodo) ----
+  const attiviSet = new Set<string>();
+  for (const r of transRows || []) {
+    if (r.client_id) attiviSet.add(String(r.client_id));
+  }
+  for (const r of aptRows || []) {
+    if (r.client_id) attiviSet.add(String(r.client_id));
+  }
+  const clientiAttivi = attiviSet.size;
+
+  // ---- Nuovi clienti ----
+  const nuoviClienti = (nuoviRows || []).length;
+
+  // ---- Retention rate ----
+  // clienti presenti nel periodo precedente che sono tornati nel periodo corrente
+  const prevSet = new Set<string>();
+  for (const r of prevTransRows || []) {
+    if (r.client_id) prevSet.add(String(r.client_id));
+  }
+  let tornati = 0;
+  for (const cid of prevSet) {
+    if (attiviSet.has(cid)) tornati++;
+  }
+  const retentionRate = prevSet.size > 0 ? tornati / prevSet.size : 0;
+
+  // ---- Segmenti distribution ----
+  const segmentoMap = new Map<string, number>();
+  for (const r of segmentoRows || []) {
+    const seg = (r.segmento as string) || "nuova";
+    segmentoMap.set(seg, (segmentoMap.get(seg) ?? 0) + 1);
+  }
+  const segmenti = Array.from(segmentoMap.entries())
+    .map(([segmento, count]) => ({ segmento, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // ---- LTV per cliente (spesa totale nel periodo) ----
+  type LtvEntry = { spesa: number; ultimaVisita: string | null; visite: number };
+  const ltvMap = new Map<string, LtvEntry>();
+
+  for (const r of transRows || []) {
+    const cid = String(r.client_id);
+    if (!ltvMap.has(cid)) ltvMap.set(cid, { spesa: 0, ultimaVisita: null, visite: 0 });
+    const e = ltvMap.get(cid)!;
+    e.spesa += Number(r.importo || 0);
+    const d = String(r.data).slice(0, 10);
+    if (!e.ultimaVisita || d > e.ultimaVisita) e.ultimaVisita = d;
+  }
+  // Count visite from completed appointments
+  for (const r of aptRows || []) {
+    const cid = String(r.client_id);
+    if (!ltvMap.has(cid)) ltvMap.set(cid, { spesa: 0, ultimaVisita: null, visite: 0 });
+    const e = ltvMap.get(cid)!;
+    e.visite += 1;
+    const d = String(r.data).slice(0, 10);
+    if (!e.ultimaVisita || d > e.ultimaVisita) e.ultimaVisita = d;
+  }
+
+  // Build client lookup from segmentoRows
+  const clientMap = new Map<string, { nome: string; cognome: string; segmento: string }>();
+  for (const r of segmentoRows || []) {
+    clientMap.set(String(r.id), {
+      nome: (r.nome as string) || "",
+      cognome: (r.cognome as string) || "",
+      segmento: (r.segmento as string) || "nuova",
+    });
+  }
+
+  // Top 10 by spesa
+  const topLtv = Array.from(ltvMap.entries())
+    .map(([clientId, e]) => {
+      const info = clientMap.get(clientId);
+      return {
+        clientId,
+        nome: info?.nome || "—",
+        cognome: info?.cognome || "",
+        segmento: info?.segmento || "nuova",
+        visite: e.visite,
+        spesa: e.spesa,
+        ultimaVisita: e.ultimaVisita,
+      };
+    })
+    .sort((a, b) => b.spesa - a.spesa)
+    .slice(0, 10);
+
+  // ---- LTV medio ----
+  const totalSpesa = Array.from(ltvMap.values()).reduce((s, e) => s + e.spesa, 0);
+  const ltv_medio = ltvMap.size > 0 ? totalSpesa / ltvMap.size : 0;
+
+  // ---- Spesa distribution (bins) ----
+  const bins = [
+    { bin: "0–50€", min: 0, max: 50 },
+    { bin: "50–200€", min: 50, max: 200 },
+    { bin: "200–500€", min: 200, max: 500 },
+    { bin: "500€+", min: 500, max: Infinity },
+  ];
+  const spesaDistribution = bins.map(({ bin, min, max }) => ({
+    bin,
+    count: Array.from(ltvMap.values()).filter((e) => e.spesa >= min && e.spesa < max).length,
+  }));
+
+  return {
+    clientiAttivi,
+    nuoviClienti,
+    retentionRate,
+    ltv_medio,
+    segmenti,
+    topLtv,
+    spesaDistribution,
+  };
+}
+
+// ============================================
+// getSalesReport (Wave 4 — /reports/vendite)
+// ============================================
+
+export type SalesReport = {
+  fatturatoTotale: number;
+  transazioni: number;
+  ticketMedio: number;
+  scontoTotale: number;
+  topClienti: Array<{
+    clientId: string;
+    nome: string;
+    cognome: string;
+    visite: number;
+    spesa: number;
+    ticketMedio: number;
+  }>;
+  byKind: Array<{ kind: string; count: number; fatturato: number; pct: number }>;
+  byDay: Array<{ data: string; fatturato: number }>;
+};
+
+const EMPTY_SALES_REPORT: SalesReport = {
+  fatturatoTotale: 0,
+  transazioni: 0,
+  ticketMedio: 0,
+  scontoTotale: 0,
+  topClienti: [],
+  byKind: [],
+  byDay: [],
+};
+
+export async function getSalesReport(p: Periodo): Promise<SalesReport> {
+  return safeReportAction("getSalesReport", () => _getSalesReportInner(p), EMPTY_SALES_REPORT);
+}
+
+async function _getSalesReportInner(p: Periodo): Promise<SalesReport> {
+  const period = sanitizePeriodo(p);
+  const supabase = createAdminClient();
+
+  const [
+    { data: txRows, error: e1 },
+    { data: itemRows, error: e2 },
+    { data: clientRows, error: e3 },
+  ] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id, importo, client_id, data")
+      .eq("tipo", "entrata")
+      .gte("data", period.from)
+      .lte("data", period.to),
+    supabase
+      .from("transaction_items")
+      .select("kind, quantity, unit_price, transactions!inner(id, tipo)")
+      .eq("transactions.tipo", "entrata")
+      .gte("transactions.data", period.from)
+      .lte("transactions.data", period.to),
+    supabase.from("clients").select("id, nome, cognome"),
+  ]);
+
+  if (e1) console.warn("[reports] sales tx error:", e1);
+  if (e2) console.warn("[reports] sales items error:", e2);
+  if (e3) console.warn("[reports] sales clients error:", e3);
+
+  const clientMap = new Map<string, { nome: string; cognome: string }>();
+  for (const c of clientRows || []) {
+    clientMap.set(String(c.id), { nome: c.nome || "", cognome: c.cognome || "" });
+  }
+
+  const fatturatoTotale = (txRows || []).reduce((s, r) => s + Number(r.importo || 0), 0);
+  const transazioni = (txRows || []).length;
+  const ticketMedio = transazioni > 0 ? fatturatoTotale / transazioni : 0;
+  const scontoTotale = 0; // colonna sconto non presente nello schema transactions
+
+  // Build daily trend from txRows
+  const byDayMap = new Map<string, number>();
+  const start = new Date(period.from + "T00:00:00");
+  const end = new Date(period.to + "T00:00:00");
+  for (let d = new Date(start); d.getTime() <= end.getTime(); d = addDays(d, 1)) {
+    byDayMap.set(ymd(d), 0);
+  }
+  for (const r of txRows || []) {
+    const day = String(r.data).slice(0, 10);
+    byDayMap.set(day, (byDayMap.get(day) ?? 0) + Number(r.importo || 0));
+  }
+  const byDay = Array.from(byDayMap.entries())
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([data, fatturato]) => ({ data, fatturato: Math.round(fatturato) }));
+
+  // Top 10 clienti per spesa
+  type ClientAgg = { spesa: number; visite: number };
+  const clientAgg = new Map<string, ClientAgg>();
+  for (const r of txRows || []) {
+    if (!r.client_id) continue;
+    const cid = String(r.client_id);
+    if (!clientAgg.has(cid)) clientAgg.set(cid, { spesa: 0, visite: 0 });
+    const a = clientAgg.get(cid)!;
+    a.spesa += Number(r.importo || 0);
+    a.visite += 1;
+  }
+  const topClienti = Array.from(clientAgg.entries())
+    .sort(([, a], [, b]) => b.spesa - a.spesa)
+    .slice(0, 10)
+    .map(([cid, a]) => {
+      const info = clientMap.get(cid) ?? { nome: "—", cognome: "" };
+      return {
+        clientId: cid,
+        nome: info.nome,
+        cognome: info.cognome,
+        visite: a.visite,
+        spesa: a.spesa,
+        ticketMedio: a.visite > 0 ? a.spesa / a.visite : 0,
+      };
+    });
+
+  // Breakdown by kind from transaction_items
+  type KindAgg = { count: number; fatturato: number };
+  const kindMap = new Map<string, KindAgg>();
+  type ItemRow = {
+    kind?: string | null;
+    quantity?: number | null;
+    unit_price?: number | string | null;
+  };
+  for (const r of (itemRows || []) as ItemRow[]) {
+    const kind = r.kind || "altro";
+    if (!kindMap.has(kind)) kindMap.set(kind, { count: 0, fatturato: 0 });
+    const a = kindMap.get(kind)!;
+    const qty = Number(r.quantity || 0);
+    a.count += qty;
+    a.fatturato += qty * Number(r.unit_price || 0);
+  }
+  const kindTotal = Array.from(kindMap.values()).reduce((s, a) => s + a.fatturato, 0);
+  const byKind = Array.from(kindMap.entries())
+    .map(([kind, a]) => ({
+      kind,
+      count: a.count,
+      fatturato: a.fatturato,
+      pct: kindTotal > 0 ? (a.fatturato / kindTotal) * 100 : 0,
+    }))
+    .sort((a, b) => b.fatturato - a.fatturato);
+
+  return { fatturatoTotale, transazioni, ticketMedio, scontoTotale, topClienti, byKind, byDay };
+}
+
+// ============================================
+// getTeamHoursReport (Wave 4 — /reports/team)
+// ============================================
+
+export type TeamHoursRow = {
+  staffId: string;
+  nome: string;
+  giorniFerie: number;
+  oreLavorate: number;
+};
+
+export type TeamHoursReport = TeamHoursRow[];
+
+export async function getTeamHoursReport(p: Periodo): Promise<TeamHoursReport> {
+  return safeReportAction("getTeamHoursReport", () => _getTeamHoursReportInner(p), []);
+}
+
+async function _getTeamHoursReportInner(p: Periodo): Promise<TeamHoursReport> {
+  const period = sanitizePeriodo(p);
+  const supabase = createAdminClient();
+
+  const [{ data: staffRows }, { data: ferieRows }, { data: presenzeRows }] = await Promise.all([
+    supabase.from("staff").select("id, nome, cognome"),
+    supabase
+      .from("staff_ferie")
+      .select("staff_id, data_inizio, data_fine, stato")
+      .in("stato", ["approved", "pending"]),
+    supabase
+      .from("staff_presenze")
+      .select("staff_id, clock_in, clock_out")
+      .gte("data", period.from)
+      .lte("data", period.to)
+      .not("clock_out", "is", null),
+  ]);
+
+  const staffMap = new Map<string, { nome: string }>();
+  for (const s of staffRows || []) {
+    staffMap.set(String(s.id), {
+      nome: `${s.nome ?? ""} ${s.cognome ?? ""}`.trim() || "—",
+    });
+  }
+
+  // Count ferie days per staff overlapping with period
+  const ferieAgg = new Map<string, number>();
+  for (const f of ferieRows || []) {
+    if (f.data_fine < period.from || f.data_inizio > period.to) continue;
+    const sid = String(f.staff_id);
+    const clampedStart = f.data_inizio > period.from ? f.data_inizio : period.from;
+    const clampedEnd = f.data_fine < period.to ? f.data_fine : period.to;
+    if (clampedStart > clampedEnd) continue;
+    const ms =
+      new Date(clampedEnd + "T00:00:00").getTime() -
+      new Date(clampedStart + "T00:00:00").getTime();
+    const days = Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
+    ferieAgg.set(sid, (ferieAgg.get(sid) ?? 0) + days);
+  }
+
+  // Sum ore lavorate per staff
+  const oreAgg = new Map<string, number>();
+  for (const pr of presenzeRows || []) {
+    const sid = String(pr.staff_id);
+    if (pr.clock_out) {
+      const ms = new Date(pr.clock_out).getTime() - new Date(pr.clock_in).getTime();
+      if (ms > 0) oreAgg.set(sid, (oreAgg.get(sid) ?? 0) + ms / (1000 * 60 * 60));
+    }
+  }
+
+  const result: TeamHoursReport = Array.from(staffMap.entries())
+    .filter(([sid]) => ferieAgg.has(sid) || oreAgg.has(sid))
+    .map(([sid, info]) => ({
+      staffId: sid,
+      nome: info.nome,
+      giorniFerie: ferieAgg.get(sid) ?? 0,
+      oreLavorate: Math.round((oreAgg.get(sid) ?? 0) * 100) / 100,
+    }))
+    .sort((a, b) => b.oreLavorate - a.oreLavorate);
+
+  return result;
+}
