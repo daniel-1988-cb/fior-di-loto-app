@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidDate } from "@/lib/security/validate";
+import { safeReportAction } from "@/lib/reports/safe-action";
 
 // ============================================
 // Fase 5 — Reports & Analytics
@@ -86,12 +87,7 @@ const EMPTY_KPI: KpiOverview = {
 };
 
 export async function getKpiOverview(p: Periodo): Promise<KpiOverview> {
-  try {
-    return await _getKpiOverviewInner(p);
-  } catch (err) {
-    console.error("[reports] getKpiOverview failed:", err);
-    return EMPTY_KPI;
-  }
+  return safeReportAction("getKpiOverview", () => _getKpiOverviewInner(p), EMPTY_KPI);
 }
 
 async function _getKpiOverviewInner(p: Periodo): Promise<KpiOverview> {
@@ -243,12 +239,7 @@ const EMPTY_CASH_FLOW: CashFlow = {
 };
 
 export async function getCashFlow(p: Periodo): Promise<CashFlow> {
-  try {
-    return await _getCashFlowInner(p);
-  } catch (err) {
-    console.error("[reports] getCashFlow failed:", err);
-    return EMPTY_CASH_FLOW;
-  }
+  return safeReportAction("getCashFlow", () => _getCashFlowInner(p), EMPTY_CASH_FLOW);
 }
 
 async function _getCashFlowInner(p: Periodo): Promise<CashFlow> {
@@ -309,12 +300,7 @@ export type CohortRetention = {
 };
 
 export async function getCohortRetention(year: number): Promise<CohortRetention> {
-  try {
-    return await _getCohortRetentionInner(year);
-  } catch (err) {
-    console.error("[reports] getCohortRetention failed:", err);
-    return { cohorts: [] };
-  }
+  return safeReportAction("getCohortRetention", () => _getCohortRetentionInner(year), { cohorts: [] });
 }
 
 async function _getCohortRetentionInner(year: number): Promise<CohortRetention> {
@@ -412,12 +398,7 @@ export type StaffPerformanceRow = {
 };
 
 export async function getStaffPerformance(p: Periodo): Promise<StaffPerformanceRow[]> {
-  try {
-    return await _getStaffPerformanceInner(p);
-  } catch (err) {
-    console.error("[reports] getStaffPerformance failed:", err);
-    return [];
-  }
+  return safeReportAction("getStaffPerformance", () => _getStaffPerformanceInner(p), []);
 }
 
 async function _getStaffPerformanceInner(p: Periodo): Promise<StaffPerformanceRow[]> {
@@ -485,12 +466,7 @@ export type ServicePerformanceRow = {
 };
 
 export async function getServicePerformance(p: Periodo): Promise<ServicePerformanceRow[]> {
-  try {
-    return await _getServicePerformanceInner(p);
-  } catch (err) {
-    console.error("[reports] getServicePerformance failed:", err);
-    return [];
-  }
+  return safeReportAction("getServicePerformance", () => _getServicePerformanceInner(p), []);
 }
 
 async function _getServicePerformanceInner(p: Periodo): Promise<ServicePerformanceRow[]> {
