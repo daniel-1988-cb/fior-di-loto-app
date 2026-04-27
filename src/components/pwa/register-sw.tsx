@@ -9,6 +9,9 @@ import { Smartphone, X } from "lucide-react";
  * Android). Su iOS Safari il prompt API non esiste: mostriamo un hint
  * con istruzioni manuali ("Condividi → Aggiungi a Home Screen") solo se
  * rileviamo iOS + non in standalone.
+ *
+ * Il dismiss viene persistito in localStorage ("pwa_banner_dismissed")
+ * su tutte le piattaforme: Android, iOS, desktop.
  */
 export function RegisterSW() {
  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -18,6 +21,12 @@ export function RegisterSW() {
  useEffect(() => {
   if (typeof window === "undefined") return;
   if (!("serviceWorker" in navigator)) return;
+
+  // Se già dismissato (qualsiasi piattaforma), non mostrare nulla
+  if (localStorage.getItem("pwa_banner_dismissed") === "1") {
+   setDismissed(true);
+   return;
+  }
 
   // Register SW
   navigator.serviceWorker
@@ -39,7 +48,7 @@ export function RegisterSW() {
    window.matchMedia("(display-mode: standalone)").matches || nav.standalone;
 
   if (isIOS && !isStandalone) {
-   const seen = localStorage.getItem("fdl_ios_install_hint_dismissed");
+   const seen = localStorage.getItem("pwa_banner_dismissed");
    if (!seen) setShowIosHint(true);
   }
 
@@ -51,12 +60,20 @@ export function RegisterSW() {
   await installEvent.prompt();
   const choice = await installEvent.userChoice;
   if (choice.outcome === "accepted" || choice.outcome === "dismissed") {
+   localStorage.setItem("pwa_banner_dismissed", "1");
    setInstallEvent(null);
+   setDismissed(true);
   }
  }
 
+ function dismissAndroid() {
+  localStorage.setItem("pwa_banner_dismissed", "1");
+  setInstallEvent(null);
+  setDismissed(true);
+ }
+
  function dismissIos() {
-  localStorage.setItem("fdl_ios_install_hint_dismissed", "1");
+  localStorage.setItem("pwa_banner_dismissed", "1");
   setShowIosHint(false);
   setDismissed(true);
  }
@@ -65,25 +82,25 @@ export function RegisterSW() {
 
  if (installEvent) {
   return (
-   <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-lg">
-    <Smartphone className="h-5 w-5 text-rose" />
-    <p className="text-sm text-foreground">
+   <div className="fixed top-2 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-md">
+    <Smartphone className="h-4 w-4 shrink-0 text-rose" />
+    <p className="text-xs text-foreground">
      Installa Fior di Loto come app
     </p>
     <button
      type="button"
      onClick={install}
-     className="rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background hover:opacity-90"
+     className="rounded-full bg-foreground px-2.5 py-0.5 text-xs font-medium text-background hover:opacity-90"
     >
      Installa
     </button>
     <button
      type="button"
-     onClick={() => setInstallEvent(null)}
+     onClick={dismissAndroid}
      aria-label="Chiudi"
-     className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+     className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
     >
-     <X className="h-4 w-4" />
+     <X className="h-3.5 w-3.5" />
     </button>
    </div>
   );
@@ -91,22 +108,19 @@ export function RegisterSW() {
 
  if (showIosHint) {
   return (
-   <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-start gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-lg">
-    <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-rose" />
-    <div className="flex-1 text-sm text-foreground">
-     <p className="font-medium">Installa come app su iPhone</p>
-     <p className="text-xs text-muted-foreground">
-      Tocca <span className="font-medium">Condividi</span> ↑ poi{" "}
-      <span className="font-medium">Aggiungi a Home Screen</span>
-     </p>
+   <div className="fixed top-2 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-md">
+    <Smartphone className="h-4 w-4 shrink-0 text-rose" />
+    <div className="flex-1 text-xs text-foreground">
+     <span className="font-medium">Aggiungi a Home: </span>
+     <span className="text-muted-foreground">Condividi ↑ → Aggiungi a Home Screen</span>
     </div>
     <button
      type="button"
      onClick={dismissIos}
      aria-label="Chiudi"
-     className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+     className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
     >
-     <X className="h-4 w-4" />
+     <X className="h-3.5 w-3.5" />
     </button>
    </div>
   );
