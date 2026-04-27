@@ -2,10 +2,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui";
-import {
-  PeriodSelector,
-  parsePeriodoFromSearchParams,
-} from "@/components/reports/period-selector";
+import { PeriodSelector } from "@/components/reports/period-selector";
+import { parsePeriodoFromSearchParams } from "@/lib/reports/period";
 import { RevenueChart, CHART_COLORS } from "@/components/reports/revenue-chart";
 import {
   getStaffPerformance,
