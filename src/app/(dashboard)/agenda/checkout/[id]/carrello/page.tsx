@@ -249,7 +249,7 @@ function CarrelloPageInner({ id }: { id: string }) {
  const clientPhone = appointment.clients?.telefono ?? null;
 
  return (
-  <div className="-m-4 min-h-screen bg-background sm:-m-6 lg:-m-8">
+  <div className="-m-4 min-h-[100dvh] bg-background sm:-m-6 lg:-m-8">
    {/* Top bar: X + breadcrumb */}
    <div className="flex items-center gap-4 border-b border-border bg-card px-6 py-4">
     <Link

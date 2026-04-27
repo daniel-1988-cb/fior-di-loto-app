@@ -61,7 +61,7 @@ export default function LoginPage() {
  }
 
  return (
-  <div className="flex min-h-screen items-center justify-center bg-cream px-4">
+  <div className="flex min-h-[100dvh] items-center justify-center bg-cream px-4">
    {/* Subtle decorative background */}
    <div className="pointer-events-none fixed inset-0 overflow-hidden">
     <div className="absolute -top-1/4 -right-1/4 h-[600px] w-[600px] rounded-full bg-gold/[0.04] blur-3xl" />
