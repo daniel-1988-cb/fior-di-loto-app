@@ -40,7 +40,7 @@ export function Topbar({
       </div>
 
       <div className="flex items-center gap-1">
-        <IconButton label="Cerca" onClick={onSearchClick}>
+        <IconButton label="Ricerca globale in arrivo" disabled>
           <Search className="h-4 w-4" />
         </IconButton>
         <IconButton label="Analytics rapidi" href={reportsHref}>
@@ -49,7 +49,7 @@ export function Topbar({
         <IconButton label="Marketing boost" href={marketingHref}>
           <Rocket className="h-4 w-4" />
         </IconButton>
-        <IconButton label="Notifiche">
+        <IconButton label="Richieste WhatsApp" href="/whatsapp/richieste">
           <Bell className="h-4 w-4" />
         </IconButton>
         <IconButton label="Agenda oggi" href={agendaHref}>
@@ -66,14 +66,18 @@ function IconButton({
   children,
   href,
   onClick,
+  disabled,
 }: {
   label: string;
   children: React.ReactNode;
   href?: string;
   onClick?: () => void;
+  disabled?: boolean;
 }) {
-  const className =
+  const baseClass =
     "flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+  const disabledClass = "opacity-40 cursor-not-allowed pointer-events-none";
+  const className = disabled ? `${baseClass} ${disabledClass}` : baseClass;
   if (href) {
     return (
       <Link href={href} className={className} aria-label={label} title={label}>
@@ -85,6 +89,7 @@ function IconButton({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={className}
       aria-label={label}
       title={label}

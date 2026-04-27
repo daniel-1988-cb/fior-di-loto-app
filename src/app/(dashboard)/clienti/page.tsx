@@ -57,9 +57,11 @@ export default async function V2ClientiPage({ searchParams }: Props) {
               <Download className="h-4 w-4" /> Esporta CSV
             </Button>
           </Link>
-          <Button>
-            <Plus className="h-4 w-4" /> Aggiungi
-          </Button>
+          <Link href="/clienti/nuovo">
+            <Button>
+              <Plus className="h-4 w-4" /> Aggiungi
+            </Button>
+          </Link>
         </div>
       </header>
 
