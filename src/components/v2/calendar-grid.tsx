@@ -82,7 +82,6 @@ export function CalendarGrid({
   blockedSlots = [],
   startHour = 8,
   endHour = 21,
-  slotMinutes = 30,
   date,
 }: CalendarGridProps) {
   const router = useRouter();
