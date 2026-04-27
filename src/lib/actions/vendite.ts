@@ -341,7 +341,7 @@ export async function getAppuntamentiPagati(opts: {
   // Fetch associated transactions for these appointments if possible.
   // transactions may reference appointment_id (optional column) — fall back to service price.
   const aptIds = rows.map((r) => r.id as string);
-  let txByAppt: Map<string, number> = new Map();
+  const txByAppt: Map<string, number> = new Map();
   if (aptIds.length > 0) {
     // Try by client + day match — transactions schema does not include appointment_id in migrations we saw.
     // Use service.prezzo fallback.

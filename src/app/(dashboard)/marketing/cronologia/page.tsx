@@ -19,6 +19,7 @@ export default async function V2CronologiaPage({
   const daysRaw = sp.days && (DAYS_OPTIONS as readonly string[]).includes(sp.days) ? sp.days : "30";
   const days = parseInt(daysRaw, 10);
 
+  // eslint-disable-next-line react-hooks/purity -- server component, Date.now() is intentional
   const since = new Date(Date.now() - days * 86400 * 1000).toISOString();
   const supabase = createAdminClient();
   let q = supabase

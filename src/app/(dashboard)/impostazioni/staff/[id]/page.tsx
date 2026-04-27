@@ -12,6 +12,8 @@ import {
  getStaffPerformance,
  Staff, StaffFerie, StaffPerformance,
 } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const GIORNI_SETTIMANA = [
  { value: 1, label: "Lun" }, { value: 2, label: "Mar" }, { value: 3, label: "Mer" },
@@ -45,6 +47,8 @@ export default function StaffDetailPage() {
  const router = useRouter();
  const params = useParams();
  const id = params.id as string;
+ const toast = useToast();
+ const confirm = useConfirm();
 
  const [activeTab, setActiveTab] = useState<Tab>("Panoramica");
  const [loading, setLoading] = useState(true);
@@ -71,7 +75,7 @@ export default function StaffDetailPage() {
    try {
     const [staffData, ferieData] = await Promise.all([getStaffMember(id), getStaffFerie(id)]);
     setStaff(staffData);
-    setAvatarUrl((staffData as any).avatar_url || null);
+    setAvatarUrl(staffData.avatar_url || null);
     setFerie(ferieData);
     setFormData({
      nome: staffData.nome || "", cognome: staffData.cognome || "",
@@ -102,37 +106,49 @@ export default function StaffDetailPage() {
    const fd = new FormData(); fd.append("avatar", file);
    const url = await uploadStaffAvatar(id, fd);
    setAvatarUrl(url);
-  } catch (err) { alert(err instanceof Error ? err.message : "Errore upload foto"); }
+  } catch (err) { toast.error(err instanceof Error ? err.message : "Errore upload foto"); }
   finally { setUploadingAvatar(false); }
  }
 
  async function handleSave(e: React.FormEvent) {
   e.preventDefault();
-  if (!formData.nome.trim()) { alert("Il nome è obbligatorio"); return; }
+  if (!formData.nome.trim()) { toast.error("Il nome è obbligatorio"); return; }
   setSaving(true);
   try {
    await updateStaff(id, { ...formData, telefono: formData.telefono || null, email: formData.email || null, note: formData.note || null });
    router.push("/impostazioni");
-  } catch { alert("Errore durante il salvataggio."); }
+  } catch { toast.error("Errore durante il salvataggio."); }
   finally { setSaving(false); }
+ }
+
+ async function handleSaveOrari() {
+  try {
+   await updateStaff(id, { orario_inizio: formData.orario_inizio, orario_fine: formData.orario_fine, giorni_lavoro: formData.giorni_lavoro });
+   toast.success("Orari salvati!");
+  } catch { toast.error("Errore salvataggio orari."); }
  }
 
  async function handleAddFerie(e: React.FormEvent) {
   e.preventDefault();
-  if (!ferieForm.data_inizio || !ferieForm.data_fine) { alert("Inserisci le date"); return; }
+  if (!ferieForm.data_inizio || !ferieForm.data_fine) { toast.error("Inserisci le date"); return; }
   setAddingFerie(true);
   try {
    await createFerie({ staff_id: id, ...ferieForm, note: ferieForm.note || undefined });
    setFerie(await getStaffFerie(id));
    setFerieForm({ data_inizio: "", data_fine: "", tipo: "ferie", note: "" });
-  } catch { alert("Errore salvataggio ferie."); }
+  } catch { toast.error("Errore salvataggio ferie."); }
   finally { setAddingFerie(false); }
  }
 
  async function handleDeleteFerie(feriaId: string) {
-  if (!confirm("Eliminare questa voce?")) return;
+  const ok = await confirm({
+   title: "Eliminare questa voce?",
+   confirmLabel: "Elimina",
+   variant: "destructive",
+  });
+  if (!ok) return;
   try { await deleteFerie(feriaId); setFerie(prev => prev.filter(f => f.id !== feriaId)); }
-  catch { alert("Errore eliminazione."); }
+  catch { toast.error("Errore eliminazione."); }
  }
 
  const inputClass = "w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
@@ -357,7 +373,7 @@ export default function StaffDetailPage() {
         </button>
        ))}
       </div>
-      <button type="button" onClick={() => updateStaff(id, { orario_inizio: formData.orario_inizio, orario_fine: formData.orario_fine, giorni_lavoro: formData.giorni_lavoro }).then(() => alert("Orari salvati!"))}
+      <button type="button" onClick={handleSaveOrari}
        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brown px-4 py-2 text-sm font-medium text-white hover:bg-brown/90">
        <Save className="h-4 w-4" /> Salva Orari
       </button>

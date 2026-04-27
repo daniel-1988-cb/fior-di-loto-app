@@ -314,7 +314,7 @@ export default function WhatsAppPage() {
        <li>1️⃣ Seleziona la cliente</li>
        <li>2️⃣ Scegli un template o scrivi il messaggio</li>
        <li>3️⃣ Modifica il testo se necessario</li>
-       <li>4️⃣ Clicca "Apri WhatsApp" per inviare</li>
+       <li>4️⃣ Clicca &quot;Apri WhatsApp&quot; per inviare</li>
       </ul>
      </div>
     </div>
