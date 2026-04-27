@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { cn, formatPhone, formatDateShort } from "@/lib/utils";
 import { LABELS } from "@/lib/constants/italian";
+import { SEGMENTI, getSegmentoStyle, getSegmentoLabel } from "@/lib/clienti/segmenti";
+import { parseTags } from "@/lib/utils/tags";
 
 interface Client {
  id: string;
@@ -25,33 +27,6 @@ interface Client {
  totale_speso: string;
  ultima_visita: string | null;
  tags: unknown;
-}
-
-function parseTags(tags: unknown): string[] {
- if (Array.isArray(tags)) return tags as string[];
- if (typeof tags === "string") {
-  try { return JSON.parse(tags) as string[]; } catch { return []; }
- }
- return [];
-}
-
-const segmenti = [
- { value: "tutti", label: LABELS.segmenti.tutti },
- { value: "lotina", label: LABELS.segmenti.lotina, color: "bg-gold/20 text-gold-dark" },
- { value: "nuova", label: LABELS.segmenti.nuova, color: "bg-success/20 text-success" },
- { value: "lead", label: LABELS.segmenti.lead, color: "bg-info/20 text-info" },
- { value: "vip", label: LABELS.segmenti.vip, color: "bg-rose/20 text-rose-dark" },
- { value: "inattiva", label: LABELS.segmenti.inattiva, color: "bg-muted text-muted-foreground" },
-];
-
-function getSegmentoStyle(segmento: string) {
- const found = segmenti.find((s) => s.value === segmento);
- return found?.color || "bg-muted text-muted-foreground";
-}
-
-function getSegmentoLabel(segmento: string) {
- const found = segmenti.find((s) => s.value === segmento);
- return found?.label || segmento;
 }
 
 export function ClientList({
@@ -106,7 +81,7 @@ export function ClientList({
 
     <div className="flex flex-wrap gap-2">
      <Filter className="h-4 w-4 self-center text-muted-foreground" />
-     {segmenti.map((seg) => (
+     {SEGMENTI.map((seg) => (
       <button
        key={seg.value}
        onClick={() => setFiltroSegmento(seg.value)}
@@ -125,7 +100,7 @@ export function ClientList({
 
    {/* Segment summary bar */}
    <div className="mb-4 flex gap-3 overflow-x-auto pb-1 text-xs">
-    {segmenti.filter(s => s.value !== 'tutti').map(seg => {
+    {SEGMENTI.filter(s => s.value !== 'tutti').map(seg => {
      const count = initialClients.filter(c => c.segmento === seg.value).length;
      if (count === 0) return null;
      return (
