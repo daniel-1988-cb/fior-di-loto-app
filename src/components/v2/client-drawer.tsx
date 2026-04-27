@@ -16,6 +16,8 @@ import { formatCurrency, formatPhone } from "@/lib/utils";
 import { removeClientTag, updateClient } from "@/lib/actions/clients";
 import type { TableRow } from "@/types/database";
 import { ClientActivityMenu } from "./client-activity-menu";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Client = TableRow<"clients">;
 
@@ -48,6 +50,8 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [edited, setEdited] = useState<Client | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!client) return;
@@ -84,10 +88,11 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
 
   async function handleRemoveTag(tag: string) {
     if (!client) return;
-    if (!window.confirm(`Rimuovere il tag "${tag}"?`)) return;
+    const ok = await confirm({ title: `Rimuovere il tag "${tag}"?`, confirmLabel: "Rimuovi" });
+    if (!ok) return;
     const res = await removeClientTag(client.id, tag);
     if (!res.ok) {
-      alert(res.error || "Errore rimozione tag");
+      toast.error(res.error || "Errore rimozione tag");
       return;
     }
     router.refresh();
@@ -113,7 +118,7 @@ export function ClientDrawer({ client, onClose }: ClientDrawerProps) {
       setEditMode(false);
       router.refresh();
     } catch (e) {
-      alert(`Errore salvataggio: ${e instanceof Error ? e.message : "sconosciuto"}`);
+      toast.error(`Errore salvataggio: ${e instanceof Error ? e.message : "sconosciuto"}`);
     } finally {
       setSaving(false);
     }

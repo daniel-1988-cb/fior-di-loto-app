@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { saveSubscription, deleteSubscription } from "@/lib/actions/push";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type Status = "unsupported" | "unknown" | "off" | "denied" | "on";
 
@@ -27,6 +28,7 @@ export function PushToggle() {
  const [status, setStatus] = useState<Status>("unknown");
  const [loading, setLoading] = useState(false);
  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+ const toast = useToast();
 
  useEffect(() => {
   if (typeof window === "undefined") return;
@@ -47,7 +49,7 @@ export function PushToggle() {
 
  async function enable() {
   if (!vapidPublicKey) {
-   alert("VAPID public key non configurata. Contatta l'amministratore.");
+   toast.error("VAPID public key non configurata. Contatta l'amministratore.");
    return;
   }
   setLoading(true);
@@ -60,8 +62,6 @@ export function PushToggle() {
    const reg = await navigator.serviceWorker.ready;
    const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    // Cast: TS DOM lib restringe applicationServerKey a BufferSource
-    // ma Uint8Array è BufferSource in runtime. Cast sicuro.
     applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
    });
    const subJson = sub.toJSON() as {
@@ -75,13 +75,13 @@ export function PushToggle() {
     userAgent: navigator.userAgent,
    });
    if (!res.ok) {
-    alert("Errore salvataggio subscription: " + res.error);
+    toast.error("Errore salvataggio subscription: " + res.error);
     return;
    }
    setStatus("on");
   } catch (e) {
    console.error("[push-toggle] enable failed", e);
-   alert("Errore abilitazione notifiche: " + (e instanceof Error ? e.message : "sconosciuto"));
+   toast.error("Errore abilitazione notifiche: " + (e instanceof Error ? e.message : "sconosciuto"));
   } finally {
    setLoading(false);
   }

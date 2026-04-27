@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button, Input, Label, Select } from "@/components/ui";
 import { Download } from "lucide-react";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const METODI = [
   "contanti",
@@ -42,6 +43,7 @@ export function ListaFilters({
   const [tipo, setTipo] = useState(initialTipo);
   const [exporting, setExporting] = useState(false);
   const [, startTransition] = useTransition();
+  const toast = useToast();
 
   const apply = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -90,7 +92,7 @@ export function ListaFilters({
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert("Errore durante l'esportazione.");
+      toast.error("Errore durante l'esportazione.");
       console.error(e);
     } finally {
       setExporting(false);

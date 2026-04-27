@@ -23,6 +23,8 @@ import {
   type AdjustType,
   type AdjustKind,
 } from "@/lib/types/pricing";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 export type ServiceLite = {
   id: string;
@@ -87,7 +89,6 @@ function formatGiorni(giorni: number[]): string {
   if (giorni.length === 7) return "Tutti i giorni";
 
   const sorted = [...giorni].sort((a, b) => a - b);
-  // Cerca run contigui (es. lun-mer)
   const ranges: string[] = [];
   let start = sorted[0];
   let prev = sorted[0];
@@ -140,6 +141,8 @@ export function TariffeClient({
   const [form, setForm] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function openNew() {
     setForm({
@@ -177,10 +180,11 @@ export function TariffeClient({
   }
 
   async function handleDelete(r: PricingRule) {
-    if (!confirm(`Eliminare la regola "${r.nome}"?`)) return;
+    const ok = await confirm({ title: `Eliminare la regola "${r.nome}"?`, confirmLabel: "Elimina", variant: "destructive" });
+    if (!ok) return;
     const res = await deletePricingRule(r.id);
     if (!res.ok) {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     router.refresh();

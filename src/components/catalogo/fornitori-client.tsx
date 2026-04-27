@@ -15,6 +15,7 @@ import {
   toggleSupplierAttivo,
   type Supplier,
 } from "@/lib/actions/suppliers";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type FormState = {
   nome: string;
@@ -59,6 +60,7 @@ export function FornitoriClient({ suppliers }: { suppliers: Supplier[] }) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   function openNew() {
     setForm(EMPTY_FORM);
@@ -122,11 +124,11 @@ export function FornitoriClient({ suppliers }: { suppliers: Supplier[] }) {
   async function handleDelete(item: CatalogoItem) {
     const res = await deleteSupplier(item.id);
     if (!res.ok && res.error !== "archived") {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     if (res.error === "archived") {
-      alert(
+      toast.info(
         "Questo fornitore ha ordini associati: archiviato (attivo=false) invece di eliminato."
       );
     }

@@ -7,6 +7,7 @@ import { Avatar, Badge, Button, Card } from "@/components/ui";
 import { clockIn, clockOut } from "@/lib/actions/staff-presenze";
 import type { MonthlySummary } from "@/lib/actions/staff-presenze";
 import type { Staff } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export type PresenzaCurrent = {
   staffId: string;
@@ -29,6 +30,7 @@ export function PresenzeTimesheet({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [activeStaffId, setActiveStaffId] = useState<string | null>(null);
+  const toast = useToast();
 
   function monthLabel(y: number, m: number) {
     const d = new Date(y, m - 1, 1);
@@ -59,7 +61,7 @@ export function PresenzeTimesheet({
         await clockIn(staffId);
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Errore clock in");
+        toast.error(e instanceof Error ? e.message : "Errore clock in");
       } finally {
         setActiveStaffId(null);
       }
@@ -73,7 +75,7 @@ export function PresenzeTimesheet({
         await clockOut(staffId);
         router.refresh();
       } catch (e) {
-        alert(e instanceof Error ? e.message : "Errore clock out");
+        toast.error(e instanceof Error ? e.message : "Errore clock out");
       } finally {
         setActiveStaffId(null);
       }

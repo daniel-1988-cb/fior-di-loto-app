@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Bot, User } from "lucide-react";
 import { setThreadMode, sendManualReply } from "@/lib/actions/bot-conversations";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type Props = {
  clientId: string;
@@ -16,6 +17,7 @@ export function ThreadControls({ clientId, initialStatus }: Props) {
  const [text, setText] = useState("");
  const [pending, startTransition] = useTransition();
  const isHuman = status === "human_takeover";
+ const toast = useToast();
 
  function toggleMode() {
   const next = isHuman ? "active" : "human_takeover";
@@ -25,7 +27,7 @@ export function ThreadControls({ clientId, initialStatus }: Props) {
     setStatus(next);
     router.refresh();
    } else {
-    alert("Errore: " + res.error);
+    toast.error("Errore: " + res.error);
    }
   });
  }
@@ -38,7 +40,7 @@ export function ThreadControls({ clientId, initialStatus }: Props) {
     setText("");
     router.refresh();
    } else {
-    alert("Errore invio: " + res.error);
+    toast.error("Errore invio: " + res.error);
    }
   });
  }

@@ -23,6 +23,8 @@ import {
 } from "@/lib/actions/clients";
 import type { TableRow } from "@/types/database";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Client = TableRow<"clients">;
 
@@ -56,6 +58,8 @@ export function ClientActivityMenu({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!open) return;
@@ -80,12 +84,12 @@ export function ClientActivityMenu({
     try {
       const res = await fn();
       if (res && res.ok === false) {
-        alert(res.error || "Operazione fallita");
+        toast.error(res.error || "Operazione fallita");
         return;
       }
       onUpdate();
     } catch (e) {
-      alert(`Errore: ${e instanceof Error ? e.message : "sconosciuto"}`);
+      toast.error(`Errore: ${e instanceof Error ? e.message : "sconosciuto"}`);
     } finally {
       setBusy(false);
       setOpen(false);
@@ -93,8 +97,7 @@ export function ClientActivityMenu({
   }
 
   function promptText(message: string, initial = ""): string | null {
-    // `window.prompt` is intentional: the brief explicitly OKs prompt/confirm
-    // for the MVP to avoid pulling in a modal library.
+    // `window.prompt` is intentional: used for quick inline text input
     const v = window.prompt(message, initial);
     if (v == null) return null;
     const trimmed = v.trim();
@@ -129,19 +132,25 @@ export function ClientActivityMenu({
     void run(() => addClientTag(client.id, v));
   };
 
-  const handleToggleBlocked = () => {
+  const handleToggleBlocked = async () => {
     const next = !client.blocked;
     const msg = next
       ? "Bloccare questo cliente? Non potrà essere aggiunto a nuovi appuntamenti."
       : "Sbloccare questo cliente?";
-    if (!window.confirm(msg)) return;
+    const ok = await confirm({ title: msg, confirmLabel: next ? "Blocca" : "Sblocca" });
+    if (!ok) return;
     void run(() => setClientBlocked(client.id, next));
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const full = `${client.nome} ${client.cognome}`.trim();
-    if (!window.confirm(`Eliminare definitivamente "${full}"? L'azione è irreversibile.`))
-      return;
+    const ok = await confirm({
+      title: `Eliminare definitivamente "${full}"?`,
+      message: "L'azione è irreversibile.",
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setBusy(true);
     deleteClient(client.id)
       .then(() => {
@@ -149,7 +158,7 @@ export function ClientActivityMenu({
         onDeleted?.();
         onUpdate();
       })
-      .catch((e) => alert(`Errore eliminazione: ${e instanceof Error ? e.message : "sconosciuto"}`))
+      .catch((e) => toast.error(`Errore eliminazione: ${e instanceof Error ? e.message : "sconosciuto"}`))
       .finally(() => setBusy(false));
   };
 

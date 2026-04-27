@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Trash2, ChevronDown } from "lucide-react";
 import { updateSocialPostStatus, deleteSocialPost } from "@/lib/actions/social";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 import type { SocialPost } from "@/app/(dashboard)/social/page";
 import { getTipoStyle, getTipoLabel, PiattaformaIcon, getPiattaformaBadgeStyle } from "@/app/(dashboard)/social/page";
 
@@ -24,6 +25,7 @@ function PostCard({ post }: { post: SocialPost }) {
  const router = useRouter();
  const [isPending, startTransition] = useTransition();
  const [showStatusMenu, setShowStatusMenu] = useState(false);
+ const confirm = useConfirm();
 
  function handleStatusChange(newStato: string) {
   setShowStatusMenu(false);
@@ -33,8 +35,9 @@ function PostCard({ post }: { post: SocialPost }) {
   });
  }
 
- function handleDelete() {
-  if (!confirm(`Eliminare il post "${post.titolo}"?`)) return;
+ async function handleDelete() {
+  const ok = await confirm({ title: `Eliminare il post "${post.titolo}"?`, confirmLabel: "Elimina", variant: "destructive" });
+  if (!ok) return;
   startTransition(async () => {
    await deleteSocialPost(post.id);
    router.refresh();

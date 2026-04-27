@@ -8,6 +8,7 @@ import {
  updateAppointmentRequestStatus,
  type AppointmentRequestListItem,
 } from "@/lib/actions/appointment-requests";
+import { useToast } from "@/lib/hooks/use-toast";
 
 type Props = { req: AppointmentRequestListItem };
 
@@ -16,6 +17,7 @@ export function AppointmentRequestCard({ req }: Props) {
  const [pending, startTransition] = useTransition();
  const [note, setNote] = useState(req.noteOperatore ?? "");
  const [showNote, setShowNote] = useState(false);
+ const toast = useToast();
 
  function act(stato: "scheduled" | "rejected") {
   startTransition(async () => {
@@ -23,7 +25,7 @@ export function AppointmentRequestCard({ req }: Props) {
     noteOperatore: note.trim() || null,
    });
    if (res.ok) router.refresh();
-   else alert("Errore: " + res.error);
+   else toast.error("Errore: " + res.error);
   });
  }
 

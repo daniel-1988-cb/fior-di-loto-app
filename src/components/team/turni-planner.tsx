@@ -12,6 +12,8 @@ import {
   type StaffTurno,
 } from "@/lib/actions/staff-turni";
 import type { Staff } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"] as const;
 
@@ -68,6 +70,8 @@ export function TurniPlanner({
   const [modal, setModal] = useState<ModalState>({ mode: "closed" });
   const [cloning, startCloneTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const weekStartDate = useMemo(
     () => new Date(weekStart + "T00:00:00"),
@@ -107,8 +111,6 @@ export function TurniPlanner({
     const d = addDays(weekStartDate, -7);
     const iso = formatISODate(d);
     setWeekStart(iso);
-    // Il fetch fresh è via refresh() triggerato da parent — qui sovrascriviamo
-    // localmente tenendo sync con server via Next navigation.
     const params = new URLSearchParams(window.location.search);
     params.set("week", iso);
     router.push(`?${params.toString()}`);
@@ -189,9 +191,11 @@ export function TurniPlanner({
 
   async function handleDelete() {
     if (modal.mode !== "edit") return;
+    const ok = await confirm({ title: "Eliminare questo turno?", confirmLabel: "Elimina", variant: "destructive" });
+    if (!ok) return;
     const res = await deleteTurno(modal.turno.id);
     if (!res.ok) {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     setTurni((prev) => prev.filter((x) => x.id !== modal.turno.id));
@@ -450,9 +454,7 @@ function TurnoModal({
                   type="button"
                   variant="danger"
                   size="sm"
-                  onClick={async () => {
-                    if (confirm("Eliminare questo turno?")) await onDelete();
-                  }}
+                  onClick={onDelete}
                   disabled={saving}
                 >
                   <Trash2 className="h-4 w-4" /> Elimina

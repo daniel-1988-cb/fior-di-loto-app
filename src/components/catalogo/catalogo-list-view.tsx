@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { Plus, Search, Edit3, Trash2, Inbox } from "lucide-react";
 import { Card, Button, Badge, Input } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 // ============================================
 // TYPES
@@ -60,6 +61,7 @@ export function CatalogoListView<T extends CatalogoItem>({
   const [soloAttivi, setSoloAttivi] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const confirm = useConfirm();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -85,15 +87,15 @@ export function CatalogoListView<T extends CatalogoItem>({
     });
   }
 
-  function handleDelete(item: T) {
+  async function handleDelete(item: T) {
     if (!onDelete) return;
-    if (
-      !confirm(
-        `Eliminare "${item.nome}"? Se referenziato da vendite verrà archiviato.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Eliminare "${item.nome}"?`,
+      message: "Se referenziato da vendite verrà archiviato.",
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setPendingId(item.id);
     startTransition(async () => {
       try {

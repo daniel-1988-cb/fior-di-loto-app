@@ -9,6 +9,8 @@ import {
  rejectAppointmentRequest,
  type AppointmentRequestListItem,
 } from "@/lib/actions/appointment-requests";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Props = { req: AppointmentRequestListItem };
 
@@ -30,27 +32,31 @@ export function CancellationRequestCard({ req }: Props) {
  const [pending, startTransition] = useTransition();
  const [showNote, setShowNote] = useState(false);
  const [note, setNote] = useState(req.noteOperatore ?? "");
+ const toast = useToast();
+ const confirm = useConfirm();
 
- function doConfirm() {
-  if (
-   !confirm(
-    "Confermare la cancellazione? L'appuntamento verrà segnato come cancellato e il cliente riceverà un WhatsApp di conferma.",
-   )
-  )
-   return;
+ async function doConfirm() {
+  const ok = await confirm({
+   title: "Confermare la cancellazione?",
+   message: "L'appuntamento verrà segnato come cancellato e il cliente riceverà un WhatsApp di conferma.",
+   confirmLabel: "Conferma",
+   variant: "destructive",
+  });
+  if (!ok) return;
   startTransition(async () => {
    const res = await confirmCancellationRequest(req.id);
    if (res.ok) router.refresh();
-   else alert("Errore: " + res.error);
+   else toast.error("Errore: " + res.error);
   });
  }
 
- function doReject() {
-  if (!confirm("Rifiutare la richiesta di cancellazione?")) return;
+ async function doReject() {
+  const ok = await confirm({ title: "Rifiutare la richiesta di cancellazione?", confirmLabel: "Rifiuta", variant: "destructive" });
+  if (!ok) return;
   startTransition(async () => {
    const res = await rejectAppointmentRequest(req.id, note.trim() || undefined);
    if (res.ok) router.refresh();
-   else alert("Errore: " + res.error);
+   else toast.error("Errore: " + res.error);
   });
  }
 

@@ -25,6 +25,8 @@ import {
  deleteAppointment,
 } from "@/lib/actions/appointments";
 import { formatPhone, formatCurrency } from "@/lib/utils";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 export type AppointmentDrawerData = {
  id: string;
@@ -66,6 +68,8 @@ const STATO_LABEL: Record<string, { label: string; variant: "default" | "success
 export function AppointmentDetailDrawer({ appt, onClose, onOpenCheckout }: Props) {
  const router = useRouter();
  const [pending, startTransition] = useTransition();
+ const toast = useToast();
+ const confirm = useConfirm();
 
  if (!appt) return null;
 
@@ -78,30 +82,31 @@ export function AppointmentDetailDrawer({ appt, onClose, onOpenCheckout }: Props
     if (stato === "cancellato") {
      const refunded = (res as { refunded?: number } | null)?.refunded ?? 0;
      if (refunded > 0) {
-      alert(`✓ Appuntamento annullato. €${refunded.toFixed(2)} rimborsati al saldo cliente.`);
+      toast.info(`Appuntamento annullato. €${refunded.toFixed(2)} rimborsati al saldo cliente.`);
      }
     }
     router.refresh();
     onClose();
    } catch (e) {
-    alert(`Errore: ${e instanceof Error ? e.message : "sconosciuto"}`);
+    toast.error(`Errore: ${e instanceof Error ? e.message : "sconosciuto"}`);
    }
   });
  }
 
- function handleDelete() {
-  if (!confirm("Eliminare definitivamente questo appuntamento?")) return;
+ async function handleDelete() {
+  const ok = await confirm({ title: "Eliminare definitivamente questo appuntamento?", confirmLabel: "Elimina", variant: "destructive" });
+  if (!ok) return;
   startTransition(async () => {
    try {
     const res = await deleteAppointment(appt!.id);
     const refunded = (res as { refunded?: number } | null)?.refunded ?? 0;
     if (refunded > 0) {
-     alert(`✓ Appuntamento eliminato. €${refunded.toFixed(2)} rimborsati al saldo cliente.`);
+     toast.info(`Appuntamento eliminato. €${refunded.toFixed(2)} rimborsati al saldo cliente.`);
     }
     router.refresh();
     onClose();
    } catch (e) {
-    alert(`Errore: ${e instanceof Error ? e.message : "sconosciuto"}`);
+    toast.error(`Errore: ${e instanceof Error ? e.message : "sconosciuto"}`);
    }
   });
  }

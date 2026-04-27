@@ -30,6 +30,8 @@ import {
   type PurchaseOrderWithItems,
 } from "@/lib/actions/purchase-orders";
 import { VALID_STATI_PO, type PoStato } from "@/lib/constants/purchase-orders";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 // ============================================
 // TYPES
@@ -115,19 +117,21 @@ export function OrdiniClient({
     return { inAttesaCount: inAttesa.length, valoreInAttesa, ricevutiMese };
   }, [orders]);
 
+  const toast = useToast();
+
   async function openDetail(id: string) {
     setDetailId(id);
     setDetailOrder(null);
     try {
       const data = await getPurchaseOrder(id);
       if (!data) {
-        alert("Ordine non trovato.");
+        toast.error("Ordine non trovato.");
         setDetailId(null);
         return;
       }
       setDetailOrder(data);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Errore caricamento dettagli");
+      toast.error(err instanceof Error ? err.message : "Errore caricamento dettagli");
       setDetailId(null);
     }
   }
@@ -621,14 +625,17 @@ function OrderDetailModal({
 }) {
   const [showReceive, setShowReceive] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   async function handleDelete() {
-    if (!confirm("Eliminare l'ordine? Solo se non ancora ricevuto.")) return;
+    const ok = await confirm({ title: "Eliminare l'ordine? Solo se non ancora ricevuto.", confirmLabel: "Elimina", variant: "destructive" });
+    if (!ok) return;
     setDeleting(true);
     const res = await deletePurchaseOrder(orderId);
     setDeleting(false);
     if (!res.ok) {
-      alert(res.error ?? "Errore eliminazione");
+      toast.error(res.error ?? "Errore eliminazione");
       return;
     }
     onDeleted();

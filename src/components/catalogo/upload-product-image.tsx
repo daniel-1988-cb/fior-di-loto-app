@@ -7,6 +7,7 @@ import {
   uploadProductImage,
   deleteProductImage,
 } from "@/lib/actions/products";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Props = {
   productId: string;
@@ -24,6 +25,7 @@ export function UploadProductImage({ productId, initialUrl, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const confirm = useConfirm();
 
   function pickFile() {
     setError(null);
@@ -49,9 +51,10 @@ export function UploadProductImage({ productId, initialUrl, onChange }: Props) {
     });
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!url) return;
-    if (!confirm("Rimuovere l'immagine?")) return;
+    const ok = await confirm({ title: "Rimuovere l'immagine?", confirmLabel: "Rimuovi", variant: "destructive" });
+    if (!ok) return;
     startTransition(async () => {
       try {
         await deleteProductImage(productId);

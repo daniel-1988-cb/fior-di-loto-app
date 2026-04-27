@@ -9,6 +9,8 @@ import {
  rejectAppointmentRequest,
  type AppointmentRequestListItem,
 } from "@/lib/actions/appointment-requests";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Props = { req: AppointmentRequestListItem };
 
@@ -40,28 +42,30 @@ export function RescheduleRequestCard({ req }: Props) {
  const [chosenIso, setChosenIso] = useState<string | null>(req.proposedDateTime);
  const [showNote, setShowNote] = useState(false);
  const [note, setNote] = useState(req.noteOperatore ?? "");
+ const toast = useToast();
+ const confirm = useConfirm();
 
- function doConfirm() {
+ async function doConfirm() {
   if (!chosenIso) {
-   alert(
-    "Nessun orario selezionato. Scegli un orario tra quelli proposti, oppure rifiuta e contatta a mano.",
-   );
+   toast.warning("Nessun orario selezionato. Scegli un orario tra quelli proposti, oppure rifiuta e contatta a mano.");
    return;
   }
-  if (!confirm(`Confermi lo spostamento al ${fmtIsoLabel(chosenIso)}?`)) return;
+  const ok = await confirm({ title: `Confermi lo spostamento al ${fmtIsoLabel(chosenIso)}?`, confirmLabel: "Conferma" });
+  if (!ok) return;
   startTransition(async () => {
    const res = await confirmRescheduleRequest(req.id, chosenIso);
    if (res.ok) router.refresh();
-   else alert("Errore: " + res.error);
+   else toast.error("Errore: " + res.error);
   });
  }
 
- function doReject() {
-  if (!confirm("Rifiutare la richiesta di spostamento?")) return;
+ async function doReject() {
+  const ok = await confirm({ title: "Rifiutare la richiesta di spostamento?", confirmLabel: "Rifiuta", variant: "destructive" });
+  if (!ok) return;
   startTransition(async () => {
    const res = await rejectAppointmentRequest(req.id, note.trim() || undefined);
    if (res.ok) router.refresh();
-   else alert("Errore: " + res.error);
+   else toast.error("Errore: " + res.error);
   });
  }
 

@@ -25,6 +25,7 @@ import {
  type LucideIcon,
 } from "lucide-react";
 import { getAppointment, markAppointmentPaid } from "@/lib/actions/appointments";
+import { useToast } from "@/lib/hooks/use-toast";
 import { createCartTransaction } from "@/lib/actions/transaction-items";
 import { getClientWalletBalance } from "@/lib/actions/client-wallet";
 import { getVoucherByCode, redeemVoucher } from "@/lib/actions/vouchers";
@@ -168,6 +169,7 @@ function CheckoutModalInner({
  onCompleted?: () => void;
 }) {
  const [step, setStep] = useState<Step>("cart");
+ const toast = useToast();
 
  // -------------------- Appointment load --------------------
  const [appointment, setAppointment] = useState<AppointmentData | null>(null);
@@ -251,10 +253,10 @@ function CheckoutModalInner({
  useEffect(() => {
   if (loading || !appointment) return;
   if (appointment.pagato_at) {
-   alert("Questo appuntamento risulta già pagato. Transazione già effettuata.");
+   toast.warning("Questo appuntamento risulta già pagato. Transazione già effettuata.");
    onClose();
   }
- }, [loading, appointment, onClose]);
+ }, [loading, appointment, onClose, toast]);
 
  // -------------------- Cart step UI state --------------------
  const [query, setQuery] = useState("");
@@ -419,7 +421,7 @@ function CheckoutModalInner({
    });
 
    if (!result.ok) {
-    alert(`Errore pagamento: ${result.error}`);
+    toast.error(`Errore pagamento: ${result.error}`);
     return;
    }
 
@@ -428,18 +430,19 @@ function CheckoutModalInner({
 
    setCompleted(true);
 
-   const giftCodesMsg =
-    result.generatedVoucherCodes.length > 0
-     ? `\n\nCard regalo generate:\n${result.generatedVoucherCodes.join("\n")}\nComunica i codici al cliente.`
-     : "";
-   alert(`Transazione effettuata ✓${giftCodesMsg}`);
+   if (result.generatedVoucherCodes.length > 0) {
+    const codes = result.generatedVoucherCodes.join(", ");
+    toast.success(`Transazione effettuata. Card regalo: ${codes}. Comunica i codici al cliente.`, { duration: 12000 });
+   } else {
+    toast.success("Transazione effettuata con successo.");
+   }
 
    resetCart();
    onCompleted?.();
    onClose();
   } catch (err) {
    console.error("Errore checkout:", err);
-   alert("Errore durante il checkout. Riprova.");
+   toast.error("Errore durante il checkout. Riprova.");
   } finally {
    setSaving(false);
   }

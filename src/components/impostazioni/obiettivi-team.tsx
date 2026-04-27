@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Target, Check, Pencil } from "lucide-react";
 import { updateStaff, Staff } from "@/lib/actions/staff";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export function ObiettiviTeam({ staffList }: { staffList: Staff[] }) {
  const [editingId, setEditingId] = useState<string | null>(null);
@@ -11,6 +12,7 @@ export function ObiettiviTeam({ staffList }: { staffList: Staff[] }) {
   Object.fromEntries(staffList.map((s) => [s.id, Number(s.obiettivo_mensile) || 0]))
  );
  const [saving, setSaving] = useState<string | null>(null);
+ const toast = useToast();
 
  async function handleSave(id: string) {
   setSaving(id);
@@ -18,7 +20,7 @@ export function ObiettiviTeam({ staffList }: { staffList: Staff[] }) {
    await updateStaff(id, { obiettivo_mensile: values[id] });
    setEditingId(null);
   } catch {
-   alert("Errore salvataggio");
+   toast.error("Errore salvataggio");
   } finally {
    setSaving(null);
   }

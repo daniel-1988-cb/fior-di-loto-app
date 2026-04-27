@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { addClientInteraction } from "@/lib/actions/clients";
+import { useToast } from "@/lib/hooks/use-toast";
 
 const tipiOpzioni = [
  { value: "visita", label: "Visita" },
@@ -20,6 +21,7 @@ export function AddInteractionForm({ clientId }: { clientId: string }) {
  const [tipo, setTipo] = useState("visita");
  const [descrizione, setDescrizione] = useState("");
  const [importo, setImporto] = useState("");
+ const toast = useToast();
 
  async function handleSubmit(e: React.FormEvent) {
   e.preventDefault();
@@ -37,7 +39,7 @@ export function AddInteractionForm({ clientId }: { clientId: string }) {
    router.refresh();
   } catch (err) {
    console.error(err);
-   alert("Errore nel salvataggio");
+   toast.error("Errore nel salvataggio");
   } finally {
    setLoading(false);
   }

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Bot } from "lucide-react";
 import { sendBotMessage } from "@/lib/actions/bot-send";
+import { useToast } from "@/lib/hooks/use-toast";
 
 export function BotSendButton({ clientId }: { clientId: string }) {
  const [loading, setLoading] = useState(false);
+ const toast = useToast();
 
  async function onClick() {
   const text = prompt("Messaggio da inviare via bot WhatsApp:");
@@ -13,8 +15,8 @@ export function BotSendButton({ clientId }: { clientId: string }) {
   setLoading(true);
   const res = await sendBotMessage(clientId, text);
   setLoading(false);
-  if (res.ok) alert("Messaggio inviato!");
-  else alert("Errore: " + (res.error ?? "unknown"));
+  if (res.ok) toast.success("Messaggio inviato!");
+  else toast.error("Errore: " + (res.error ?? "unknown"));
  }
 
  return (

@@ -10,6 +10,8 @@ import {
   type WaBotDoc,
 } from "@/lib/actions/wa-bot-documents";
 import { VALID_CATEGORIE, CATEGORIA_LABELS } from "@/lib/bot/categorie";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 type Props = { initialDocs: WaBotDoc[] };
 
@@ -21,6 +23,8 @@ export function BotDocumentsManager({ initialDocs }: Props) {
   const [categoria, setCategoria] = useState<string>("generale");
   const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   function onAdd() {
     if (!titolo.trim() || !contenuto.trim()) return;
@@ -31,7 +35,7 @@ export function BotDocumentsManager({ initialDocs }: Props) {
         setContenuto("");
         setCategoria("generale");
         router.refresh();
-      } else alert(res.error);
+      } else toast.error(res.error ?? "Errore creazione documento");
     });
   }
 
@@ -44,8 +48,9 @@ export function BotDocumentsManager({ initialDocs }: Props) {
     });
   }
 
-  function onDelete(id: string) {
-    if (!confirm("Eliminare questo documento?")) return;
+  async function onDelete(id: string) {
+    const ok = await confirm({ title: "Eliminare questo documento?", confirmLabel: "Elimina", variant: "destructive" });
+    if (!ok) return;
     start(async () => {
       const res = await deleteBotDocument(id);
       if (res.ok) setDocs((prev) => prev.filter((d) => d.id !== id));

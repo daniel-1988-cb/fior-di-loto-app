@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/competitors";
 import type { Competitor, CompetitorUpdate } from "@/lib/actions/competitors";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const inputClass =
  "w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-brown placeholder:text-muted-foreground focus:border-rose focus:outline-none focus:ring-2 focus:ring-rose/20";
@@ -297,9 +298,11 @@ function CompetitorRow({ competitor }: { competitor: Competitor }) {
  const router = useRouter();
  const [isPending, startTransition] = useTransition();
  const [showMetricsForm, setShowMetricsForm] = useState(false);
+ const confirm = useConfirm();
 
- function handleDelete() {
-  if (!confirm(`Eliminare ${competitor.nome}?`)) return;
+ async function handleDelete() {
+  const ok = await confirm({ title: `Eliminare ${competitor.nome}?`, confirmLabel: "Elimina", variant: "destructive" });
+  if (!ok) return;
   startTransition(async () => {
    await deleteCompetitor(competitor.id);
    router.refresh();

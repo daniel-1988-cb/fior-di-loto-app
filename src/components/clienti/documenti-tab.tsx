@@ -10,6 +10,8 @@ import {
   type DocumentTipo,
 } from "@/lib/types/client-documents";
 import { deleteClientDocument } from "@/lib/actions/client-documents";
+import { useToast } from "@/lib/hooks/use-toast";
+import { useConfirm } from "@/lib/hooks/use-confirm";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -44,6 +46,8 @@ export function DocumentiTab({
   const [nome, setNome] = useState("");
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -93,14 +97,18 @@ export function DocumentiTab({
     }
   }
 
-  function handleDelete(id: string) {
-    if (!confirm("Eliminare questo documento? L'azione non si può annullare.")) {
-      return;
-    }
+  async function handleDelete(id: string) {
+    const ok = await confirm({
+      title: "Eliminare questo documento?",
+      message: "L'azione non si può annullare.",
+      confirmLabel: "Elimina",
+      variant: "destructive",
+    });
+    if (!ok) return;
     startTransition(async () => {
       const res = await deleteClientDocument(id);
       if (!res.ok) {
-        alert(`Errore: ${res.error}`);
+        toast.error(`Errore: ${res.error}`);
         return;
       }
       router.refresh();
