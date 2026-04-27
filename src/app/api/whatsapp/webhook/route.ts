@@ -549,10 +549,31 @@ async function generateAndSendReply(
   const isUnclear = isAudio && rawReply && /AUDIO_UNCLEAR/i.test(rawReply);
   const FALLBACK_REPLY =
     "Un attimo che controllo e ti rispondo a breve 🙏";
+
+  // ANTI-HALLUCINATION GUARD (seconda linea di difesa).
+  // Gli intent reschedule/cancel sono già intercettati prima di Gemini, ma
+  // il modello può comunque hallucinarsi una conferma di azione su intent
+  // generic ("ho aggiornato il tuo programma", "ti ho prenotato la seduta",
+  // ecc). Se peschiamo uno di questi pattern, sostituiamo con un fallback
+  // safe — meglio essere vaghi che mentire al cliente.
+  const HALLUCINATION_PATTERNS: RegExp[] = [
+    /\b(ho|abbiamo)\s+(spostat|cancellat|annullat|sistemat|confermat|prenotat|fissat|aggiornat)/i,
+    /\b(spostat[oa]|cancellat[oa]|sistemat[oa])\s+(per\s+te|il\s+tuo|l['’]appuntament)/i,
+    /\b(fatto|done|ok)\s*[!.]\s*(.*ora|.*spostat|.*cancellat)/i,
+  ];
+  let safeReply = rawReply;
+  if (safeReply && HALLUCINATION_PATTERNS.some((p) => p.test(safeReply))) {
+    console.warn("[hallucination guard] caught false confirmation", {
+      reply: safeReply,
+      clientId,
+    });
+    safeReply = "ti faccio confermare a breve da Laura 🪷";
+  }
+
   const reply = isUnclear
     ? AUDIO_UNCLEAR_REPLY
-    : rawReply
-      ? rawReply
+    : safeReply
+      ? safeReply
       : FALLBACK_REPLY;
 
   try {
