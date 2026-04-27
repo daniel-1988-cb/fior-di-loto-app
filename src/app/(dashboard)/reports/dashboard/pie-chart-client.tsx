@@ -13,11 +13,11 @@ import { formatCurrency } from "@/lib/utils";
 
 const PIE_COLORS = [
   CHART_COLORS.primary,
-  CHART_COLORS.rose,
-  CHART_COLORS.success,
-  CHART_COLORS.warning,
-  CHART_COLORS.info,
-  CHART_COLORS.danger,
+  CHART_COLORS.gold,
+  CHART_COLORS.rose_dark,
+  CHART_COLORS.gold_light,
+  CHART_COLORS.brown_light,
+  CHART_COLORS.gold_dark,
 ];
 
 export function PagamentiPieChart({

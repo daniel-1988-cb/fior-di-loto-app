@@ -145,12 +145,24 @@ export function RevenueChart({
   );
 }
 
-/** Preset colori coerenti con brand + accessibili in dark mode. */
+/**
+ * Preset colori brand Fior di Loto.
+ * Tutti i valori scelti per contrasto sufficiente sia su sfondo cream
+ * (light mode) sia su sfondo brown (dark mode). Niente blu/viola generici:
+ * solo varianti brand (rose, gold, brown, cream) + 3 colori semantici per
+ * stati (success/danger) usati con parsimonia.
+ */
 export const CHART_COLORS = {
-  primary: "#6B4EFF",
-  success: "#22C55E",
-  danger: "#EF4444",
-  warning: "#F59E0B",
-  info: "#3B82F6",
-  rose: "#E8A4A4", // brand Fior di Loto
+  primary: "#C97A7A", // brand rose (cuore palette Fior di Loto)
+  rose: "#E8B4B4", // rose-light per contrasto secondario
+  rose_dark: "#A85858",
+  gold: "#CFB06C", // brand gold (warm amber)
+  gold_light: "#DCC99A",
+  gold_dark: "#A88B4A",
+  brown_light: "#B8AD9E", // crema-bruna per neutrali nei chart
+  // Semantici (usati solo per stati positivi/negativi):
+  success: "#7FB37F", // verde sage muted, non sat
+  danger: "#D87474", // rosso brunito (rosa famiglia)
+  warning: "#CFB06C", // = gold, riusiamo
+  info: "#A8B5C9", // sky soft cream-blu
 } as const;
