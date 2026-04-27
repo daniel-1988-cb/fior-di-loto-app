@@ -33,7 +33,14 @@ export async function getAppuntamentiDomani(): Promise<AppuntamentoDomani[]> {
   }
   if (!data) return [];
 
-  return data.map((a: any) => ({
+  type ReminderRow = {
+    id: string;
+    ora_inizio: string | null;
+    clients?: { nome?: string | null; cognome?: string | null; telefono?: string | null } | null;
+    services?: { nome?: string | null } | null;
+    staff?: { nome?: string | null } | null;
+  };
+  return (data as ReminderRow[]).map((a) => ({
     id: a.id,
     ora: a.ora_inizio ? String(a.ora_inizio).slice(0, 5) : "",
     cliente_nome: a.clients?.nome || "",
@@ -82,9 +89,17 @@ export async function getAppuntamentiDomaniForReminders(): Promise<
   }
   if (!data) return [];
 
-  return data.map((a: any) => ({
+  type ReminderForJobRow = {
+    id: string;
+    data: string;
+    ora_inizio: string | null;
+    reminder_sent_at: string | null;
+    clients?: { id?: string | null; nome?: string | null; cognome?: string | null; telefono?: string | null; email?: string | null; wa_opt_in?: boolean | null } | null;
+    services?: { nome?: string | null } | null;
+  };
+  return (data as ReminderForJobRow[]).map((a) => ({
     id: a.id,
-    data: a.data,
+    data: a.data ?? "",
     ora: a.ora_inizio ? String(a.ora_inizio).slice(0, 5) : "",
     cliente_id: a.clients?.id || "",
     cliente_nome: a.clients?.nome || "",

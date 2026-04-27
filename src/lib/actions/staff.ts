@@ -193,21 +193,24 @@ export async function getStaffPerformance(
       .gte("data", prevInizio).lte("data", prevFine),
   ]);
 
-  const currData = (curr.data || []) as any[];
-  const prevData = (prev.data || []) as any[];
+  type ApptRow = { id: string; stato: string; data?: string; services?: { prezzo?: number | string | null } | null };
+
+  const currData: ApptRow[] = (curr.data || []) as ApptRow[];
+  const prevData: ApptRow[] = (prev.data || []) as ApptRow[];
 
   const completati = currData.filter(a => a.stato === "completato");
   const prevCompletati = prevData.filter(a => a.stato === "completato");
 
-  const vendite = completati.reduce((s: number, a: any) => s + (Number(a.services?.prezzo) || 0), 0);
-  const venditePreced = prevCompletati.reduce((s: number, a: any) => s + (Number(a.services?.prezzo) || 0), 0);
+  const vendite = completati.reduce((s: number, a: ApptRow) => s + (Number(a.services?.prezzo) || 0), 0);
+  const venditePreced = prevCompletati.reduce((s: number, a: ApptRow) => s + (Number(a.services?.prezzo) || 0), 0);
 
   // Daily breakdown
   const dailyMap: Record<string, { appuntamenti: number; vendite: number }> = {};
-  completati.forEach((a: any) => {
-    if (!dailyMap[a.data]) dailyMap[a.data] = { appuntamenti: 0, vendite: 0 };
-    dailyMap[a.data].appuntamenti++;
-    dailyMap[a.data].vendite += Number(a.services?.prezzo) || 0;
+  completati.forEach((a: ApptRow) => {
+    const day = a.data ?? "";
+    if (!dailyMap[day]) dailyMap[day] = { appuntamenti: 0, vendite: 0 };
+    dailyMap[day].appuntamenti++;
+    dailyMap[day].vendite += Number(a.services?.prezzo) || 0;
   });
 
   const dailyData = Object.entries(dailyMap)
