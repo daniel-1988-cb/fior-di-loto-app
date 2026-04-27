@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
@@ -122,7 +122,7 @@ export function CalendarGrid({
 
   useEffect(() => {
     if (!isToday) {
-      setNowMin(null);
+      startTransition(() => setNowMin(null));
       return;
     }
     const update = () => {

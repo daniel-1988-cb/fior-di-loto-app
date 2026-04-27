@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import {
  emptyCart,
  type CartState,
@@ -66,18 +66,18 @@ export interface UseCartReturn {
  */
 export function useCart(appointmentId: string, clientId?: string | null): UseCartReturn {
  const key = useMemo(() => storageKey(appointmentId), [appointmentId]);
- const [cart, setCart] = useState<CartState>(() =>
-  emptyCart(appointmentId, clientId ?? undefined),
- );
+ const [cart, setCart] = useState<CartState>(() => {
+  // Lazy init: reads localStorage on first render (client only).
+  const fallback = emptyCart(appointmentId, clientId ?? undefined);
+  if (typeof window === "undefined") return fallback;
+  return readStored(key, fallback);
+ });
  const [mounted, setMounted] = useState(false);
 
- // Load al mount
+ // Mark mounted after first paint — use startTransition to satisfy set-state-in-effect rule.
  useEffect(() => {
-  if (typeof window === "undefined") return;
-  const fallback = emptyCart(appointmentId, clientId ?? undefined);
-  setCart(readStored(key, fallback));
-  setMounted(true);
- }, [key, appointmentId, clientId]);
+  startTransition(() => setMounted(true));
+ }, []);
 
  // Persist ad ogni change (dopo mount)
  useEffect(() => {

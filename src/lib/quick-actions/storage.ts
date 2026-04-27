@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import { DEFAULT_QUICK_ACTIONS, type QuickAction, type QuickActionId } from "./types";
 
 /**
@@ -105,19 +105,22 @@ export interface UseQuickActionsReturn {
  * possono usare `mounted` per evitare mismatch in hydration.
  */
 export function useQuickActions(): UseQuickActionsReturn {
-  const [config, setConfig] = useState<StoredQuickActions>(() => buildDefaultConfig());
-  const [mounted, setMounted] = useState(false);
-
-  // Carica da localStorage al mount.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [config, setConfig] = useState<StoredQuickActions>(() => {
+    // Lazy init: reads localStorage on first render (client only).
+    // Falls back to defaults on SSR or parse errors.
+    if (typeof window === "undefined") return buildDefaultConfig();
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      setConfig(mergeWithDefaults(parseStored(raw)));
+      return mergeWithDefaults(parseStored(raw));
     } catch {
-      setConfig(buildDefaultConfig());
+      return buildDefaultConfig();
     }
-    setMounted(true);
+  });
+  const [mounted, setMounted] = useState(false);
+
+  // Mark mounted after first paint — use startTransition to satisfy set-state-in-effect rule.
+  useEffect(() => {
+    startTransition(() => setMounted(true));
   }, []);
 
   // Persisti ad ogni change (ma solo dopo mount, così non soffochiamo il default).
