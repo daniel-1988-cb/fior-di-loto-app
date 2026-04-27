@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
  X,
  Search,
@@ -24,6 +24,7 @@ import {
  Wallet,
  type LucideIcon,
 } from "lucide-react";
+import { useFocusTrap } from "@/lib/hooks/use-focus-trap";
 import { getAppointment, markAppointmentPaid } from "@/lib/actions/appointments";
 import { useToast } from "@/lib/hooks/use-toast";
 import { createCartTransaction } from "@/lib/actions/transaction-items";
@@ -454,21 +455,22 @@ function CheckoutModalInner({
   onClose();
  }, [saving, onClose]);
 
+ const panelRef = useRef<HTMLDivElement>(null);
+
+ // Focus trap: active when the sub-modal (AddItemsModal) is not open (it manages its own trap).
+ useFocusTrap({
+  containerRef: panelRef,
+  active: modalCategory === null,
+  onEscape: handleClose,
+ });
+
  useEffect(() => {
-  const onKey = (e: KeyboardEvent) => {
-   if (e.key !== "Escape") return;
-   // Se un sotto-modale (AddItemsModal) è aperto, lasciamo che sia lui a gestirlo.
-   if (modalCategory !== null) return;
-   handleClose();
-  };
-  window.addEventListener("keydown", onKey);
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = "hidden";
   return () => {
-   window.removeEventListener("keydown", onKey);
    document.body.style.overflow = prevOverflow;
   };
- }, [handleClose, modalCategory]);
+ }, []);
 
  // -------------------- Render --------------------
  const clientName = appointment?.clients
@@ -494,7 +496,7 @@ function CheckoutModalInner({
    />
 
    {/* Pannello */}
-   <div className="relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+   <div ref={panelRef} className="relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
     {/* Topbar */}
     <div className="flex items-center gap-3 border-b border-border bg-card px-5 py-3">
      <button

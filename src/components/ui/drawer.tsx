@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFocusTrap } from "@/lib/hooks/use-focus-trap";
 
 interface DrawerProps {
   open: boolean;
@@ -28,16 +29,17 @@ export function Drawer({
   side = "right",
   width = "md",
 }: DrawerProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap({ containerRef: panelRef, active: open, onEscape: onClose });
+
   useEffect(() => {
     if (!open) return;
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onEsc);
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", onEsc);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -49,6 +51,7 @@ export function Drawer({
         className="absolute inset-0 bg-black/40 transition-opacity"
       />
       <div
+        ref={panelRef}
         className={cn(
           "relative flex flex-col bg-card text-card-foreground shadow-2xl transition-transform",
           widthMap[width],
