@@ -102,7 +102,7 @@ export function AppuntamentiTab({
                       <span className="flex items-center gap-1">
                         <span
                           className="inline-block h-2 w-2 rounded-full"
-                          style={{ backgroundColor: staff.colore || "#e8a4a4" }}
+                          style={{ backgroundColor: staff.colore || "var(--color-rose-light)" }}
                         />
                         {staff.nome}
                       </span>

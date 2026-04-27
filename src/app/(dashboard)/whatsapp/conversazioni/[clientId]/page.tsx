@@ -42,8 +42,8 @@ export default async function ConversationDetailPage({
          m.role === "user" ? "rounded-tl-none bg-white" : "rounded-tr-none bg-[#DCF8C6]"
         }`}
        >
-        <p className="whitespace-pre-wrap text-[#111]">{m.content}</p>
-        <p className="mt-1 text-right text-[10px] text-[#999]">
+        <p className="whitespace-pre-wrap text-foreground">{m.content}</p>
+        <p className="mt-1 text-right text-[10px] text-muted-foreground">
          {new Date(m.created_at).toLocaleTimeString("it-IT", {
           hour: "2-digit",
           minute: "2-digit",

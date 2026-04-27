@@ -270,8 +270,8 @@ export default function WhatsAppPage() {
       {messaggio && (
        <div className="mb-4 rounded-xl bg-[#ECE5DD] p-4">
         <div className="max-w-xs rounded-xl rounded-tl-none bg-white px-4 py-3 ">
-         <p className="whitespace-pre-wrap text-sm text-[#111]">{messaggio}</p>
-         <p className="mt-1 text-right text-[10px] text-[#999]">
+         <p className="whitespace-pre-wrap text-sm text-foreground">{messaggio}</p>
+         <p className="mt-1 text-right text-[10px] text-muted-foreground">
           {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} ✓✓
          </p>
         </div>
