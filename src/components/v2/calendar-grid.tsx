@@ -204,6 +204,13 @@ export function CalendarGrid({
             height: gridHeight,
           }}
         >
+          {appointments.length === 0 && staff.length > 0 && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+              <p className="rounded-lg bg-card/80 px-4 py-2 text-center text-sm text-muted-foreground backdrop-blur-sm">
+                Giornata libera. Clicca su uno slot per aggiungere il primo appuntamento.
+              </p>
+            </div>
+          )}
           {staff.map((s) => {
             const apts = byStaff.get(s.id) ?? [];
             // Blocchi di questo staff + blocchi globali (staff_id = null)

@@ -88,12 +88,15 @@ export default async function RichiestePage({
 
    {requests.length === 0 ? (
     <div className="rounded-lg border border-border bg-card p-8 text-center">
-     <p className="text-sm text-muted-foreground">
+     <p className="text-sm font-medium text-brown">
       {activeTipo === "nuovo"
-       ? "Nessuna richiesta di prenotazione da processare."
+       ? "Nessuna nuova prenotazione in attesa."
        : activeTipo === "spostamento"
-        ? "Nessuna richiesta di spostamento da processare."
-        : "Nessuna richiesta di cancellazione da processare."}
+        ? "Nessuna richiesta di spostamento in attesa."
+        : "Nessuna richiesta di cancellazione in attesa."}
+     </p>
+     <p className="mt-1 text-xs text-muted-foreground">
+      Quando arriva un messaggio da WhatsApp lo trovi qui.
      </p>
     </div>
    ) : (

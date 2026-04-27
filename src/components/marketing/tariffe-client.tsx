@@ -293,12 +293,10 @@ export function TariffeClient({
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Zap className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold">Nessuna regola di pricing</h2>
+          <h2 className="mt-4 text-lg font-semibold">Nessuna regola di tariffa</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Crea regole tipo &quot;sconto 10% lun-mer 09:00-12:00&quot; o
-            &quot;maggiorazione 5% sabato 17:00-20:00&quot;.
-            Le regole sono solo configurazione: l&apos;applicazione automatica al
-            checkout sara abilitata in una versione futura.
+            Crea regole per applicare sconti o maggiorazioni in fasce specifiche.
+            Esempio: -10% lun&#8209;mer 09:00&#8209;12:00.
           </p>
           <div className="mt-5">
             <Button onClick={openNew}>
