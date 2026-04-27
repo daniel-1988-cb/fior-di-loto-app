@@ -42,9 +42,9 @@
   --color-sidebar-hover: #5C4333;
   --color-sidebar-active: #CFB06C;
 
-  /* Fonts */
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-cormorant);
+  /* Fonts — vars injected by Next.js font loader (--font-jost, --font-display) */
+  --font-sans: var(--font-jost);
+  --font-serif: var(--font-display);
 
   /* Border Radius — elegante */
   --radius-sm: 0.25rem;
@@ -116,10 +116,10 @@ html.light {
 
 /* ── Brand Fior di Loto — globals ── */
 
-/* Heading: Cormorant Garamond per titoli principali */
+/* Heading: DM Serif Display per titoli principali */
 h1, h2 {
-  font-family: var(--font-display), 'Cormorant Garamond', Georgia, serif;
-  font-weight: 700;
+  font-family: var(--font-serif), 'DM Serif Display', Georgia, serif;
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
 
@@ -131,7 +131,7 @@ h3, h4, h5, h6 {
 
 /* Display utility per titoli eleganti */
 .font-display {
-  font-family: var(--font-display), 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-serif), 'DM Serif Display', Georgia, serif;
 }
 
 /* Card: elegante con ombra soft */

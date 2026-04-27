@@ -1,17 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Cormorant_Garamond } from "next/font/google";
+import { Jost, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "@/components/pwa/register-sw";
 
-const inter = Inter({
- variable: "--font-inter",
+const jost = Jost({
+ variable: "--font-jost",
  subsets: ["latin"],
+ weight: ["300", "400", "500", "600", "700"],
 });
 
-const cormorant = Cormorant_Garamond({
- variable: "--font-cormorant",
+const dmSerifDisplay = DM_Serif_Display({
+ variable: "--font-display",
  subsets: ["latin"],
- weight: ["400", "500", "600", "700"],
+ weight: ["400"],
+ style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -30,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
- themeColor: "#3D2817",
+ themeColor: "#443625",
  width: "device-width",
  initialScale: 1,
  maximumScale: 5,
@@ -42,7 +44,7 @@ export default function RootLayout({
  children: React.ReactNode;
 }>) {
  return (
-  <html lang="it" className={`${inter.variable} ${cormorant.variable} h-full`}>
+  <html lang="it" className={`${jost.variable} ${dmSerifDisplay.variable} h-full`}>
    <body className="min-h-full antialiased">
     {children}
     <RegisterSW />
