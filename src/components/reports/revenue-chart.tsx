@@ -5,6 +5,7 @@ import {
   Line,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -125,7 +126,16 @@ export function RevenueChart({
                     name={s.label}
                     fill={s.color}
                     radius={[6, 6, 0, 0]}
-                  />
+                    isAnimationActive={false}
+                  >
+                    {/* Recharts v3 quirk: pass fill via Cell to force color
+                        on each rectangle path. Senza Cell, le bar restano
+                        nere (default SVG fill quando il prop fill non viene
+                        propagato al path interno). */}
+                    {data.map((_, i) => (
+                      <Cell key={`${s.dataKey}-${i}`} fill={s.color} />
+                    ))}
+                  </Bar>
                 ))
               : series.map((s) => (
                   <Line
