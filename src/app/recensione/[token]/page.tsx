@@ -52,18 +52,18 @@ export default async function RecensionePage({
 
   if (!req) {
     return (
-      <main className="min-h-screen bg-[#FFFCF6] text-[#443625] flex items-center justify-center p-6">
+      <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
-          <div className="mx-auto h-12 w-12 rounded-full bg-[#F5E6D8] flex items-center justify-center text-2xl">
+          <div className="mx-auto h-12 w-12 rounded-full bg-accent flex items-center justify-center text-2xl">
             &#x1F33F;
           </div>
           <h1 className="text-2xl font-serif">Link non valido</h1>
-          <p className="text-sm text-[#8B7D6B]">
+          <p className="text-sm text-muted-foreground">
             Questo link non &egrave; pi&ugrave; attivo o &egrave; gi&agrave; stato usato.
             Se hai bisogno di aiuto scrivici su WhatsApp allo{" "}
             <a
               href="https://wa.me/3908741950632"
-              className="underline text-[#A85858]"
+              className="underline text-rose-dark"
             >
               0874 1950632
             </a>
@@ -71,7 +71,7 @@ export default async function RecensionePage({
           </p>
           <Link
             href="https://www.fiordilotocb.it"
-            className="inline-block mt-4 text-sm text-[#A88B4A] hover:underline"
+            className="inline-block mt-4 text-sm text-gold-dark hover:underline"
           >
             Vai al sito
           </Link>
@@ -85,13 +85,13 @@ export default async function RecensionePage({
   const already = Boolean(req.submitted_at);
 
   return (
-    <main className="min-h-screen bg-[#FFFCF6] text-[#443625]">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-xl px-6 py-12">
         <header className="text-center mb-8">
-          <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-[#CFB06C] to-[#C97A7A] flex items-center justify-center text-white text-2xl shadow-sm">
+          <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-gold to-rose flex items-center justify-center text-white text-2xl shadow-sm">
             &#x1F33C;
           </div>
-          <p className="mt-4 text-xs uppercase tracking-[0.25em] text-[#A88B4A]">
+          <p className="mt-4 text-xs uppercase tracking-[0.25em] text-gold-dark">
             Fior di Loto
           </p>
           <h1 className="mt-2 text-3xl sm:text-4xl font-serif leading-tight">
@@ -101,7 +101,7 @@ export default async function RecensionePage({
                 ? `Grazie ${clientName}, com'è andata?`
                 : "Grazie, com'è andata?"}
           </h1>
-          <p className="mt-3 text-sm text-[#8B7D6B]">
+          <p className="mt-3 text-sm text-muted-foreground">
             {already
               ? "Abbiamo già ricevuto il tuo feedback — grazie di cuore."
               : "Il tuo parere ci aiuta a prenderci cura ogni giorno meglio di te e delle altre donne che vengono da noi."}
@@ -109,8 +109,8 @@ export default async function RecensionePage({
         </header>
 
         {already ? (
-          <div className="rounded-2xl bg-white border border-[#E8DDD3] p-8 text-center shadow-sm">
-            <p className="text-sm text-[#8B7D6B]">
+          <div className="rounded-2xl bg-card border border-border p-8 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">
               Se vuoi lasciarci una recensione su Google in qualsiasi momento,
               cerca <strong>Fior di Loto Campobasso</strong> su Google Maps.
             </p>
@@ -119,7 +119,7 @@ export default async function RecensionePage({
           <ReviewForm token={token} clientName={clientName} />
         )}
 
-        <footer className="mt-10 text-center text-xs text-[#8B7D6B]">
+        <footer className="mt-10 text-center text-xs text-muted-foreground">
           &copy; Fior di Loto Centro Estetico & Benessere &middot; Campobasso
         </footer>
       </div>
