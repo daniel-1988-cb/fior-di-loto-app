@@ -2,19 +2,14 @@ export const dynamic = "force-dynamic";
 
 import {
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   CardContent,
   Badge,
   Avatar,
   Button,
 } from "@/components/ui";
-import { Plus, TrendingUp, TrendingDown, Calendar as CalIcon, Euro } from "lucide-react";
+import { Plus, Calendar as CalIcon, Euro, TrendingUp, TrendingDown } from "lucide-react";
 import Link from "next/link";
-import { SalesLineChart, AppointmentsBarChart } from "@/components/v2/dashboard-charts";
 import {
-  getDashboardChartData,
   getFatturatoOggi,
   getAppuntamentiOggi,
   getTopServizi,
@@ -39,8 +34,7 @@ function TrendBadge({ value }: { value: number }) {
 }
 
 export default async function V2DashboardPage() {
-  const [chartData, fatturatoOggi, appOggi, topServizi, staffPerf, upcoming] = await Promise.all([
-    getDashboardChartData(),
+  const [fatturatoOggi, appOggi, topServizi, staffPerf, upcoming] = await Promise.all([
     getFatturatoOggi(),
     getAppuntamentiOggi(),
     getTopServizi(),
@@ -48,256 +42,191 @@ export default async function V2DashboardPage() {
     getUpcomingAppointments().catch(() => []),
   ]);
 
-  const totaleVendite = chartData.reduce((s, d) => s + d.vendite, 0);
-  const totaleAppuntamenti = chartData.reduce((s, d) => s + d.appuntamenti, 0);
-  const valoreMedio = totaleAppuntamenti > 0 ? totaleVendite / totaleAppuntamenti : 0;
+  const oggi = new Date().toLocaleDateString("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  // Primo appuntamento futuro nella lista upcoming
+  const prossimo = appOggi.prossimo ?? (upcoming[0]
+    ? {
+        ora: upcoming[0].ora_inizio.slice(0, 5),
+        cliente: `${upcoming[0].clients?.nome ?? ""} ${upcoming[0].clients?.cognome ?? ""}`.trim(),
+        servizio: upcoming[0].services?.nome ?? "",
+      }
+    : null);
 
   return (
     <>
-      <header className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {new Date().toLocaleDateString("it-IT", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
+      {/* ── Hero section ── */}
+      <section className="mb-8">
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">{oggi}</p>
+            <h1 className="font-display text-4xl sm:text-5xl leading-tight text-foreground">
+              Buongiorno, Laura
+            </h1>
+          </div>
+          <Link href="/agenda/nuovo">
+            <Button>
+              <Plus className="h-4 w-4" /> Aggiungi
+            </Button>
+          </Link>
         </div>
-        <Link href="/agenda/nuovo">
-          <Button>
-            <Plus className="h-4 w-4" /> Aggiungi
-          </Button>
-        </Link>
-      </header>
 
-      {/* Top stats row */}
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Vendite recenti</CardTitle>
-            <CardDescription>Ultimi 7 giorni</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between">
-              <p className="text-4xl font-bold tracking-tight">
-                {formatCurrency(totaleVendite)}
-              </p>
-              <TrendBadge value={fatturatoOggi.trend ?? 0} />
-            </div>
-            <div className="mt-4 flex gap-6 text-sm">
-              <div>
-                <span className="text-muted-foreground">Appuntamenti </span>
-                <span className="font-semibold">{totaleAppuntamenti}</span>
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+              {/* Appuntamenti oggi */}
+              <div className="px-6 py-5">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <CalIcon className="h-3.5 w-3.5" /> Oggi
+                </p>
+                <p className="font-display text-5xl text-foreground leading-none">
+                  {appOggi.totali}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {appOggi.totali === 1 ? "appuntamento" : "appuntamenti"}
+                </p>
+                <div className="mt-3 flex gap-1.5 flex-wrap">
+                  {appOggi.completati > 0 && (
+                    <Badge variant="success">{appOggi.completati} completati</Badge>
+                  )}
+                  {appOggi.cancellati > 0 && (
+                    <Badge variant="danger">{appOggi.cancellati} annullati</Badge>
+                  )}
+                  {appOggi.noShow > 0 && (
+                    <Badge variant="warning">{appOggi.noShow} no-show</Badge>
+                  )}
+                </div>
               </div>
-              <div>
-                <span className="text-muted-foreground">Valore medio </span>
-                <span className="font-semibold">{formatCurrency(valoreMedio)}</span>
-              </div>
-            </div>
-            <div className="mt-6">
-              <SalesLineChart data={chartData} />
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Prossimi appuntamenti</CardTitle>
-            <CardDescription>Prossimi 7 giorni</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between">
-              <p className="text-4xl font-bold tracking-tight">{totaleAppuntamenti}</p>
-              <span className="text-xs text-muted-foreground">
-                {appOggi.totali} oggi
-              </span>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Badge variant="success">{appOggi.completati} completati</Badge>
-              {appOggi.cancellati > 0 && (
-                <Badge variant="danger">{appOggi.cancellati} annullati</Badge>
-              )}
-              {appOggi.noShow > 0 && (
-                <Badge variant="warning">{appOggi.noShow} no-show</Badge>
-              )}
-            </div>
-            <div className="mt-6">
-              <AppointmentsBarChart data={chartData} />
+              {/* Fatturato oggi */}
+              <div className="px-6 py-5">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <Euro className="h-3.5 w-3.5" /> Fatturato oggi
+                </p>
+                <p className="font-display text-5xl text-foreground leading-none">
+                  {formatCurrency(fatturatoOggi.oggi)}
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <TrendBadge value={fatturatoOggi.trend} />
+                  <span className="text-muted-foreground text-xs">
+                    vs ieri {formatCurrency(fatturatoOggi.ieri)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Prossimo appuntamento */}
+              <div className="px-6 py-5">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+                  Prossimo
+                </p>
+                {prossimo ? (
+                  <>
+                    <p className="font-display text-3xl text-foreground leading-none">
+                      {prossimo.ora}
+                    </p>
+                    <p className="mt-1 text-sm font-medium truncate">{prossimo.cliente}</p>
+                    <p className="text-xs text-muted-foreground truncate">{prossimo.servizio}</p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Nessun altro appuntamento oggi
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      {/* Attività + feed */}
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Attività appuntamenti</CardTitle>
-            <CardDescription>Prossimi in agenda</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {upcoming.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">Nessun appuntamento in programma.</p>
+      {/* ── Feed secondario ── */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Prossimi appuntamenti — timeline compatta */}
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Prossimi in agenda
+          </h2>
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">Nessun appuntamento in programma.</p>
+          ) : (
+            <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+              {upcoming.slice(0, 6).map((a) => (
+                <li key={a.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-md bg-muted text-[9px] font-semibold uppercase leading-tight">
+                    <span>{new Date(a.data).toLocaleDateString("it-IT", { month: "short" })}</span>
+                    <span className="text-sm leading-none">{new Date(a.data).getDate().toString().padStart(2, "0")}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">
+                      {a.ora_inizio.slice(0, 5)} — {a.clients?.nome ?? ""} {a.clients?.cognome ?? ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{a.services?.nome ?? "Servizio"}</p>
+                  </div>
+                  <Badge
+                    variant={
+                      a.stato === "confermato" ? "success"
+                      : a.stato === "completato" ? "primary"
+                      : a.stato === "cancellato" ? "danger"
+                      : "default"
+                    }
+                  >
+                    {a.stato}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Top servizi + staff — liste compatte */}
+        <section className="space-y-6">
+          {/* Top servizi */}
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Top servizi (mese)
+            </h2>
+            {topServizi.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">Nessun dato disponibile.</p>
             ) : (
-              <ul className="divide-y divide-border">
-                {upcoming.slice(0, 6).map((a) => (
-                  <li key={a.id} className="flex items-start gap-3 py-3">
-                    <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-md bg-muted text-[10px] font-semibold uppercase">
-                      <span>
-                        {new Date(a.data).toLocaleDateString("it-IT", { month: "short" })}
-                      </span>
-                      <span className="text-sm">
-                        {new Date(a.data).getDate().toString().padStart(2, "0")}
-                      </span>
+              <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+                {topServizi.slice(0, 5).map((s) => (
+                  <li key={s.nome} className="flex items-center justify-between px-4 py-2.5 gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{s.nome}</p>
+                      <p className="text-xs text-muted-foreground">{s.count} prenotazioni</p>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{a.ora_inizio.slice(0, 5)}</span>
-                        <Badge
-                          variant={
-                            a.stato === "confermato"
-                              ? "success"
-                              : a.stato === "completato"
-                              ? "primary"
-                              : a.stato === "cancellato"
-                              ? "danger"
-                              : "default"
-                          }
-                        >
-                          {a.stato}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 truncate text-sm">
-                        {a.services?.nome ?? "Servizio"} — {a.clients?.nome ?? ""}{" "}
-                        {a.clients?.cognome ?? ""}
-                      </p>
-                    </div>
+                    <span className="text-sm font-semibold shrink-0">{formatCurrency(s.fatturato)}</span>
                   </li>
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Fatturato oggi</CardTitle>
-            <CardDescription>Confronto con ieri</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="rounded-xl bg-primary/10 p-3 text-primary">
-                <Euro className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-3xl font-bold">{formatCurrency(fatturatoOggi.oggi)}</p>
-                <div className="mt-1 flex items-center gap-2 text-sm">
-                  <TrendBadge value={fatturatoOggi.trend} />
-                  <span className="text-muted-foreground">
-                    ieri {formatCurrency(fatturatoOggi.ieri)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            {appOggi.prossimo && (
-              <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-                  <CalIcon className="h-3.5 w-3.5" /> Prossimo appuntamento
-                </div>
-                <p className="mt-1 text-sm font-medium">
-                  {appOggi.prossimo.ora} — {appOggi.prossimo.cliente}
-                </p>
-                <p className="text-xs text-muted-foreground">{appOggi.prossimo.servizio}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Top servizi + staff */}
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">I servizi migliori</CardTitle>
-            <CardDescription>Performance ultimo mese</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {topServizi.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">Nessun dato disponibile.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="text-xs uppercase text-muted-foreground">
-                  <tr>
-                    <th className="pb-2 text-left font-medium">Servizio</th>
-                    <th className="pb-2 text-right font-medium">Prenotazioni</th>
-                    <th className="pb-2 text-right font-medium">Fatturato</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {topServizi.slice(0, 6).map((s) => (
-                    <tr key={s.nome}>
-                      <td className="py-2.5">
-                        <div className="font-medium">{s.nome}</div>
-                        <div className="text-xs text-muted-foreground">{s.categoria}</div>
-                      </td>
-                      <td className="py-2.5 text-right">{s.count}</td>
-                      <td className="py-2.5 text-right font-semibold">
-                        {formatCurrency(s.fatturato)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Miglior membro del team</CardTitle>
-            <CardDescription>Fatturato mese corrente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {staffPerf.length === 0 ? (
-              <p className="py-4 text-sm text-muted-foreground">Nessun dato disponibile.</p>
-            ) : (
-              <ul className="space-y-3">
-                {staffPerf.slice(0, 6).map((s) => {
-                  const target = s.obiettivo || 1;
-                  const pct = Math.min(Math.round((s.fatturato / target) * 100), 100);
-                  return (
-                    <li key={s.id}>
-                      <div className="flex items-center gap-3">
-                        <Avatar name={`${s.nome} ${s.cognome ?? ""}`} size="sm" color={s.colore} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {s.nome} {s.cognome ?? ""}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {s.appuntamentiMese} appuntamenti
-                          </p>
-                        </div>
-                        <span className="text-sm font-semibold">
-                          {formatCurrency(s.fatturato)}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
+          {/* Staff performance */}
+          {staffPerf.length > 0 && (
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Team (mese)
+              </h2>
+              <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+                {staffPerf.slice(0, 4).map((s) => (
+                  <li key={s.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <Avatar name={`${s.nome} ${s.cognome ?? ""}`} size="sm" color={s.colore} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{s.nome} {s.cognome ?? ""}</p>
+                      <p className="text-xs text-muted-foreground">{s.appuntamentiMese} app.</p>
+                    </div>
+                    <span className="text-sm font-semibold shrink-0">{formatCurrency(s.fatturato)}</span>
+                  </li>
+                ))}
               </ul>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+            </div>
+          )}
+        </section>
+      </div>
     </>
   );
 }
