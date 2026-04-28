@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
 import { SlotQuickActionsPopover } from "@/components/agenda/slot-quick-actions-popover";
+import { StaffActionsPopover } from "@/components/v2/staff-actions-popover";
 import {
   AppointmentDetailDrawer,
   type AppointmentDrawerData,
@@ -167,15 +168,17 @@ export function CalendarGrid({
           ) : (
             staff.map((s) => (
               <div key={s.id} className="flex flex-col items-center gap-2 border-r border-border p-3 last:border-r-0">
-                <Avatar
-                  name={`${s.nome} ${s.cognome ?? ""}`}
-                  src={s.avatar_url}
-                  size="md"
-                  color={s.colore}
-                />
-                <p className="truncate text-xs font-medium" title={s.nome}>
-                  {s.nome}
-                </p>
+                <StaffActionsPopover staff={s} currentDate={date}>
+                  <Avatar
+                    name={`${s.nome} ${s.cognome ?? ""}`}
+                    src={s.avatar_url}
+                    size="md"
+                    color={s.colore}
+                  />
+                  <p className="truncate text-xs font-medium" title={s.nome}>
+                    {s.nome}
+                  </p>
+                </StaffActionsPopover>
               </div>
             ))
           )}
