@@ -98,8 +98,7 @@ describe("getDueFollowUps", () => {
           // 23:00 Rome (CEST = UTC+2 in summer 2026, post DST 29 mar)
           ora_inizio: "23:00",
           client_id: CLIENT_ID,
-          servizio_id: SERVICE_ID,
-          servizio_nome: "Pressoterapia",
+          service_id: SERVICE_ID,
           stato: "confermato",
           clients: {
             nome: "Maria",
@@ -154,8 +153,7 @@ describe("getDueFollowUps", () => {
           data: "2026-04-27",
           ora_inizio: "23:00",
           client_id: CLIENT_ID,
-          servizio_id: SERVICE_ID,
-          servizio_nome: "Pressoterapia",
+          service_id: SERVICE_ID,
           stato: "confermato",
           clients: {
             nome: "Maria",
@@ -197,8 +195,7 @@ describe("getDueFollowUps", () => {
           data: "2026-04-27",
           ora_inizio: "23:00",
           client_id: CLIENT_ID,
-          servizio_id: SERVICE_ID,
-          servizio_nome: "Pressoterapia",
+          service_id: SERVICE_ID,
           stato: "confermato",
           clients: {
             nome: "Maria",

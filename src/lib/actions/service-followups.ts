@@ -222,8 +222,7 @@ type AppointmentRow = {
   data: string;
   ora_inizio: string;
   client_id: string;
-  servizio_id: string | null;
-  servizio_nome: string | null;
+  service_id: string | null;
   stato: string;
   clients: {
     nome: string | null;
@@ -331,7 +330,7 @@ export async function getDueFollowUps(now: Date): Promise<FollowUpJob[]> {
   const { data: apptsData, error: apptsErr } = await supabase
     .from("appointments")
     .select(
-      "id, data, ora_inizio, client_id, servizio_id, servizio_nome, stato, clients(nome, cognome, telefono, wa_opt_in), services(nome)",
+      "id, data, ora_inizio, client_id, service_id, stato, clients(nome, cognome, telefono, wa_opt_in), services(nome)",
     )
     .gte("data", dataFrom)
     .lte("data", dataTo)
@@ -345,7 +344,7 @@ export async function getDueFollowUps(now: Date): Promise<FollowUpJob[]> {
   if (appts.length === 0) return [];
 
   // 3. Per ogni appointment determina la regola applicabile per ogni offset:
-  //    se esiste rule per (service_id = appt.servizio_id, offset) → quella
+  //    se esiste rule per (service_id = appt.service_id, offset) → quella
   //    altrimenti se esiste rule globale (service_id NULL, offset) → quella
   const candidates: Array<{
     appt: AppointmentRow;
@@ -383,7 +382,7 @@ export async function getDueFollowUps(now: Date): Promise<FollowUpJob[]> {
 
       // Resolve rule: per-service override globale
       const rule =
-        (appt.servizio_id && entry.byService.get(appt.servizio_id)) ||
+        (appt.service_id && entry.byService.get(appt.service_id)) ||
         entry.global;
       if (!rule) continue;
 
@@ -419,7 +418,7 @@ export async function getDueFollowUps(now: Date): Promise<FollowUpJob[]> {
 
     const fullName = `${appt.clients?.nome ?? ""} ${appt.clients?.cognome ?? ""}`.trim();
     const firstName = fullName.split(" ")[0] || fullName || "cliente";
-    const serviceName = appt.servizio_nome || appt.services?.nome || "il trattamento";
+    const serviceName = appt.services?.nome || "il trattamento";
 
     const message = renderFollowUpMessage(rule.messageTemplate, {
       firstName,
