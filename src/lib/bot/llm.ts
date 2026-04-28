@@ -127,7 +127,12 @@ export async function generateReply(opts: GenerateReplyOpts): Promise<GenerateRe
         // can still emit a few hidden "thought" tokens, and 600 was tight
         // enough that some replies finished as MAX_TOKENS with empty text.
         maxOutputTokens: opts.maxTokens ?? 2000,
-        temperature: 0.8,
+        // Temperatura abbassata da 0.8 → 0.3: con 0.8 Gemini-2.5 hallucinava
+        // dettagli factual (es. orari appuntamenti spostati di 30 min) e poi
+        // li auto-rinforzava leggendo le sue stesse risposte sbagliate dalla
+        // history. 0.3 mantiene un tono caldo ma riduce drasticamente le
+        // invenzioni su data/ora/prezzi/nomi servizi.
+        temperature: 0.3,
         thinkingConfig: { thinkingBudget: 0 },
       },
     });
