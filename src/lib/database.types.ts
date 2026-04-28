@@ -2252,7 +2252,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_loyalty_points_atomic: {
+        Args: { p_client_id: string; p_delta: number }
+        Returns: {
+          punti_after: number
+        }[]
+      }
       get_user_role: { Args: never; Returns: string }
+      increment_client_totals: {
+        Args: {
+          p_client_id: string
+          p_speso_delta?: number
+          p_visite_delta?: number
+        }
+        Returns: {
+          totale_speso: number
+          totale_visite: number
+        }[]
+      }
+      insert_wallet_transaction_atomic: {
+        Args: {
+          p_appointment_id?: string
+          p_client_id: string
+          p_created_by?: string
+          p_descrizione: string
+          p_importo: number
+          p_tipo: string
+          p_transaction_id?: string
+        }
+        Returns: {
+          id: string
+          saldo_dopo: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_authenticated_user: { Args: never; Returns: boolean }
       show_limit: { Args: never; Returns: number }
@@ -2390,10 +2422,17 @@ export const Constants = {
   },
 } as const
 
-// Convenience helpers
-export type TableRow<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Row"];
-export type TableInsert<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Insert"];
-export type TableUpdate<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Update"];
+// ============================================
+// Helper aliases (Fior di Loto custom)
+// ============================================
+
+type PublicSchema = Database["public"];
+
+export type TableRow<T extends keyof PublicSchema["Tables"]> =
+  PublicSchema["Tables"][T]["Row"];
+
+export type TableInsert<T extends keyof PublicSchema["Tables"]> =
+  PublicSchema["Tables"][T]["Insert"];
+
+export type TableUpdate<T extends keyof PublicSchema["Tables"]> =
+  PublicSchema["Tables"][T]["Update"];

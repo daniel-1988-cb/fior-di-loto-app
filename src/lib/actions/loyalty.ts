@@ -341,34 +341,47 @@ async function applyPointsDelta(
 
   const supabase = createAdminClient();
   const settings = await loadSettingsOrThrow();
+  const intDelta = Math.floor(delta);
 
-  const { data: client, error: cErr } = await supabase
-    .from("clients")
-    .select("id, punti")
-    .eq("id", clientId)
-    .maybeSingle();
-  if (cErr) throw cErr;
-  if (!client) throw new Error("Cliente non trovato");
+  // Atomic update via RPC: evita race condition read-modify-write su clients.punti.
+  const { data: rpcData, error: rpcErr } = await supabase.rpc(
+    "apply_loyalty_points_atomic",
+    {
+      p_client_id: clientId,
+      p_delta: intDelta,
+    },
+  );
+  if (rpcErr) {
+    // RPC throws "Punti insufficienti..." o "Cliente non trovato..."
+    throw new Error(rpcErr.message);
+  }
+  const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+  const next = Number(rpcRow?.punti_after ?? 0);
 
-  const current = Number(client.punti) || 0;
-  const next = current + Math.floor(delta);
-  if (next < 0) throw new Error("Punti insufficienti");
-
+  // Aggiorna tier separatamente (calcolato in app, non race-critical perché
+  // dipende solo dal saldo già finalizzato dall'RPC atomico).
   const newTier = tierFromPoints(next, settings);
   const user = await getCurrentUser();
 
-  const { error: upErr } = await supabase
+  const { error: tierErr } = await supabase
     .from("clients")
-    .update({ punti: next, tier: newTier })
+    .update({ tier: newTier })
     .eq("id", clientId);
-  if (upErr) throw upErr;
+  if (tierErr) {
+    // Compensa: revert punti per non lasciare lo stato inconsistente
+    await supabase.rpc("apply_loyalty_points_atomic", {
+      p_client_id: clientId,
+      p_delta: -intDelta,
+    });
+    throw tierErr;
+  }
 
   const { data: tx, error: txErr } = await supabase
     .from("loyalty_transactions")
     .insert({
       client_id: clientId,
       tipo,
-      punti: Math.floor(delta),
+      punti: intDelta,
       descrizione: opts.descrizione
         ? truncate(sanitizeString(opts.descrizione), 500)
         : null,
@@ -379,7 +392,15 @@ async function applyPointsDelta(
     })
     .select()
     .single();
-  if (txErr) throw txErr;
+  if (txErr) {
+    // Compensa: i punti sono già stati aggiornati ma il log audit fallisce.
+    // Reverte i punti per mantenere lo stato consistente con il log.
+    await supabase.rpc("apply_loyalty_points_atomic", {
+      p_client_id: clientId,
+      p_delta: -intDelta,
+    });
+    throw txErr;
+  }
 
   return { punti: next, tier: newTier, transaction: tx as LoyaltyTransaction };
 }

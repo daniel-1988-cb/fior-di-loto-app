@@ -130,6 +130,11 @@ function makeFake() {
 
   const client = {
     from: (table: string) => builder(table),
+    // Mock RPC for atomic operations (increment_client_totals, etc.)
+    rpc: async (_name: string, _params: unknown) => {
+      calls.push({ table: `rpc.${_name}`, payload: _params });
+      return { data: null, error: null };
+    },
   };
 
   return { client, calls, responses };

@@ -416,22 +416,19 @@ export async function createCartTransaction(
     }
   }
 
-  // 7) aggiorna cliente (allineato a transactions.createTransaction)
+  // 7) aggiorna cliente — atomic via RPC per evitare race condition
   if (cart.clientId) {
-    const { data: client } = await supabase
-      .from("clients")
-      .select("totale_speso, totale_visite")
-      .eq("id", cart.clientId)
-      .single();
-    if (client) {
+    const { error: incrErr } = await supabase.rpc("increment_client_totals", {
+      p_client_id: cart.clientId,
+      p_speso_delta: totale,
+      p_visite_delta: 1,
+    });
+    if (incrErr) {
+      console.warn("[checkout] increment_client_totals failed:", incrErr);
+    } else {
       await supabase
         .from("clients")
-        .update({
-          totale_speso: (Number(client.totale_speso) || 0) + totale,
-          totale_visite: (Number(client.totale_visite) || 0) + 1,
-          ultima_visita: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .update({ ultima_visita: new Date().toISOString() })
         .eq("id", cart.clientId);
     }
   }

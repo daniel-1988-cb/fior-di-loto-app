@@ -136,23 +136,21 @@ export async function createTransaction(data: {
 
   if (error) throw error;
 
-  // Update client totale_speso if it's an entrata linked to a client
+  // Update client totale_speso if it's an entrata linked to a client.
+  // Atomic via RPC per evitare race condition read-modify-write.
   if (data.tipo === "entrata" && data.clientId) {
-    const { data: client, error: fetchError } = await supabase
-      .from("clients")
-      .select("totale_speso, totale_visite")
-      .eq("id", data.clientId)
-      .single();
-
-    if (!fetchError && client) {
+    const { error: incrErr } = await supabase.rpc("increment_client_totals", {
+      p_client_id: data.clientId,
+      p_speso_delta: data.importo,
+      p_visite_delta: 1,
+    });
+    if (incrErr) {
+      console.warn("[transactions] increment_client_totals failed:", incrErr);
+    } else {
+      // ultima_visita non è gestito dall'RPC: update separato non race-critical
       await supabase
         .from("clients")
-        .update({
-          totale_speso: (Number(client.totale_speso) || 0) + data.importo,
-          totale_visite: (Number(client.totale_visite) || 0) + 1,
-          ultima_visita: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .update({ ultima_visita: new Date().toISOString() })
         .eq("id", data.clientId);
     }
   }

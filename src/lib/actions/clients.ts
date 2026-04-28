@@ -395,22 +395,21 @@ export async function addClientInteraction(clientId: string, data: {
 
   if (error) throw error;
 
-  // Update ultima_visita and totale_visite if it's a visit/treatment
+  // Update ultima_visita and totale_visite if it's a visit/treatment.
+  // Atomic via RPC per evitare race condition read-modify-write.
   if (data.tipo === "visita" || data.tipo === "trattamento") {
-    const { data: client } = await supabase
-      .from("clients")
-      .select("totale_visite, totale_speso")
-      .eq("id", clientId)
-      .single();
-    if (client) {
-      await supabase.from("clients").update({
-        ultima_visita: new Date().toISOString(),
-        totale_visite: (Number(client.totale_visite) || 0) + 1,
-        totale_speso: data.importo
-          ? (Number(client.totale_speso) || 0) + data.importo
-          : client.totale_speso,
-        updated_at: new Date().toISOString(),
-      }).eq("id", clientId);
+    const { error: incrErr } = await supabase.rpc("increment_client_totals", {
+      p_client_id: clientId,
+      p_speso_delta: data.importo ?? 0,
+      p_visite_delta: 1,
+    });
+    if (incrErr) {
+      console.warn("[clients] increment_client_totals failed:", incrErr);
+    } else {
+      await supabase
+        .from("clients")
+        .update({ ultima_visita: new Date().toISOString() })
+        .eq("id", clientId);
     }
   }
 

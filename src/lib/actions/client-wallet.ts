@@ -97,29 +97,39 @@ export async function addWalletTransaction(input: {
     : null;
 
   const supabase = createAdminClient();
-
-  // Saldo prima
-  const current = await getClientWalletBalance(input.clientId);
-  const nextBalance = Math.round((current + signedImporto) * 100) / 100;
-  if (nextBalance < 0) {
-    throw new Error("Saldo insufficiente");
-  }
-
   const user = await getCurrentUser();
 
+  // Atomic insert via RPC: locka la riga con FOR UPDATE per evitare race
+  // conditions read-modify-write sul saldo.
+  // Il segno dell'importo è derivato lato DB dal tipo (eccetto aggiustamento).
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    "insert_wallet_transaction_atomic",
+    {
+      p_client_id: input.clientId,
+      p_tipo: tipo,
+      p_importo: tipo === "aggiustamento" ? signedImporto : importoAbs,
+      p_descrizione: descrizione ?? "",
+      p_appointment_id: input.appointmentId ?? undefined,
+      p_transaction_id: input.transactionId ?? undefined,
+      p_created_by: user?.id ?? undefined,
+    },
+  );
+
+  if (rpcError) {
+    // L'RPC throwa con messaggi italiani: "Saldo insufficiente: ..." o "Tipo non valido: ..."
+    throw new Error(rpcError.message);
+  }
+
+  const rpcRow = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+  if (!rpcRow?.id) {
+    throw new Error("RPC non ha ritornato l'id della transazione wallet");
+  }
+
+  // Re-fetch della riga completa per mantenere il return type stabile
   const { data, error } = await supabase
     .from("client_wallet_transactions")
-    .insert({
-      client_id: input.clientId,
-      tipo,
-      importo: signedImporto,
-      descrizione,
-      saldo_dopo: nextBalance,
-      appointment_id: input.appointmentId ?? null,
-      transaction_id: input.transactionId ?? null,
-      created_by: user?.id ?? null,
-    })
     .select()
+    .eq("id", rpcRow.id)
     .single();
   if (error) throw error;
 
