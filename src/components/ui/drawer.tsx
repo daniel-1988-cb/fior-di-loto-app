@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFocusTrap } from "@/lib/hooks/use-focus-trap";
@@ -30,8 +31,14 @@ export function Drawer({
   width = "md",
 }: DrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
 
   useFocusTrap({ containerRef: panelRef, active: open, onEscape: onClose });
+
+  // Mount detection: createPortal needs document.body, only available on client.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -41,9 +48,13 @@ export function Drawer({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  // Portal su `document.body` per sfuggire ai containing block creati da
+  // ancestors con `transform`, `filter` o `backdrop-filter` (la Topbar
+  // usa `backdrop-blur` → senza portal il drawer veniva clippato dentro
+  // l'header h-14).
+  return createPortal(
     <div className="fixed inset-0 z-50 flex" aria-modal="true" role="dialog">
       <button
         aria-label="Chiudi"
@@ -72,6 +83,7 @@ export function Drawer({
         )}
         <div className="flex-1 overflow-y-auto p-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

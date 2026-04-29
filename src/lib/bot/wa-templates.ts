@@ -45,14 +45,16 @@ export function templateForFollowUp(opts: {
   }
   if (offsetHours === 12) {
     return {
-      name: "fdl_followup_12h",
+      // _v2 dopo che Meta ha riclassificato la prima versione MARKETING.
+      // Il body è stato asciugato a puro aftercare per restare UTILITY.
+      name: "fdl_followup_12h_v2",
       language: "it",
       bodyParams: [firstName],
     };
   }
   if (offsetHours === 24) {
     return {
-      name: "fdl_followup_24h",
+      name: "fdl_followup_24h_v2",
       language: "it",
       bodyParams: [firstName],
     };
