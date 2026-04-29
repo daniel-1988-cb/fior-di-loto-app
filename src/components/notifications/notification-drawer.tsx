@@ -409,15 +409,19 @@ function MagazzinoTab({
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        title="Magazzino in regola 🪷"
-        sub="Nessun prodotto sotto la soglia di allerta."
-      />
+      <div className="space-y-4">
+        <EmptyState
+          title="Magazzino in regola 🪷"
+          sub="Nessun prodotto sotto la soglia di allerta."
+        />
+        <ReorderShortcut onClose={onClose} />
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <ReorderShortcut onClose={onClose} />
       {grouped.out.length > 0 && (
         <Section title="Esauriti">
           {grouped.out.map((it) => (
@@ -445,6 +449,26 @@ function MagazzinoTab({
         </Section>
       )}
     </div>
+  );
+}
+
+function ReorderShortcut({ onClose }: { onClose: () => void }) {
+  return (
+    <Link
+      href="/magazzino/riordino"
+      onClick={onClose}
+      className="block rounded-lg border border-border bg-primary/5 p-3 text-sm hover:bg-primary/10 transition-colors"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-semibold text-foreground">Riordino consigliato</p>
+          <p className="text-xs text-muted-foreground">
+            Quantità calcolate sulla velocità di consumo
+          </p>
+        </div>
+        <ExternalLink className="h-4 w-4 text-primary" />
+      </div>
+    </Link>
   );
 }
 
