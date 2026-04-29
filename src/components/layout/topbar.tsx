@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Search, BarChart3, Rocket, Bell, CalendarDays } from "lucide-react";
+import { Search, BarChart3, Rocket, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileMenu } from "./profile-menu";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 interface TopbarProps {
   logo?: React.ReactNode;
@@ -49,9 +50,7 @@ export function Topbar({
         <IconButton label="Marketing boost" href={marketingHref}>
           <Rocket className="h-4 w-4" />
         </IconButton>
-        <IconButton label="Richieste WhatsApp" href="/whatsapp/richieste">
-          <Bell className="h-4 w-4" />
-        </IconButton>
+        <NotificationBell />
         <IconButton label="Agenda oggi" href={agendaHref}>
           <CalendarDays className="h-4 w-4" />
         </IconButton>

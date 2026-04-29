@@ -18,7 +18,7 @@ function pad2(n: number): string {
 /**
  * Format the appointment time as "HH:MM" in Europe/Rome.
  */
-function formatTimeRome(date: Date): string {
+export function formatTimeRome(date: Date): string {
   const fmt = new Intl.DateTimeFormat("it-IT", {
     timeZone: TZ,
     hour: "2-digit",

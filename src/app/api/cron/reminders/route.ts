@@ -8,11 +8,16 @@ import {
 } from "@/lib/reminders/jobs";
 import { sendEmail } from "@/lib/actions/send-email";
 import { renderAppointmentReminder } from "@/lib/email/templates/appointment-reminder";
-import { sendMessage } from "@/lib/bot/whatsapp-meta";
+import { sendMessage, sendTemplate } from "@/lib/bot/whatsapp-meta";
+import {
+  templateForDayBeforeReminder,
+  isTemplatesEnabled,
+} from "@/lib/bot/wa-templates";
+import { hasActiveWASession } from "@/lib/bot/wa-session";
+import { sendPushToAll } from "@/lib/actions/push";
 
 export const runtime = "nodejs";
 // 300s covers ~100 reminders with the default 2-4s jitter between WA sends.
-// Bump higher if the salon ever scales past ~75 appts/day.
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -44,15 +49,17 @@ type RunSummary = {
 };
 
 /**
- * Daily reminders cron — called by Vercel cron (Bearer CRON_SECRET).
+ * Daily reminders cron — Bearer CRON_SECRET. Per ogni appuntamento di domani
+ * (confermato|completato, reminder_sent_at IS NULL) tenta WA + email.
  *
- * For every appointment happening tomorrow (stato confermato|completato,
- * reminder_sent_at IS NULL) we try to fire:
- *   - a WhatsApp message if wa_opt_in && telefono
- *   - a branded email if cliente.email
- * Each channel is attempted independently; a failure on one does not
- * block the other. After all attempts for a given appointment, we stamp
- * reminder_sent_at so a retry (manual or otherwise) doesn't duplicate.
+ * Rispetto alla versione legacy:
+ *  1. Fuori dalla sessione 24h Meta (free-form rejected) usa un template
+ *     UTILITY approvato (`fdl_reminder_giorno_prima`).
+ *  2. Logga ogni tentativo in `reminder_send_log` (sent/failed/skipped) per
+ *     dare visibilità via `wa_send_failures_recent` view + drawer notifiche.
+ *  3. FIX silent-failure: `reminder_sent_at` viene flaggato SOLO se almeno
+ *     un canale ha avuto successo. Prima si flaggava sempre → errori muti.
+ *  4. Push notification al terminare se ci sono fallimenti.
  */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
@@ -82,9 +89,12 @@ export async function GET(req: NextRequest) {
   for (const job of jobs) {
     if (!job.wa && !job.email) {
       summary.skipped_no_channel += 1;
+      // Niente canale → flagga sent comunque per non riprovare ogni tick.
       await flagSent(supabase, job.appointmentId, summary);
       continue;
     }
+
+    let anyChannelSucceeded = false;
 
     if (job.wa) {
       if (!waConfigured) {
@@ -93,16 +103,44 @@ export async function GET(req: NextRequest) {
           channel: "wa",
           error: "META_WA_* env vars not configured",
         });
+        await logReminderSend(supabase, {
+          appointmentId: job.appointmentId,
+          channel: "whatsapp",
+          status: "failed",
+          error: "META_WA_* env vars not configured",
+        });
       } else {
+        const useTemplate =
+          isTemplatesEnabled() && !(await hasActiveWASession(job.clientId));
         try {
-          await sendMessage(job.wa.phone, renderWhatsAppReminderBody(job), {
-            phoneNumberId,
-            accessToken,
-          });
+          let metaMessageId: string;
+          let usedTemplateName: string | null = null;
+          if (useTemplate) {
+            const spec = templateForDayBeforeReminder(job);
+            metaMessageId = await sendTemplate(
+              job.wa.phone,
+              spec.name,
+              spec.language,
+              spec.bodyParams,
+              { phoneNumberId, accessToken },
+            );
+            usedTemplateName = spec.name;
+          } else {
+            metaMessageId = await sendMessage(
+              job.wa.phone,
+              renderWhatsAppReminderBody(job),
+              { phoneNumberId, accessToken },
+            );
+          }
           summary.sent_wa += 1;
-          // Throttle between WA sends to avoid Meta anti-spam heuristics on
-          // bulk business-initiated conversations. Jittered 2–4s by default,
-          // tuneable via WA_REMINDER_DELAY_MIN_MS / WA_REMINDER_DELAY_MAX_MS.
+          anyChannelSucceeded = true;
+          await logReminderSend(supabase, {
+            appointmentId: job.appointmentId,
+            channel: "whatsapp",
+            status: "sent",
+            metaMessageId,
+            usedTemplateName,
+          });
           await sleep(jitterDelayMs());
         } catch (e) {
           const msg = e instanceof Error ? e.message : "wa send failed";
@@ -114,6 +152,15 @@ export async function GET(req: NextRequest) {
             appointmentId: job.appointmentId,
             channel: "wa",
             error: msg,
+          });
+          await logReminderSend(supabase, {
+            appointmentId: job.appointmentId,
+            channel: "whatsapp",
+            status: "failed",
+            error: msg,
+            usedTemplateName: useTemplate
+              ? templateForDayBeforeReminder(job).name
+              : null,
           });
         }
       }
@@ -135,6 +182,12 @@ export async function GET(req: NextRequest) {
         });
         if (res.ok) {
           summary.sent_email += 1;
+          anyChannelSucceeded = true;
+          await logReminderSend(supabase, {
+            appointmentId: job.appointmentId,
+            channel: "email",
+            status: "sent",
+          });
         } else {
           console.error(
             `[cron/reminders] email failed for appt ${job.appointmentId}:`,
@@ -143,6 +196,12 @@ export async function GET(req: NextRequest) {
           summary.errors.push({
             appointmentId: job.appointmentId,
             channel: "email",
+            error: res.error,
+          });
+          await logReminderSend(supabase, {
+            appointmentId: job.appointmentId,
+            channel: "email",
+            status: "failed",
             error: res.error,
           });
         }
@@ -157,10 +216,34 @@ export async function GET(req: NextRequest) {
           channel: "email",
           error: msg,
         });
+        await logReminderSend(supabase, {
+          appointmentId: job.appointmentId,
+          channel: "email",
+          status: "failed",
+          error: msg,
+        });
       }
     }
 
-    await flagSent(supabase, job.appointmentId, summary);
+    if (anyChannelSucceeded) {
+      await flagSent(supabase, job.appointmentId, summary);
+    }
+  }
+
+  if (summary.errors.length > 0) {
+    try {
+      await sendPushToAll({
+        title: "Reminder WA non spediti",
+        body: `${summary.errors.length} invii falliti su ${jobs.length}. Controlla notifiche.`,
+        url: "/?notifications=open",
+        tag: "wa-failures",
+      });
+    } catch (e) {
+      console.error(
+        "[cron/reminders] push notification on failure threw:",
+        e instanceof Error ? e.message : e,
+      );
+    }
   }
 
   return NextResponse.json(summary, { status: 200 });
@@ -185,5 +268,37 @@ async function flagSent(
       channel: "flag",
       error: error.message,
     });
+  }
+}
+
+async function logReminderSend(
+  supabase: ReturnType<typeof createAdminClient>,
+  row: {
+    appointmentId: string;
+    channel: "whatsapp" | "email";
+    status: "sent" | "failed" | "skipped";
+    error?: string;
+    metaMessageId?: string;
+    usedTemplateName?: string | null;
+  },
+): Promise<void> {
+  // reminder_send_log is a fresh table — il tipo generato non l'ha ancora.
+  // Cast `as never` per bypassare l'overload-resolution senza disabilitare
+  // il type checking sul payload (Supabase JS sa solo che è una table valida).
+  const { error } = await supabase
+    .from("reminder_send_log" as never)
+    .insert({
+      appointment_id: row.appointmentId,
+      channel: row.channel,
+      status: row.status,
+      error: row.error ?? null,
+      meta_message_id: row.metaMessageId ?? null,
+      used_template_name: row.usedTemplateName ?? null,
+    } as never);
+  if (error) {
+    console.error(
+      `[cron/reminders] failed to insert reminder_send_log for ${row.appointmentId}:`,
+      error.message,
+    );
   }
 }

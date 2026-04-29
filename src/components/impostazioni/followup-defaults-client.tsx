@@ -19,9 +19,9 @@ import {
 
 const DEFAULT_TEMPLATES: Record<FollowUpOffset, string> = {
   [-12]:
-    "{nome} 🌸 domani alle {ora} ti aspetto per {servizio}. Vieni rilassata, al resto pensiamo noi.",
-  12: "{nome} 🌸 com'è andata? Bevi tanta acqua oggi, aiuta il drenaggio. Un abbraccio.",
-  24: "{nome} 🌸 a 24h dal trattamento dovresti già sentire un effetto. Se hai dubbi scrivimi pure qui.",
+    "Ciao {nome} 🪷 domani alle {ora} ti aspetto per {servizio}. Rilassati, al resto pensiamo noi.",
+  12: "Ciao {nome} 🪷 com'è andata? Bevi tanta acqua oggi, aiuta il drenaggio. Un abbraccio.",
+  24: "Ciao {nome} 🪷 a 24h dal trattamento dovresti già sentire un effetto. Se hai dubbi scrivimi pure qui.",
 };
 
 const OFFSET_LABEL: Record<FollowUpOffset, { title: string; sub: string }> = {
@@ -116,8 +116,9 @@ export function FollowUpDefaultsClient({
             approvato.
           </p>
           <p className="mt-1 text-amber-700 dark:text-amber-400">
-            Senza approvazione i messaggi falliscono. Chiedi a Daniel quando hai
-            i template approvati.
+            Quando il cliente non ha scritto nelle ultime 24h, il bot manda il
+            testo del template approvato (fisso). Le tue personalizzazioni qui
+            partono solo se la sessione è aperta.
           </p>
         </div>
       </div>

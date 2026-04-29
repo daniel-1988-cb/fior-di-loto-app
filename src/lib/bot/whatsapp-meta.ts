@@ -154,3 +154,62 @@ export async function sendWithHumanDelay(
   await new Promise((r) => setTimeout(r, charDelay));
   return sendMessage(to, body, opts);
 }
+
+/**
+ * Invia un Message Template approvato via Meta Cloud API.
+ *
+ * I template servono fuori dalla finestra di customer-care 24h: Meta li
+ * obbliga per business-initiated messages. `bodyParams` è la lista
+ * ordinata dei placeholder {{1}}, {{2}}, ... del body del template.
+ * Se vuota, il payload omette il blocco `components` (template senza
+ * variabili).
+ *
+ * Errori: lancia `Error` con status + body Meta come `sendMessage`.
+ */
+export async function sendTemplate(
+  to: string,
+  templateName: string,
+  language: string,
+  bodyParams: string[],
+  opts: { phoneNumberId: string; accessToken: string },
+): Promise<MetaMessageId> {
+  const url = `${GRAPH_BASE}/${opts.phoneNumberId}/messages`;
+  const template: {
+    name: string;
+    language: { code: string };
+    components?: Array<{
+      type: "body";
+      parameters: Array<{ type: "text"; text: string }>;
+    }>;
+  } = {
+    name: templateName,
+    language: { code: language },
+  };
+  if (bodyParams.length > 0) {
+    template.components = [
+      {
+        type: "body",
+        parameters: bodyParams.map((p) => ({ type: "text", text: p })),
+      },
+    ];
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${opts.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${err}`);
+  }
+  const json = (await res.json()) as { messages: Array<{ id: string }> };
+  return json.messages[0].id;
+}

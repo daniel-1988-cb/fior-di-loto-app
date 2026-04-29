@@ -7,7 +7,7 @@ import {
   type FollowUpJob,
   type FollowUpRule,
 } from "@/lib/types/service-followup";
-import { renderFollowUpMessage } from "@/lib/reminders/followup-render";
+import { renderFollowUpMessage, formatTimeRome } from "@/lib/reminders/followup-render";
 
 // ============================================
 // ROW TYPES
@@ -437,6 +437,9 @@ export async function getDueFollowUps(now: Date): Promise<FollowUpJob[]> {
       serviceName,
       appointmentDateTime: apptDate.toISOString(),
       message,
+      offsetHours: rule.offsetHours,
+      firstName,
+      appointmentTime: formatTimeRome(apptDate),
     });
   }
 

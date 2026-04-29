@@ -25,4 +25,10 @@ export type FollowUpJob = {
   serviceName: string;
   appointmentDateTime: string; // ISO Europe/Rome
   message: string;
+  // Campi extra per template Meta (cron sceglie free-form vs template
+  // outside-session usando questi). offsetHours è la regola di follow-up
+  // applicata; firstName/appointmentTime sono i parametri del template.
+  offsetHours: number;
+  firstName: string;
+  appointmentTime: string; // "HH:MM" Europe/Rome
 };

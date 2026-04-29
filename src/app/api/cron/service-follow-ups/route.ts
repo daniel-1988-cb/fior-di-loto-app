@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDueFollowUps } from "@/lib/actions/service-followups";
-import { sendMessage } from "@/lib/bot/whatsapp-meta";
+import { sendMessage, sendTemplate } from "@/lib/bot/whatsapp-meta";
+import {
+  templateForFollowUp,
+  isTemplatesEnabled,
+} from "@/lib/bot/wa-templates";
+import { hasActiveWASession } from "@/lib/bot/wa-session";
+import { sendPushToAll } from "@/lib/actions/push";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -35,16 +41,10 @@ type RunSummary = {
 };
 
 /**
- * Hourly follow-up cron — Vercel cron `0 * * * *`.
- *
- * Pattern speculare a /api/cron/reminders:
- *  - Bearer CRON_SECRET auth
- *  - getDueFollowUps(now) ritorna i (appt, rule) pronti per invio
- *  - Per ogni job: render già fatto in getDueFollowUps, send WA, dedup row
- *  - Jitter 2-4s tra invii
- *
- * NB: questo cron NON gestisce -24h (day-before) — quello è gestito da
- * /api/cron/reminders. I tre offset attivi sono -12h, +12h, +24h.
+ * Hourly follow-up cron. Pattern speculare a /api/cron/reminders ma per
+ * gli offset -12h / +12h / +24h. Usa template Meta fuori dalla sessione 24h
+ * quando WA_TEMPLATES_ENABLED=true, free-form col testo personalizzato
+ * dalla regola altrimenti.
  */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
@@ -79,16 +79,36 @@ export async function GET(req: NextRequest) {
         ruleId: job.ruleId,
         error: "META_WA_* env vars not configured",
       });
-      // Logga anche nel dedup come 'skipped' così non riproviamo all'infinito
       await recordSent(supabase, job.appointmentId, job.ruleId, "skipped", "no_wa_config");
       continue;
     }
 
+    const useTemplate =
+      isTemplatesEnabled() && !(await hasActiveWASession(job.clientId));
+    const templateSpec = useTemplate
+      ? templateForFollowUp({
+          offsetHours: job.offsetHours,
+          firstName: job.firstName,
+          serviceName: job.serviceName,
+          time: job.appointmentTime,
+        })
+      : null;
+
     try {
-      await sendMessage(job.clientPhone, job.message, {
-        phoneNumberId,
-        accessToken,
-      });
+      if (templateSpec) {
+        await sendTemplate(
+          job.clientPhone,
+          templateSpec.name,
+          templateSpec.language,
+          templateSpec.bodyParams,
+          { phoneNumberId, accessToken },
+        );
+      } else {
+        await sendMessage(job.clientPhone, job.message, {
+          phoneNumberId,
+          accessToken,
+        });
+      }
       summary.sent += 1;
       await recordSent(supabase, job.appointmentId, job.ruleId, "sent", null);
       await sleep(jitterDelayMs());
@@ -105,6 +125,22 @@ export async function GET(req: NextRequest) {
         error: msg,
       });
       await recordSent(supabase, job.appointmentId, job.ruleId, "failed", msg);
+    }
+  }
+
+  if (summary.failed > 0) {
+    try {
+      await sendPushToAll({
+        title: "Follow-up WA non spediti",
+        body: `${summary.failed} invii falliti su ${jobs.length}. Controlla notifiche.`,
+        url: "/?notifications=open",
+        tag: "wa-failures",
+      });
+    } catch (e) {
+      console.error(
+        "[cron/service-follow-ups] push notification on failure threw:",
+        e instanceof Error ? e.message : e,
+      );
     }
   }
 

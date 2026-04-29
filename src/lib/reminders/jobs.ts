@@ -87,8 +87,8 @@ export function buildReminderJobs(
 export function renderWhatsAppReminderBody(job: ReminderJob): string {
   const firstName = job.clientName.split(" ")[0] || job.clientName;
   return [
-    `Ciao ${firstName} 🌸 ti ricordo il tuo appuntamento di domani:`,
-    `${job.dateHuman} alle ${job.time} — ${job.serviceName}.`,
-    `Ti aspetto da Fior di Loto!`,
+    `Ciao ${firstName} 🪷 ti ricordo che domani ti aspetto per ${job.serviceName}:`,
+    `${job.dateHuman} alle ${job.time}.`,
+    `A presto!`,
   ].join("\n");
 }
