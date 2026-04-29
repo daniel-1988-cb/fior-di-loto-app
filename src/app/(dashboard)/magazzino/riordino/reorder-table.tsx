@@ -125,7 +125,18 @@ export function ReorderTable({ suggestions }: ReorderTableProps) {
                   <th className="px-4 py-3 font-medium">Prodotto</th>
                   <th className="px-4 py-3 font-medium">Marchio</th>
                   <th className="px-4 py-3 font-medium text-right">Giacenza</th>
-                  <th className="px-4 py-3 font-medium text-right">Vendite/gg</th>
+                  <th
+                    className="px-4 py-3 font-medium text-right"
+                    title="Vendite medie giornaliere ultimi 90gg"
+                  >
+                    Vendite/gg
+                  </th>
+                  <th
+                    className="px-4 py-3 font-medium text-right"
+                    title="Peso stagionale per il mese di consegna previsto"
+                  >
+                    Stagione
+                  </th>
                   <th className="px-4 py-3 font-medium text-right">Copertura</th>
                   <th className="px-4 py-3 font-medium text-right">Qty suggerita</th>
                   <th className="px-4 py-3 font-medium text-right">Valore</th>
@@ -136,7 +147,7 @@ export function ReorderTable({ suggestions }: ReorderTableProps) {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="px-4 py-12 text-center text-muted-foreground"
                     >
                       Nessun risultato per il filtro corrente.
@@ -211,6 +222,26 @@ function ReorderRow({ item }: { item: ReorderSuggestion }) {
         {item.avgDailyConsumption > 0
           ? item.avgDailyConsumption.toFixed(2)
           : "—"}
+      </td>
+      <td className="px-4 py-3 text-right font-mono">
+        {item.seasonalWeight === 1 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
+              item.seasonalWeight > 1.2 && "bg-amber-500/10 text-amber-700",
+              item.seasonalWeight < 0.8 && "bg-muted text-muted-foreground",
+              item.seasonalWeight >= 0.8 &&
+                item.seasonalWeight <= 1.2 &&
+                "text-muted-foreground",
+            )}
+            title={`Peso stagionale: ${item.seasonalWeight.toFixed(2)}× rispetto al consumo medio annuale`}
+          >
+            {item.seasonalWeight > 1 ? "↑" : item.seasonalWeight < 1 ? "↓" : ""}
+            {item.seasonalWeight.toFixed(2)}×
+          </span>
+        )}
       </td>
       <td className="px-4 py-3 text-right font-mono">{coperturaLabel}</td>
       <td className="px-4 py-3 text-right font-mono font-semibold">

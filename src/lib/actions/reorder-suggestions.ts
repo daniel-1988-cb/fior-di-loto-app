@@ -16,6 +16,9 @@ export type ReorderSuggestion = {
   observationDays: number; // finestra effettiva (es. 90)
   avgDailyConsumption: number;
   daysRemaining: number | null; // null se avgDaily = 0 (nessuna vendita)
+  // Stagionalità (Sprint 2)
+  seasonalWeight: number; // 1.0 = baseline, >1 alta stagione, <1 bassa
+  seasonalAdjustedDailyConsumption: number; // avgDaily × seasonalWeight
   // Suggerimento
   suggestedReorderQty: number;
   suggestedReorderValue: number; // qty * prezzo
@@ -106,6 +109,25 @@ export async function getReorderSuggestions(
     );
   }
 
+  // 3. Pesi stagionali per il mese di consegna previsto.
+  //    Target month = mese corrente + ~half lead time. Approssimiamo a +30gg
+  //    (lead-time medio fornitori non ancora in DB).
+  const targetMonth =
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).getMonth() + 1; // 1-12
+  type WeightRow = { product_id: string; weight: number | string };
+  // seasonal_weights non in generated types — cast as never
+  const { data: weights, error: weightsErr } = await supabase
+    .from("seasonal_weights" as never)
+    .select("product_id, weight")
+    .eq("month" as never, targetMonth as never);
+  if (weightsErr) {
+    console.error("[reorder] seasonal_weights query error:", weightsErr);
+  }
+  const seasonalByProduct = new Map<string, number>();
+  for (const w of (weights ?? []) as WeightRow[]) {
+    seasonalByProduct.set(w.product_id, Number(w.weight) || 1);
+  }
+
   const out: ReorderSuggestion[] = [];
 
   for (const p of products as ProductRow[]) {
@@ -114,7 +136,11 @@ export async function getReorderSuggestions(
     const prezzo = Number(p.prezzo ?? 0);
     const totalSold = salesByProduct.get(p.id) ?? 0;
     const avgDaily = totalSold / observationDays;
-    const daysRemaining = avgDaily > 0 ? giacenza / avgDaily : null;
+    // Applica peso stagionale per il mese di consegna previsto
+    const seasonalWeight = seasonalByProduct.get(p.id) ?? 1;
+    const seasonalAvgDaily = avgDaily * seasonalWeight;
+    const daysRemaining =
+      seasonalAvgDaily > 0 ? giacenza / seasonalAvgDaily : null;
 
     const isOut = giacenza === 0;
     const isUnderAlertThreshold =
@@ -128,13 +154,13 @@ export async function getReorderSuggestions(
     }
 
     // Quantità suggerita:
-    //  - Con storico vendite: copri targetCoverageDays di consumo - giacenza
+    //  - Con storico vendite: copri targetCoverageDays di consumo (stagionale) - giacenza
     //  - Senza storico ma sotto soglia: 2x soglia - giacenza (fallback prudente)
     let suggestedQty: number;
-    if (avgDaily > 0) {
+    if (seasonalAvgDaily > 0) {
       suggestedQty = Math.max(
         0,
-        Math.ceil(targetCoverageDays * avgDaily - giacenza),
+        Math.ceil(targetCoverageDays * seasonalAvgDaily - giacenza),
       );
     } else if (sogliaAlert !== null) {
       suggestedQty = Math.max(0, 2 * sogliaAlert - giacenza);
@@ -160,6 +186,8 @@ export async function getReorderSuggestions(
       observationDays,
       avgDailyConsumption: avgDaily,
       daysRemaining,
+      seasonalWeight,
+      seasonalAdjustedDailyConsumption: seasonalAvgDaily,
       suggestedReorderQty: suggestedQty,
       suggestedReorderValue: suggestedQty * prezzo,
       urgency,
