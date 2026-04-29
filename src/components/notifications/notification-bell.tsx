@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationDrawer } from "./notification-drawer";
+import { rejectAppointmentRequest } from "@/lib/actions/appointment-requests";
 import type {
   WAFailureNotification,
   AppointmentRequestNotification,
@@ -49,6 +50,20 @@ export function NotificationBell({ className }: NotificationBellProps) {
     const id = window.setInterval(fetchData, POLL_MS);
     return () => window.clearInterval(id);
   }, [fetchData]);
+
+  // Optimistic dismiss della richiesta + chiama server action rejectAppointmentRequest.
+  // Se la chiamata fallisce, rifa fetch così la list torna allineata con il DB.
+  const dismissRequest = useCallback(
+    async (requestId: string) => {
+      setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      const res = await rejectAppointmentRequest(requestId);
+      if (!res.ok) {
+        console.error("[NotificationBell] dismiss failed:", res.error);
+        void fetchData();
+      }
+    },
+    [fetchData],
+  );
 
   // Re-read read-state from localStorage when the drawer closes (so the badge
   // updates after the user clicks through items).
@@ -110,6 +125,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
         failures={failures}
         pendingRequests={pendingRequests}
         stockAlerts={stockAlerts}
+        onDismissRequest={dismissRequest}
       />
     </>
   );

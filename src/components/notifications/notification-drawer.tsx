@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, MessageSquare, ExternalLink, Package } from "lucide-react";
+import {
+  AlertTriangle,
+  MessageSquare,
+  ExternalLink,
+  Package,
+  Trash2,
+} from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import type {
@@ -22,6 +28,7 @@ interface NotificationDrawerProps {
   pendingRequests: AppointmentRequestNotification[];
   stockAlerts: StockAlertNotification[];
   onMarkRead?: (ids: string[]) => void;
+  onDismissRequest?: (requestId: string) => Promise<void>;
 }
 
 export function NotificationDrawer({
@@ -31,6 +38,7 @@ export function NotificationDrawer({
   pendingRequests,
   stockAlerts,
   onMarkRead,
+  onDismissRequest,
 }: NotificationDrawerProps) {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<Tab>(() =>
@@ -129,6 +137,7 @@ export function NotificationDrawer({
           readIds={readIds}
           onItemRead={markRead}
           onClose={onClose}
+          onDismiss={onDismissRequest}
         />
       )}
       {tab === "falliti" && (
@@ -205,12 +214,16 @@ function RichiesteTab({
   readIds,
   onItemRead,
   onClose,
+  onDismiss,
 }: {
   items: AppointmentRequestNotification[];
   readIds: Set<string>;
   onItemRead: (id: string) => void;
   onClose: () => void;
+  onDismiss?: (requestId: string) => Promise<void>;
 }) {
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
+
   if (items.length === 0) {
     return (
       <EmptyState
@@ -219,16 +232,33 @@ function RichiesteTab({
       />
     );
   }
+
+  async function handleDismiss(id: string) {
+    if (!onDismiss) return;
+    if (!window.confirm("Eliminare questa richiesta? Non sarà più visibile.")) {
+      return;
+    }
+    setDismissingId(id);
+    try {
+      await onDismiss(id);
+      onItemRead(id);
+    } finally {
+      setDismissingId(null);
+    }
+  }
+
   return (
     <ul className="space-y-3">
       {items.map((it) => {
         const isRead = readIds.has(it.id);
+        const isDismissing = dismissingId === it.id;
         return (
           <li
             key={it.id}
             className={cn(
               "rounded-lg border border-border bg-card p-4 transition-opacity",
               isRead && "opacity-60",
+              isDismissing && "opacity-30 pointer-events-none",
             )}
           >
             <div className="flex items-start justify-between gap-3">
@@ -247,7 +277,21 @@ function RichiesteTab({
                 {it.testoRichiesta}
               </p>
             )}
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex items-center justify-between gap-2">
+              {onDismiss ? (
+                <button
+                  type="button"
+                  onClick={() => handleDismiss(it.id)}
+                  disabled={isDismissing}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+                  aria-label="Elimina richiesta"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Elimina
+                </button>
+              ) : (
+                <span />
+              )}
               <Link
                 href="/whatsapp/richieste"
                 onClick={() => {
