@@ -78,46 +78,43 @@ export function NotificationDrawer({
 
   return (
     <Drawer open={open} onClose={onClose} title="Notifiche" side="right" width="lg">
-      <div className="-m-6 flex h-full">
-        {/* Left rail: tabs (Treatwell-style) */}
-        <nav className="flex w-32 shrink-0 flex-col gap-1 border-r border-border bg-muted/30 p-3">
-          <TabButton
-            active={tab === "richieste"}
-            onClick={() => setTab("richieste")}
-            icon={<MessageSquare className="h-5 w-5" />}
-            label="Richieste"
-            badge={unreadRequestCount}
-          />
-          <TabButton
-            active={tab === "falliti"}
-            onClick={() => setTab("falliti")}
-            icon={<AlertTriangle className="h-5 w-5" />}
-            label="Invii falliti"
-            badge={unreadFailureCount}
-            tone={unreadFailureCount > 0 ? "danger" : "default"}
-          />
-        </nav>
-
-        {/* Right pane */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {tab === "richieste" && (
-            <RichiesteTab
-              items={pendingRequests}
-              readIds={readIds}
-              onItemRead={markRead}
-              onClose={onClose}
-            />
-          )}
-          {tab === "falliti" && (
-            <FallitiTab
-              items={failures}
-              readIds={readIds}
-              onItemRead={markRead}
-              onClose={onClose}
-            />
-          )}
-        </div>
+      {/* Tab bar orizzontale — sostituisce la rail Treatwell-style che aveva
+         un layout instabile (`-m-6 flex h-full` non si propagava sotto il
+         body Drawer e clippava le card). Stessa info, layout robusto. */}
+      <div className="-mx-6 -mt-6 mb-4 flex gap-1 border-b border-border bg-muted/30 px-3 py-2">
+        <TabButton
+          active={tab === "richieste"}
+          onClick={() => setTab("richieste")}
+          icon={<MessageSquare className="h-4 w-4" />}
+          label="Richieste"
+          badge={unreadRequestCount}
+        />
+        <TabButton
+          active={tab === "falliti"}
+          onClick={() => setTab("falliti")}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          label="Invii falliti"
+          badge={unreadFailureCount}
+          tone={unreadFailureCount > 0 ? "danger" : "default"}
+        />
       </div>
+
+      {tab === "richieste" && (
+        <RichiesteTab
+          items={pendingRequests}
+          readIds={readIds}
+          onItemRead={markRead}
+          onClose={onClose}
+        />
+      )}
+      {tab === "falliti" && (
+        <FallitiTab
+          items={failures}
+          readIds={readIds}
+          onItemRead={markRead}
+          onClose={onClose}
+        />
+      )}
     </Drawer>
   );
 }
@@ -142,7 +139,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs transition-colors",
+        "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
         active
           ? "bg-card text-foreground shadow-sm"
           : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
@@ -150,23 +147,23 @@ function TabButton({
     >
       <span
         className={cn(
-          "relative",
+          "relative inline-flex shrink-0",
           tone === "danger" && badge > 0 && "text-danger",
         )}
       >
         {icon}
-        {badge > 0 && (
-          <span
-            className={cn(
-              "absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-white",
-              tone === "danger" ? "bg-danger" : "bg-primary",
-            )}
-          >
-            {badge}
-          </span>
-        )}
       </span>
-      <span className="text-center leading-tight">{label}</span>
+      <span>{label}</span>
+      {badge > 0 && (
+        <span
+          className={cn(
+            "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-white",
+            tone === "danger" ? "bg-danger" : "bg-primary",
+          )}
+        >
+          {badge}
+        </span>
+      )}
     </button>
   );
 }
