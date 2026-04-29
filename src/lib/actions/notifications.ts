@@ -30,6 +30,16 @@ export type AppointmentRequestNotification = {
   createdAt: string;
 };
 
+export type StockAlertNotification = {
+  id: string;
+  nome: string;
+  categoria: string | null;
+  giacenza: number;
+  sogliaAlert: number;
+  // "out" se giacenza = 0, "low" se 0 < giacenza <= soglia.
+  level: "out" | "low";
+};
+
 // ---------------------------------------------------------------------------
 // Listing
 // ---------------------------------------------------------------------------
@@ -120,4 +130,49 @@ export async function listPendingAppointmentRequests(): Promise<
     testoRichiesta: (r.testo_richiesta as string) ?? "",
     createdAt: r.created_at as string,
   }));
+}
+
+/**
+ * Prodotti attivi con giacenza sotto la soglia di allerta (o esauriti).
+ *
+ *   level "out" → giacenza = 0 (priorità massima, badge rosso)
+ *   level "low" → 0 < giacenza <= soglia_alert (badge ambra)
+ *
+ * Filtri:
+ *  - attivo = true (escludi prodotti dismessi)
+ *  - soglia_alert IS NOT NULL (se non configurata, niente alert)
+ *
+ * Ordina per level (out prima) + giacenza ASC + nome.
+ */
+export async function listStockAlerts(): Promise<StockAlertNotification[]> {
+  const adm = createAdminClient();
+  const { data, error } = await adm
+    .from("products")
+    .select("id, nome, categoria, giacenza, soglia_alert")
+    .eq("attivo", true)
+    .not("soglia_alert", "is", null)
+    .order("giacenza", { ascending: true })
+    .order("nome", { ascending: true });
+  if (error || !data) return [];
+  const out: StockAlertNotification[] = [];
+  for (const r of data) {
+    const giacenza = Number(r.giacenza ?? 0);
+    const soglia = Number(r.soglia_alert ?? 0);
+    if (giacenza > soglia) continue;
+    out.push({
+      id: String(r.id),
+      nome: String(r.nome ?? ""),
+      categoria: (r.categoria as string | null) ?? null,
+      giacenza,
+      sogliaAlert: soglia,
+      level: giacenza === 0 ? "out" : "low",
+    });
+  }
+  // out (giacenza=0) prima dei low
+  out.sort((a, b) => {
+    if (a.level !== b.level) return a.level === "out" ? -1 : 1;
+    if (a.giacenza !== b.giacenza) return a.giacenza - b.giacenza;
+    return a.nome.localeCompare(b.nome);
+  });
+  return out;
 }

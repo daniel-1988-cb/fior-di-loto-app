@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   listRecentWAFailures,
   listPendingAppointmentRequests,
+  listStockAlerts,
 } from "@/lib/actions/notifications";
 
 export const runtime = "nodejs";
@@ -19,10 +20,11 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [failures, pendingRequests] = await Promise.all([
+  const [failures, pendingRequests, stockAlerts] = await Promise.all([
     listRecentWAFailures(),
     listPendingAppointmentRequests(),
+    listStockAlerts(),
   ]);
 
-  return NextResponse.json({ failures, pendingRequests });
+  return NextResponse.json({ failures, pendingRequests, stockAlerts });
 }

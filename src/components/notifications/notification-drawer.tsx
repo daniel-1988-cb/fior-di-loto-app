@@ -2,23 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, MessageSquare, ExternalLink } from "lucide-react";
+import { AlertTriangle, MessageSquare, ExternalLink, Package } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import type {
   WAFailureNotification,
   AppointmentRequestNotification,
+  StockAlertNotification,
 } from "@/lib/actions/notifications";
 
 const READ_STORAGE_KEY = "fdl_read_notification_ids";
 
-type Tab = "richieste" | "falliti";
+type Tab = "richieste" | "falliti" | "magazzino";
 
 interface NotificationDrawerProps {
   open: boolean;
   onClose: () => void;
   failures: WAFailureNotification[];
   pendingRequests: AppointmentRequestNotification[];
+  stockAlerts: StockAlertNotification[];
   onMarkRead?: (ids: string[]) => void;
 }
 
@@ -27,6 +29,7 @@ export function NotificationDrawer({
   onClose,
   failures,
   pendingRequests,
+  stockAlerts,
   onMarkRead,
 }: NotificationDrawerProps) {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -46,13 +49,22 @@ export function NotificationDrawer({
   }, []);
 
   // When the drawer opens, default tab to whichever has unread items.
+  // Priorità: stock "out" → falliti → richieste → magazzino "low" → fallback richieste.
   useEffect(() => {
     if (!open) return;
     const unreadFailures = failures.filter((f) => !readIds.has(f.id)).length;
     const unreadRequests = pendingRequests.filter((r) => !readIds.has(r.id)).length;
-    if (unreadFailures > 0) setTab("falliti");
+    const unreadOut = stockAlerts.filter(
+      (s) => s.level === "out" && !readIds.has(s.id),
+    ).length;
+    const unreadLow = stockAlerts.filter(
+      (s) => s.level === "low" && !readIds.has(s.id),
+    ).length;
+    if (unreadOut > 0) setTab("magazzino");
+    else if (unreadFailures > 0) setTab("falliti");
     else if (unreadRequests > 0) setTab("richieste");
-  }, [open, failures, pendingRequests, readIds]);
+    else if (unreadLow > 0) setTab("magazzino");
+  }, [open, failures, pendingRequests, stockAlerts, readIds]);
 
   function markRead(id: string) {
     setReadIds((prev) => {
@@ -75,6 +87,10 @@ export function NotificationDrawer({
   const unreadFailureCount = failures.filter((f) => !readIds.has(f.id)).length;
   const unreadRequestCount = pendingRequests.filter((r) => !readIds.has(r.id))
     .length;
+  const unreadStockCount = stockAlerts.filter((s) => !readIds.has(s.id)).length;
+  const hasOutOfStock = stockAlerts.some(
+    (s) => s.level === "out" && !readIds.has(s.id),
+  );
 
   return (
     <Drawer open={open} onClose={onClose} title="Notifiche" side="right" width="lg">
@@ -97,6 +113,14 @@ export function NotificationDrawer({
           badge={unreadFailureCount}
           tone={unreadFailureCount > 0 ? "danger" : "default"}
         />
+        <TabButton
+          active={tab === "magazzino"}
+          onClick={() => setTab("magazzino")}
+          icon={<Package className="h-4 w-4" />}
+          label="Magazzino"
+          badge={unreadStockCount}
+          tone={hasOutOfStock ? "danger" : "default"}
+        />
       </div>
 
       {tab === "richieste" && (
@@ -110,6 +134,14 @@ export function NotificationDrawer({
       {tab === "falliti" && (
         <FallitiTab
           items={failures}
+          readIds={readIds}
+          onItemRead={markRead}
+          onClose={onClose}
+        />
+      )}
+      {tab === "magazzino" && (
+        <MagazzinoTab
+          items={stockAlerts}
           readIds={readIds}
           onItemRead={markRead}
           onClose={onClose}
@@ -307,6 +339,119 @@ function Section({
       <h3 className="mb-2 text-sm font-semibold text-foreground">{title}</h3>
       <ul className="space-y-3">{children}</ul>
     </div>
+  );
+}
+
+function MagazzinoTab({
+  items,
+  readIds,
+  onItemRead,
+  onClose,
+}: {
+  items: StockAlertNotification[];
+  readIds: Set<string>;
+  onItemRead: (id: string) => void;
+  onClose: () => void;
+}) {
+  const grouped = useMemo(() => {
+    const out: StockAlertNotification[] = [];
+    const low: StockAlertNotification[] = [];
+    for (const it of items) {
+      if (it.level === "out") out.push(it);
+      else low.push(it);
+    }
+    return { out, low };
+  }, [items]);
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        title="Magazzino in regola 🪷"
+        sub="Nessun prodotto sotto la soglia di allerta."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {grouped.out.length > 0 && (
+        <Section title="Esauriti">
+          {grouped.out.map((it) => (
+            <StockAlertCard
+              key={it.id}
+              item={it}
+              isRead={readIds.has(it.id)}
+              onItemRead={onItemRead}
+              onClose={onClose}
+            />
+          ))}
+        </Section>
+      )}
+      {grouped.low.length > 0 && (
+        <Section title="In esaurimento">
+          {grouped.low.map((it) => (
+            <StockAlertCard
+              key={it.id}
+              item={it}
+              isRead={readIds.has(it.id)}
+              onItemRead={onItemRead}
+              onClose={onClose}
+            />
+          ))}
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function StockAlertCard({
+  item,
+  isRead,
+  onItemRead,
+  onClose,
+}: {
+  item: StockAlertNotification;
+  isRead: boolean;
+  onItemRead: (id: string) => void;
+  onClose: () => void;
+}) {
+  const isOut = item.level === "out";
+  return (
+    <li
+      className={cn(
+        "rounded-lg border border-border bg-card p-4 transition-opacity",
+        isRead && "opacity-60",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{item.nome}</p>
+          {item.categoria && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {item.categoria}
+            </p>
+          )}
+        </div>
+        <Pill tone={isOut ? "danger" : "default"}>
+          {isOut ? "Esaurito" : `Solo ${item.giacenza}`}
+        </Pill>
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-[11px] text-muted-foreground">
+          Soglia: {item.sogliaAlert} · Giacenza: {item.giacenza}
+        </span>
+        <Link
+          href={`/prodotti/${item.id}/modifica`}
+          onClick={() => {
+            onItemRead(item.id);
+            onClose();
+          }}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+        >
+          Apri scheda <ExternalLink className="h-3 w-3" />
+        </Link>
+      </div>
+    </li>
   );
 }
 

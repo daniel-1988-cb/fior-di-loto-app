@@ -7,6 +7,7 @@ import { NotificationDrawer } from "./notification-drawer";
 import type {
   WAFailureNotification,
   AppointmentRequestNotification,
+  StockAlertNotification,
 } from "@/lib/actions/notifications";
 
 const READ_STORAGE_KEY = "fdl_read_notification_ids";
@@ -22,6 +23,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
   const [pendingRequests, setPendingRequests] = useState<
     AppointmentRequestNotification[]
   >([]);
+  const [stockAlerts, setStockAlerts] = useState<StockAlertNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const fetchData = useCallback(async () => {
@@ -31,9 +33,11 @@ export function NotificationBell({ className }: NotificationBellProps) {
       const json = (await res.json()) as {
         failures: WAFailureNotification[];
         pendingRequests: AppointmentRequestNotification[];
+        stockAlerts: StockAlertNotification[];
       };
       setFailures(json.failures ?? []);
       setPendingRequests(json.pendingRequests ?? []);
+      setStockAlerts(json.stockAlerts ?? []);
     } catch {
       // network errors are non-fatal — just skip this poll
     }
@@ -68,8 +72,13 @@ export function NotificationBell({ className }: NotificationBellProps) {
 
   const totalUnread =
     failures.filter((f) => !readIds.has(f.id)).length +
-    pendingRequests.filter((r) => !readIds.has(r.id)).length;
-  const hasFailures = failures.some((f) => !readIds.has(f.id));
+    pendingRequests.filter((r) => !readIds.has(r.id)).length +
+    stockAlerts.filter((s) => !readIds.has(s.id)).length;
+  // Tono rosso del badge se c'è almeno una notifica "critica" non letta:
+  // invii falliti o prodotti esauriti (giacenza = 0).
+  const hasCritical =
+    failures.some((f) => !readIds.has(f.id)) ||
+    stockAlerts.some((s) => s.level === "out" && !readIds.has(s.id));
 
   return (
     <>
@@ -88,7 +97,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
           <span
             className={cn(
               "absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none text-white",
-              hasFailures ? "bg-danger" : "bg-primary",
+              hasCritical ? "bg-danger" : "bg-primary",
             )}
           >
             {totalUnread > 9 ? "9+" : totalUnread}
@@ -100,6 +109,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
         onClose={() => setOpen(false)}
         failures={failures}
         pendingRequests={pendingRequests}
+        stockAlerts={stockAlerts}
       />
     </>
   );
