@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidUUID, sanitizeString, truncate } from "@/lib/security/validate";
+import { sendPushToAll } from "@/lib/actions/push";
 
 // ============================================
 // READ OPERATIONS
@@ -162,23 +163,56 @@ export async function updateGiacenza(id: string, delta: number) {
 
   const supabase = createAdminClient();
 
-  // Fetch current giacenza
+  // Fetch current state — serve giacenza per il calcolo, soglia/nome/attivo
+  // per il push di threshold-crossing dopo l'update.
   const { data: current, error: fetchError } = await supabase
     .from("products")
-    .select("giacenza")
+    .select("giacenza, soglia_alert, nome, attivo")
     .eq("id", id)
     .single();
   if (fetchError) throw fetchError;
 
-  const newGiacenza = Math.max(0, (current.giacenza ?? 0) + delta);
+  const before = current.giacenza ?? 0;
+  const after = Math.max(0, before + delta);
+  const soglia = current.soglia_alert as number | null;
+  const nome = current.nome as string;
+  const attivo = current.attivo as boolean;
 
   const { data: row, error } = await supabase
     .from("products")
-    .update({ giacenza: newGiacenza })
+    .update({ giacenza: after })
     .eq("id", id)
     .select()
     .single();
 
   if (error) throw error;
+
+  // Push notification se l'update ha fatto attraversare la soglia di alert.
+  // Solo su decremento (delta < 0) e solo se prodotto attivo + soglia configurata.
+  // Caso "out": era > 0, ora = 0 → 🔴 esaurito
+  // Caso "low": era > soglia, ora <= soglia (e > 0) → 🟡 in esaurimento
+  // Best-effort: errori del push non bloccano l'update giacenza.
+  if (attivo && delta < 0 && soglia !== null) {
+    const crossedOut = before > 0 && after === 0;
+    const crossedLow = before > soglia && after <= soglia && after > 0;
+    if (crossedOut || crossedLow) {
+      try {
+        await sendPushToAll({
+          title: crossedOut ? "Prodotto esaurito 📦" : "Prodotto in esaurimento 📦",
+          body: crossedOut
+            ? `${nome} è esaurito — riordina al fornitore`
+            : `${nome}: solo ${after} pezzi rimasti (soglia ${soglia})`,
+          url: "/?notifications=open",
+          tag: `stock-${id}`,
+        });
+      } catch (e) {
+        console.error(
+          "[updateGiacenza] push notification threw:",
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+  }
+
   return row;
 }
