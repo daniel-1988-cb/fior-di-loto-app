@@ -6,10 +6,16 @@ import { Search, ExternalLink } from "lucide-react";
 import { Card, CardContent, Input, Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils";
+import { Sparkline } from "@/components/magazzino/sparkline";
 import type {
   ReorderSuggestion,
   ReorderUrgency,
 } from "@/lib/actions/reorder-suggestions";
+
+/** Suggestion arricchita lato page con la curva 12 mesi per la sparkline. */
+export type EnrichedReorderSuggestion = ReorderSuggestion & {
+  avgByMonth: number[] | null;
+};
 
 type FilterUrgency = "all" | ReorderUrgency;
 
@@ -31,7 +37,7 @@ const URGENCY_TONE: Record<
 };
 
 interface ReorderTableProps {
-  suggestions: ReorderSuggestion[];
+  suggestions: EnrichedReorderSuggestion[];
 }
 
 export function ReorderTable({ suggestions }: ReorderTableProps) {
@@ -123,6 +129,12 @@ export function ReorderTable({ suggestions }: ReorderTableProps) {
               <thead>
                 <tr className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Prodotto</th>
+                  <th
+                    className="px-2 py-3 font-medium"
+                    title="Curva vendite media 12 mesi"
+                  >
+                    Curva
+                  </th>
                   <th className="px-4 py-3 font-medium">Marchio</th>
                   <th className="px-4 py-3 font-medium text-right">Giacenza</th>
                   <th
@@ -147,7 +159,7 @@ export function ReorderTable({ suggestions }: ReorderTableProps) {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="px-4 py-12 text-center text-muted-foreground"
                     >
                       Nessun risultato per il filtro corrente.
@@ -167,7 +179,7 @@ export function ReorderTable({ suggestions }: ReorderTableProps) {
   );
 }
 
-function ReorderRow({ item }: { item: ReorderSuggestion }) {
+function ReorderRow({ item }: { item: EnrichedReorderSuggestion }) {
   const tone = URGENCY_TONE[item.urgency];
   const coperturaLabel =
     item.daysRemaining === null
@@ -196,6 +208,13 @@ function ReorderRow({ item }: { item: ReorderSuggestion }) {
             </p>
           </div>
         </div>
+      </td>
+      <td className="px-2 py-3 text-primary">
+        {item.avgByMonth ? (
+          <Sparkline values={item.avgByMonth} highlightPeak />
+        ) : (
+          <span className="text-muted-foreground/40">—</span>
+        )}
       </td>
       <td className="px-4 py-3 text-muted-foreground">
         {item.categoria ?? "—"}

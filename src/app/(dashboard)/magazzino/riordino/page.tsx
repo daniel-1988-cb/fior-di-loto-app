@@ -1,14 +1,27 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { ArrowLeft, Package, AlertCircle, TrendingDown } from "lucide-react";
+import { ArrowLeft, Package, AlertCircle, TrendingDown, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui";
 import { getReorderSuggestions } from "@/lib/actions/reorder-suggestions";
+import { getProductMonthlySales } from "@/lib/actions/seasonal-history";
 import { ReorderTable } from "./reorder-table";
 import { formatCurrency } from "@/lib/utils";
 
 export default async function RiordinoPage() {
-  const suggestions = await getReorderSuggestions();
+  const [suggestions, history] = await Promise.all([
+    getReorderSuggestions(),
+    getProductMonthlySales({ attiviSolo: true }),
+  ]);
+  // Map productId → 12-month avg array per la sparkline inline
+  const historyByProduct = new Map<string, number[]>();
+  for (const h of history) {
+    historyByProduct.set(h.productId, h.avgByMonth);
+  }
+  const enriched = suggestions.map((s) => ({
+    ...s,
+    avgByMonth: historyByProduct.get(s.productId) ?? null,
+  }));
   const critical = suggestions.filter((s) => s.urgency === "critical").length;
   const high = suggestions.filter((s) => s.urgency === "high").length;
   const medium = suggestions.filter((s) => s.urgency === "medium").length;
@@ -72,8 +85,27 @@ export default async function RiordinoPage() {
           </CardContent>
         </Card>
       ) : (
-        <ReorderTable suggestions={suggestions} />
+        <ReorderTable suggestions={enriched} />
       )}
+
+      {/* Link a storico stagionale */}
+      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
+        <div className="flex items-center gap-3">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-medium">Storico stagionale completo</p>
+            <p className="text-xs text-muted-foreground">
+              Vedi vendite mese per mese su tutto il catalogo
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/magazzino/storico-stagionale"
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Apri →
+        </Link>
+      </div>
 
       {/* Footnote */}
       <p className="text-xs text-muted-foreground">
